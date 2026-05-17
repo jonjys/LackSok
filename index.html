@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Läcksök | Mätaranalys & Läckagedetektering</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        /* ============================================
+           EXTREMT SNYGG DESIGN - Läcksök
+        ============================================ */
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a2e;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2c7da0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1f5068;
+        }
+
+        .app-container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, #a8d8ea 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .header p {
+            color: rgba(255,255,255,0.7);
+            font-size: 1rem;
+            margin-top: 8px;
+        }
+
+        /* Main card */
+        .main-card {
+            background: rgba(255,255,255,0.98);
+            border-radius: 28px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        /* Upload section */
+        .upload-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 28px 32px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+        }
+
+        .upload-area {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1a5f7a, #0f3b4f);
+            color: white;
+        }
+        .btn-primary:hover { background: linear-gradient(135deg, #0f4d63, #0a2f3f); }
+
+        .btn-success {
+            background: linear-gradient(135deg, #2c7a4d, #1e5a38);
+            color: white;
+        }
+        .btn-success:hover { background: linear-gradient(135deg, #1e5a38, #14452a); }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+            color: white;
+        }
+        .btn-outline {
+            background: white;
+            border: 2px solid #2c7da0;
+            color: #2c7da0;
+            box-shadow: none;
+        }
+        .btn-outline:hover {
+            background: #2c7da0;
+            color: white;
+        }
+
+        /* File chips */
+        .file-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 16px 0;
+        }
+        .file-chip {
+            background: linear-gradient(135deg, #e9ecef, #dee2e6);
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #2c3e50;
+        }
+        .file-chip:hover {
+            background: #cbd5e0;
+            transform: scale(1.02);
+        }
+
+        /* Search box */
+        .search-box {
+            margin: 20px 0 0 0;
+            position: relative;
+        }
+        .search-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: #94a3b8;
+        }
+        .search-input {
+            width: 100%;
+            padding: 14px 20px 14px 50px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 60px;
+            transition: all 0.3s;
+            background: white;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #2c7da0;
+            box-shadow: 0 0 0 3px rgba(44,125,160,0.2);
+        }
+
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+            padding: 0 4px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #ffffff, #f8fafc);
+            border-radius: 20px;
+            padding: 18px 12px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-card .stat-number {
+            font-size: 36px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #1a5f7a, #2c7da0);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .stat-card .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .stat-card.critical .stat-number { background: linear-gradient(135deg, #c0392b, #e74c3c); background-clip: text; -webkit-background-clip: text; }
+
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 16px;
+            background: white;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th {
+            background: #f1f5f9;
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #1e293b;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            padding: 12px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+        }
+        tr:hover {
+            background: #f8fafc;
+        }
+        .critical-row {
+            background: linear-gradient(90deg, #fee2e2, #ffffff);
+            border-left: 4px solid #e74c3c;
+        }
+        .high-row {
+            background: linear-gradient(90deg, #fff3e0, #ffffff);
+            border-left: 4px solid #f39c12;
+        }
+        .trend-up {
+            color: #e74c3c;
+            font-weight: 700;
+        }
+
+        /* Footer info */
+        .info-footer {
+            background: #f1f5f9;
+            padding: 14px 24px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #475569;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .badge {
+            background: #2c7da0;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 11px;
+        }
+
+        .results-section {
+            padding: 24px 32px;
+            background: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body { padding: 16px; }
+            .header h1 { font-size: 2rem; }
+            .upload-section, .results-section { padding: 20px; }
+            th, td { font-size: 11px; padding: 8px; }
+            .stat-number { font-size: 24px; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="header">
+        <h1>🔍 Läcksök</h1>
+        <p>Professionell analys av mätardata • Upptäck läckage i realtid</p>
+    </div>
+
+    <div class="main-card">
+        <div class="upload-section">
+            <div class="upload-area">
+                <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
+                <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
+                <button id="analyzeBtn" class="btn btn-success">📊 Analysera alla datum</button>
+                <button id="clearBtn" class="btn btn-outline">🗑️ Rensa alla</button>
+            </div>
+            <div id="fileList" class="file-grid"></div>
+
+            <div class="search-box">
+                <span class="search-icon">🔎</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="Sök på adress eller serienummer... (t.ex. 'trast' eller '14733')">
+            </div>
+        </div>
+
+        <div id="results" class="results-section" style="display:none">
+            <div class="stats-grid" id="statsGrid"></div>
+            <div class="table-wrapper">
+                <table id="resultsTable">
+                    <thead>
+                        <tr><th>📍 Adress</th><th>🔢 Serienummer</th><th>📉 Första värde</th><th>📈 Senaste värde</th><th>⚡ Förändring</th><th>📅 Period</th></tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            <div class="info-footer">
+                <span>💡 <strong>Tips:</strong> Skriv i sökrutan för att filtrera i realtid</span>
+                <span>✅ Sorterat efter högsta procentuella ökning</span>
+            </div>
+            <button id="exportBtn" class="btn btn-primary" style="margin-top:24px; width:100%; justify-content:center;">📎 Exportera rapport (Excel)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========== LÄCKSÖK - KÄRNLOGIK ==========
+    let uploadedFiles = [];
+    let currentResults = [];
+
+    // Hjälp: extrahera datum från filnamn
+    function extractDateFromFilename(filename) {
+        const match = filename.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2})-(\d{2})/);
+        if (match) return new Date(`${match[1]}T${match[2]}:${match[3]}:00`);
+        return new Date();
+    }
+
+    function formatShortDate(date) {
+        return `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+    }
+
+    // Parsa Excel (automatisk kolumnmappning + rensning av skräprad)
+    async function parseExcelFile(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+                if (!rows || rows.length < 2) return resolve([]);
+
+                // Hitta startraden (innehåller "adress")
+                let startRow = 0;
+                for (let i = 0; i < Math.min(12, rows.length); i++) {
+                    const cell = rows[i]?.[0] ? String(rows[i][0]).toLowerCase() : "";
+                    if (cell.includes('adress')) { startRow = i; break; }
+                }
+
+                const meters = new Map(); // undvik dubletter inom samma fil
+                for (let r = startRow+1; r < rows.length; r++) {
+                    const row = rows[r];
+                    if (!row || row.length < 5) continue;
+                    let adress = row[0] ? String(row[0]).trim().toUpperCase() : "";
+                    let serienummer = row[1] ? String(row[1]).trim() : "";
+                    let sensateValue = parseFloat(row[4]);
+                    if (isNaN(sensateValue)) continue;
+                    if (!adress && !serienummer) continue;
+                    const id = serienummer || adress;
+                    if (!meters.has(id)) {
+                        meters.set(id, { adress, serienummer, sensateValue });
+                    }
+                }
+                resolve(Array.from(meters.values()));
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    // Procentuell förändring
+    function calcChange(oldVal, newVal) {
+        if (!oldVal || oldVal === 0) return null;
+        return ((newVal - oldVal) / oldVal) * 100;
+    }
+
+    async function analyzeAllData() {
+        if (uploadedFiles.length < 2) {
+            alert("⚠️ Vänligen ladda upp minst två mätarfiler (olika datum).");
+            return;
+        }
+
+        uploadedFiles.sort((a,b) => a.date - b.date);
+        const allMeters = new Map(); // id -> {adress, serienummer, measurements: []}
+
+        for (let fileData of uploadedFiles) {
+            for (let meter of fileData.meters) {
+                if (!allMeters.has(meter.id)) {
+                    allMeters.set(meter.id, { adress: meter.adress, serienummer: meter.serienummer, measurements: [] });
+                }
+                allMeters.get(meter.id).measurements.push({
+                    date: fileData.date,
+                    dateStr: formatShortDate(fileData.date),
+                    value: meter.sensateValue
+                });
+            }
+        }
+
+        const trends = [];
+        for (let meter of allMeters.values()) {
+            meter.measurements.sort((a,b) => a.date - b.date);
+            if (meter.measurements.length < 2) continue;
+            const first = meter.measurements[0];
+            const last = meter.measurements[meter.measurements.length-1];
+            const change = calcChange(first.value, last.value);
+            if (change !== null && isFinite(change)) {
+                trends.push({
+                    adress: meter.adress,
+                    serienummer: meter.serienummer,
+                    firstValue: first.value,
+                    lastValue: last.value,
+                    firstDate: first.dateStr,
+                    lastDate: last.dateStr,
+                    changePercent: change,
+                    history: meter.measurements.map(m => `${m.dateStr}:${m.value}`).join(' → ')
+                });
+            }
+        }
+
+        trends.sort((a,b) => b.changePercent - a.changePercent);
+        currentResults = trends;
+        renderResults();
+    }
+
+    function renderResults() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+        let filtered = currentResults;
+        if (searchTerm) {
+            filtered = currentResults.filter(r => 
+                r.adress.toLowerCase().includes(searchTerm) || 
+                (r.serienummer && r.serienummer.includes(searchTerm))
+            );
+        }
+
+        // Statistik
+        const total = currentResults.length;
+        const critical = currentResults.filter(r => r.changePercent >= 100).length;
+        const high = currentResults.filter(r => r.changePercent >= 50 && r.changePercent < 100).length;
+        const positive = currentResults.filter(r => r.changePercent > 0).length;
+
+        document.getElementById('statsGrid').innerHTML = `
+            <div class="stat-card"><div class="stat-number">${total}</div><div class="stat-label">📊 Jämförda mätare</div></div>
+            <div class="stat-card critical"><div class="stat-number">${critical}</div><div class="stat-label">🔥 >100% ökning</div></div>
+            <div class="stat-card"><div class="stat-number">${high}</div><div class="stat-label">⚠️ 50-100%</div></div>
+            <div class="stat-card"><div class="stat-number">${positive}</div><div class="stat-label">✅ Positiv trend</div></div>
+        `;
+
+        const tbody = document.getElementById('tableBody');
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar sökningen</td></tr>`;
+            document.getElementById('results').style.display = 'block';
+            return;
+        }
+
+        let html = '';
+        for (let r of filtered) {
+            const change = r.changePercent;
+            let changeFormatted = '';
+            let rowClass = '';
+            if (change >= 100) { changeFormatted = `🔥 ${Math.round(change)}%`; rowClass = 'critical-row'; }
+            else if (change >= 50) { changeFormatted = `⚠️ ${Math.round(change)}%`; rowClass = 'high-row'; }
+            else if (change > 0) { changeFormatted = `▲ ${change.toFixed(1)}%`; }
+            else if (change < 0) { changeFormatted = `▼ ${Math.abs(change).toFixed(1)}%`; }
+            else { changeFormatted = `0%`; }
+
+            html += `<tr class="${rowClass}">
+                <td><strong>${r.adress}</strong></td>
+                <td>${r.serienummer || '-'}</td>
+                <td>${r.firstValue}</td>
+                <td><strong>${r.lastValue}</strong></td>
+                <td class="trend-up">${changeFormatted}</td>
+                <td>${r.firstDate} → ${r.lastDate}</td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+        document.getElementById('results').style.display = 'block';
+        document.querySelector('.results-section').classList.add('fade-in');
+    }
+
+    // Hantera uppladdning
+    async function handleFiles(files) {
+        for (let file of files) {
+            if (file.name.match(/\.(xlsx|xls)$/i)) {
+                const date = extractDateFromFilename(file.name);
+                const meters = await parseExcelFile(file);
+                uploadedFiles.push({ fileName: file.name, date, meters });
+            }
+        }
+        updateFileList();
+        if (uploadedFiles.length >= 2) analyzeAllData();
+    }
+
+    function updateFileList() {
+        const container = document.getElementById('fileList');
+        if (uploadedFiles.length === 0) {
+            container.innerHTML = '<div style="color:#718096; font-size:13px;">📌 Inga filer uppladdade än</div>';
+            return;
+        }
+        let html = '';
+        uploadedFiles.forEach((f, idx) => {
+            html += `<div class="file-chip" onclick="removeFile(${idx})">📅 ${formatShortDate(f.date)} (${f.meters.length} mätare) ✖</div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    window.removeFile = function(idx) {
+        uploadedFiles.splice(idx, 1);
+        updateFileList();
+        if (uploadedFiles.length >= 2) analyzeAllData();
+        else document.getElementById('results').style.display = 'none';
+    };
+
+    function exportToExcel() {
+        if (currentResults.length === 0) return alert("Ingen data att exportera");
+        const exportData = currentResults.map(r => ({
+            'Adress': r.adress,
+            'Serienummer': r.serienummer,
+            'Första värde': r.firstValue,
+            'Senaste värde': r.lastValue,
+            'Förändring (%)': r.changePercent.toFixed(2),
+            'Period': `${r.firstDate} → ${r.lastDate}`,
+            'Historik': r.history
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Läcksök_Rapport");
+        XLSX.writeFile(wb, `lacksok_${new Date().toISOString().slice(0,19)}.xlsx`);
+    }
+
+    // Event listeners
+    document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
+    document.getElementById('fileInput').onchange = (e) => handleFiles(Array.from(e.target.files));
+    document.getElementById('analyzeBtn').onclick = () => analyzeAllData();
+    document.getElementById('clearBtn').onclick = () => {
+        uploadedFiles = [];
+        currentResults = [];
+        updateFileList();
+        document.getElementById('results').style.display = 'none';
+        document.getElementById('searchInput').value = '';
+    };
+    document.getElementById('exportBtn').onclick = exportToExcel;
+    document.getElementById('searchInput').addEventListener('input', () => renderResults());
+
+    updateFileList();
+</script>
+</body>
+</html>

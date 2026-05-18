@@ -104,7 +104,7 @@
         return `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
     }
 
-    // Förbättrad Excel-parsning - läser ALLA rader korrekt
+    // SMART Excel-parsning - letar efter kolumnen som INNEHÅLLER mätvärdet
     async function parseExcelFile(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -115,42 +115,83 @@
                 const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
                 
                 if (!rows || rows.length < 2) {
-                    console.log("Inga rader hittades");
                     resolve([]);
                     return;
                 }
 
-                // Debug: logga första raderna
-                console.log("Första 5 rader:", rows.slice(0,5));
+                // Hitta raden med Adress (rubrikrad)
+                let startRow = -1;
+                let adressCol = -1;
+                let serialCol = -1;
+                let valueCol = -1;
                 
-                // Hitta startraden (där "Adress" finns i kolumn A)
-                let startRow = 0;
-                for (let i = 0; i < Math.min(20, rows.length); i++) {
+                for (let i = 0; i < Math.min(30, rows.length); i++) {
                     const row = rows[i];
-                    if (row && row.length > 0) {
-                        const firstCell = row[0] ? String(row[0]).toLowerCase() : "";
-                        if (firstCell.includes('adress')) {
+                    if (!row) continue;
+                    
+                    for (let c = 0; c < Math.min(20, row.length); c++) {
+                        const cell = row[c] ? String(row[c]).toLowerCase() : "";
+                        if (cell.includes('adress') || cell === 'adress') {
                             startRow = i;
-                            console.log("Hittade rubrikrad på rad:", i);
+                            adressCol = c;
+                        }
+                        if (cell.includes('serienummer') || cell === 'serienummer') {
+                            serialCol = c;
+                        }
+                        if (cell.includes('sensate') || cell.includes('värde') || cell === 'sensate värde') {
+                            valueCol = c;
+                        }
+                    }
+                    if (startRow !== -1) break;
+                }
+                
+                // Om vi inte hittade rubriker, anta standard (A=Adress, B=Serienummer, leta efter första numeriska kolumn)
+                if (startRow === -1) {
+                    startRow = 0;
+                    adressCol = 0;
+                    serialCol = 1;
+                    // Försök hitta första kolumnen med siffror
+                    for (let c = 2; c < 15; c++) {
+                        let hasNumbers = false;
+                        for (let r = startRow+1; r < Math.min(startRow+10, rows.length); r++) {
+                            const val = rows[r]?.[c];
+                            if (val !== undefined && !isNaN(parseFloat(val))) {
+                                hasNumbers = true;
+                                break;
+                            }
+                        }
+                        if (hasNumbers) {
+                            valueCol = c;
                             break;
                         }
                     }
+                    if (valueCol === -1) valueCol = 4;
                 }
+                
+                console.log(`📄 ${file.name}: Adress kolumn=${adressCol}, Serienr kolumn=${serialCol}, Värde kolumn=${valueCol}, startRad=${startRow}`);
                 
                 const meters = [];
                 let antalLästa = 0;
                 
-                // Börja läsa från raden efter rubriken
                 for (let r = startRow + 1; r < rows.length; r++) {
                     const row = rows[r];
                     if (!row) continue;
                     
-                    // Kolumn A = Adress, B = Serienummer, E = Sensate värde
-                    let adress = row[0] ? String(row[0]).trim().toUpperCase() : "";
-                    let serienummer = row[1] ? String(row[1]).toString().trim() : "";
-                    let sensateValue = row[4];
+                    let adress = adressCol >= 0 && row[adressCol] ? String(row[adressCol]).trim().toUpperCase() : "";
+                    let serienummer = serialCol >= 0 && row[serialCol] ? String(row[serialCol]).trim() : "";
+                    let sensateValue = valueCol >= 0 ? row[valueCol] : null;
                     
-                    // Hantera olika datatyper för värdet
+                    // Rensa bort skräp
+                    if (adress === "FALSKT" || adress === "FALSE" || adress === "FALSK" || adress === "") {
+                        // Försök använda serienummer som identifierare istället
+                        if (serienummer && serienummer !== "FALSKT") {
+                            adress = `[${serienummer}]`;
+                        } else {
+                            continue;
+                        }
+                    }
+                    
+                    // Parsa värdet
                     if (sensateValue === undefined || sensateValue === "") continue;
                     if (typeof sensateValue === 'string') {
                         sensateValue = parseFloat(sensateValue.replace(',', '.').trim());
@@ -161,9 +202,6 @@
                     if (isNaN(sensateValue)) continue;
                     if (adress === "" && serienummer === "") continue;
                     
-                    // Rensa bort "FALSKT" eller andra konstigheter från adress
-                    if (adress === "FALSKT" || adress === "FALSE" || adress === "") continue;
-                    
                     meters.push({
                         id: serienummer || adress,
                         adress: adress,
@@ -173,7 +211,7 @@
                     antalLästa++;
                 }
                 
-                console.log(`Läste ${antalLästa} mätare från ${file.name}`);
+                console.log(`✅ Läste ${antalLästa} mätare från ${file.name}`);
                 resolve(meters);
             };
             reader.onerror = (err) => {
@@ -196,7 +234,8 @@
         }
 
         uploadedFiles.sort((a,b) => a.date - b.date);
-        console.log("Filer att analysera:", uploadedFiles.map(f => `${f.fileName} (${f.meters.length} mätare)`));
+        console.log("=== ANALYS STARTAR ===");
+        console.log("Filer:", uploadedFiles.map(f => `${f.fileName} (${f.meters.length} mätare)`));
         
         const allMeters = new Map();
 
@@ -217,12 +256,15 @@
             }
         }
 
-        console.log("Unika mätare totalt:", allMeters.size);
+        console.log(`📊 Unika mätare totalt: ${allMeters.size}`);
         
         const trends = [];
         for (let meter of allMeters.values()) {
             meter.measurements.sort((a,b) => a.date - b.date);
-            if (meter.measurements.length < 2) continue;
+            if (meter.measurements.length < 2) {
+                console.log(`⚠️ ${meter.adress} har bara ${meter.measurements.length} mätning(ar) - hoppas över`);
+                continue;
+            }
             
             const first = meter.measurements[0];
             const last = meter.measurements[meter.measurements.length-1];
@@ -244,7 +286,7 @@
 
         trends.sort((a,b) => b.changePercent - a.changePercent);
         currentResults = trends;
-        console.log("Jämförda mätare (med förändring):", trends.length);
+        console.log(`✅ Jämförda mätare (med förändring): ${trends.length}`);
         renderResults();
     }
 
@@ -307,12 +349,10 @@
                 const date = extractDateFromFilename(file.name);
                 const meters = await parseExcelFile(file);
                 uploadedFiles.push({ fileName: file.name, date, meters });
-                console.log(`Laddade ${meters.length} mätare från ${file.name}`);
             }
         }
         updateFileList();
         if (uploadedFiles.length >= 2) {
-            console.log("Har minst 2 filer, kör analys...");
             analyzeAllData();
         }
     }
@@ -369,9 +409,7 @@
     document.getElementById('searchInput').addEventListener('input', () => renderResults());
 
     updateFileList();
-    
-    // Debug: visa i konsolen att scriptet körs
-    console.log("Läcksök laddad - redo att analysera!");
+    console.log("🔍 Läcksök redo - ladda upp dina Excel-filer!");
 </script>
 </body>
 </html>

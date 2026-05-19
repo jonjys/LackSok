@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök - Smart Mätaranalys</title>
+    <title>Läcksök - Mätaranalys</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,11 +12,13 @@
         header { background: #1a5f7a; color: white; padding: 20px 24px; }
         header h1 { font-size: 1.8rem; }
         .upload-section { padding: 20px 24px; background: #f8f9fa; border-bottom: 1px solid #e0e4e8; }
-        .btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 2px; }
         .btn-primary { background: #1a5f7a; color: white; }
         .btn-success { background: #2c7a4d; color: white; }
         .btn-danger { background: #c0392b; color: white; }
         .btn-warning { background: #e67e22; color: white; }
+        .btn-interesting { background: #f39c12; color: white; }
+        .btn-interesting-active { background: #e67e22; color: white; box-shadow: 0 0 0 2px #f39c12; }
         .file-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
         .file-chip { background: #e9ecef; padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
         .search-section { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #ddd; }
@@ -28,36 +30,43 @@
         th { background: #e9ecef; position: sticky; top: 0; }
         .critical { background: #fee2e2; }
         .high { background: #fff3e0; }
-        .ignored { background: #f0f0f0 !important; opacity: 0.6; text-decoration: line-through; }
+        .ignored { background: #f0f0f0 !important; opacity: 0.5; text-decoration: line-through; }
+        .interesting { background: #fff8e7 !important; border-left: 4px solid #f39c12; }
         .trend-up { color: #c0392b; font-weight: bold; }
         .summary-cards { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
-        .card { background: #f0f4f8; padding: 10px 20px; border-radius: 10px; text-align: center; }
+        .card { background: #f0f4f8; padding: 10px 20px; border-radius: 10px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .card .num { font-size: 28px; font-weight: bold; }
+        .card.interesting-card { background: #fff8e7; border: 1px solid #f39c12; }
         .info-box { background: #e8f4f8; padding: 10px; border-radius: 8px; margin-top: 15px; font-size: 13px; }
         .action-buttons { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
-        .ignore-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px 8px; border-radius: 20px; }
-        .ignore-btn:hover { background: #dee2e6; }
+        .ignore-btn, .interesting-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px 8px; border-radius: 20px; transition: all 0.2s; }
+        .ignore-btn:hover, .interesting-btn:hover { background: #dee2e6; transform: scale(1.05); }
         .filter-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin: 15px 0; }
-        .filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 12px; }
+        .filter-btn { padding: 6px 16px; border-radius: 30px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .filter-btn:hover { background: #e9ecef; }
         .filter-btn.active { background: #1a5f7a; color: white; border-color: #1a5f7a; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; margin-left: 8px; }
+        .badge-interesting { background: #f39c12; color: white; }
+        .ready-badge { background: #27ae60; color: white; }
+        @media (max-width: 768px) { body { padding: 12px; } th, td { font-size: 11px; padding: 6px; } .btn { padding: 6px 12px; font-size: 12px; } }
     </style>
 </head>
 <body>
 <div class="container">
     <header>
         <h1>🔍 Läcksök</h1>
-        <p>Analysera mätardata • Upptäck läckage • Ignorera oönskade</p>
+        <p>Analysera mätardata • Markera intressanta • Ignorera oönskade</p>
     </header>
 
     <div class="upload-section">
-        <button id="uploadBtn" class="btn btn-primary">➕ Lägg till mätarfiler</button>
+        <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
         <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
         <div id="fileList" class="file-grid"></div>
         
         <div class="action-buttons">
             <button id="analyzeBtn" class="btn btn-success">📊 Analysera</button>
             <button id="clearBtn" class="btn btn-danger">🗑️ Rensa alla</button>
-            <button id="clearIgnoredBtn" class="btn btn-warning">👁️ Återställ alla ignorerade</button>
         </div>
 
         <div class="search-section">
@@ -69,6 +78,7 @@
             <button class="filter-btn" data-filter="critical">🔥 >100%</button>
             <button class="filter-btn" data-filter="high">⚠️ 50-100%</button>
             <button class="filter-btn" data-filter="positive">✅ Positiva</button>
+            <button class="filter-btn" data-filter="interesting">⭐ Intressanta</button>
             <button class="filter-btn" data-filter="ignored">🚫 Ignorerade</button>
         </div>
     </div>
@@ -83,19 +93,24 @@
 <script>
 let uploadedFiles = [];
 let currentResults = [];
-let ignoredIds = new Set(); // Sparar ignorerade mätare
+let ignoredIds = new Set();
+let interestingIds = new Set();
 let currentFilter = "all";
 
-// Ladda ignorerade från localStorage
-function loadIgnored() {
-    const saved = localStorage.getItem('lacksok_ignored');
-    if (saved) {
-        ignoredIds = new Set(JSON.parse(saved));
-    }
+// Ladda från localStorage
+function loadSaved() {
+    const savedIgnored = localStorage.getItem('lacksok_ignored');
+    if (savedIgnored) ignoredIds = new Set(JSON.parse(savedIgnored));
+    const savedInteresting = localStorage.getItem('lacksok_interesting');
+    if (savedInteresting) interestingIds = new Set(JSON.parse(savedInteresting));
 }
 
 function saveIgnored() {
     localStorage.setItem('lacksok_ignored', JSON.stringify([...ignoredIds]));
+}
+
+function saveInteresting() {
+    localStorage.setItem('lacksok_interesting', JSON.stringify([...interestingIds]));
 }
 
 function toggleIgnore(id) {
@@ -103,13 +118,23 @@ function toggleIgnore(id) {
         ignoredIds.delete(id);
     } else {
         ignoredIds.add(id);
+        // Om vi ignorerar, ta bort från intressanta om den finns där
+        if (interestingIds.has(id)) interestingIds.delete(id);
     }
     saveIgnored();
+    saveInteresting();
     displayResults();
 }
 
-function clearAllIgnored() {
-    ignoredIds.clear();
+function toggleInteresting(id) {
+    if (interestingIds.has(id)) {
+        interestingIds.delete(id);
+    } else {
+        interestingIds.add(id);
+        // Om vi lägger till som intressant, ta bort från ignorerad om den finns där
+        if (ignoredIds.has(id)) ignoredIds.delete(id);
+    }
+    saveInteresting();
     saveIgnored();
     displayResults();
 }
@@ -241,15 +266,18 @@ function formatPercent(value) {
 function displayResults() {
     const searchInput = document.getElementById('searchInput').value.toLowerCase().trim();
     
-    // Första filtrering: ignorerade eller inte
+    // Basfiltrering baserat på flik
     let filtered = currentResults;
+    
     if (currentFilter === 'ignored') {
         filtered = currentResults.filter(r => ignoredIds.has(r.id));
+    } else if (currentFilter === 'interesting') {
+        filtered = currentResults.filter(r => interestingIds.has(r.id));
     } else {
         filtered = currentResults.filter(r => !ignoredIds.has(r.id));
     }
     
-    // Andra filtrering: sökord
+    // Sökfiltrering
     if (searchInput) {
         filtered = filtered.filter(r => 
             r.adress.toLowerCase().includes(searchInput) ||
@@ -257,8 +285,8 @@ function displayResults() {
         );
     }
     
-    // Tredje filtrering: procentfilter (bara om inte "ignored" vy)
-    if (currentFilter !== 'ignored') {
+    // Procentfiltrering (inte för ignored/interesting flikar)
+    if (currentFilter !== 'ignored' && currentFilter !== 'interesting') {
         if (currentFilter === 'critical') {
             filtered = filtered.filter(r => r.change >= 100);
         } else if (currentFilter === 'high') {
@@ -268,40 +296,47 @@ function displayResults() {
         }
     }
     
+    // Statistik
     const total = currentResults.length;
     const active = currentResults.filter(r => !ignoredIds.has(r.id)).length;
     const critical = currentResults.filter(r => !ignoredIds.has(r.id) && r.change >= 100).length;
     const high = currentResults.filter(r => !ignoredIds.has(r.id) && r.change >= 50 && r.change < 100).length;
     const positive = currentResults.filter(r => !ignoredIds.has(r.id) && r.change > 0).length;
+    const interestingCount = interestingIds.size;
     const ignoredCount = ignoredIds.size;
     
     document.getElementById('summaryCards').innerHTML = `
-        <div class="card"><h3>📊 Totalt</h3><div class="num">${total}</div></div>
-        <div class="card"><h3>✅ Aktiva</h3><div class="num">${active}</div></div>
-        <div class="card"><h3>🔥 >100%</h3><div class="num">${critical}</div></div>
-        <div class="card"><h3>⚠️ 50-100%</h3><div class="num">${high}</div></div>
-        <div class="card"><h3>✅ Ökning</h3><div class="num">${positive}</div></div>
-        <div class="card"><h3>🚫 Ignorerade</h3><div class="num">${ignoredCount}</div></div>
+        <div class="card" onclick="setFilter('all')"><h3>📊 Totalt</h3><div class="num">${total}</div></div>
+        <div class="card" onclick="setFilter('positive')"><h3>✅ Aktiva</h3><div class="num">${active}</div></div>
+        <div class="card" onclick="setFilter('critical')"><h3>🔥 >100%</h3><div class="num">${critical}</div></div>
+        <div class="card" onclick="setFilter('high')"><h3>⚠️ 50-100%</h3><div class="num">${high}</div></div>
+        <div class="card interesting-card" onclick="setFilter('interesting')"><h3>⭐ Intressanta</h3><div class="num">${interestingCount}</div></div>
+        <div class="card" onclick="setFilter('ignored')"><h3>🚫 Ignorerade</h3><div class="num">${ignoredCount}</div></div>
     `;
     
     if (filtered.length === 0) {
-        document.getElementById('trendTable').innerHTML = `<div class="info-box">🔍 Ingen mätare matchar "${searchInput || currentFilter}"</div>`;
+        document.getElementById('trendTable').innerHTML = `<div class="info-box">🔍 Ingen mätare matchar "${currentFilter}"${searchInput ? ` och "${searchInput}"` : ''}</div>`;
         document.getElementById('results').style.display = 'block';
         return;
     }
     
-    let html = `<table><thead><tr>
-        <th>⚙️</th><th>Adress</th><th>Serienummer</th><th>Första</th><th>Senaste</th><th>📈 Förändring</th><th>Period</th>
+    let html = `<tr><thead><tr>
+        <th>⭐</th><th>👁️</th><th>Adress</th><th>Serienummer</th><th>Första</th><th>Senaste</th><th>📈 Förändring</th><th>Period</th>
     </tr></thead><tbody>`;
     
     for (let r of filtered) {
         const isIgnored = ignoredIds.has(r.id);
+        const isInteresting = interestingIds.has(r.id);
         const riskClass = !isIgnored && r.change >= 100 ? 'critical' : (!isIgnored && r.change >= 50 ? 'high' : '');
-        const rowClass = isIgnored ? 'ignored' : riskClass;
+        let rowClass = '';
+        if (isIgnored) rowClass = 'ignored';
+        else if (isInteresting) rowClass = 'interesting';
+        else if (riskClass) rowClass = riskClass;
         
         html += `<tr class="${rowClass}">
+            <td><button class="interesting-btn" onclick="toggleInteresting('${r.id}')" title="${isInteresting ? 'Ta bort från intressanta' : 'Markera som intressant (åka till)'}" style="color: ${isInteresting ? '#f39c12' : '#ccc'}">${isInteresting ? '⭐' : '☆'}</button></td>
             <td><button class="ignore-btn" onclick="toggleIgnore('${r.id}')" title="${isIgnored ? 'Återställ' : 'Ignorera'}">${isIgnored ? '✅' : '👁️'}</button></td>
-            <td><strong>${r.adress}</strong></td>
+            <td><strong>${r.adress}</strong>${isInteresting ? ' <span class="badge badge-interesting">⭐ Att åka till</span>' : ''}${isIgnored ? ' <span class="badge">🚫 Ignorerad</span>' : ''}</td>
             <td>${r.serienummer || "-"}</td>
             <td>${r.firstValue}</td>
             <td><strong>${r.lastValue}</strong></td>
@@ -312,12 +347,26 @@ function displayResults() {
     
     html += `</tbody></table>
     <div class="info-box">
-        👁️ <strong>Ignorera:</strong> Klicka på ögat för att dölja/visa mätare.<br>
-        🔍 Visar ${filtered.length} av ${currentResults.length} mätare${searchInput ? ` som matchar "${searchInput}"` : ''}
+        ⭐ <strong>Intressanta mätare:</strong> Klicka på ☆ för att lägga till mätare du vill åka till.<br>
+        👁️ <strong>Ignorera:</strong> Klicka på ögat för att dölja oönskade mätare.<br>
+        📋 <strong>Tips:</strong> Klicka på korten ovan för att snabbt växla vy!
     </div>`;
     
     document.getElementById('trendTable').innerHTML = html;
     document.getElementById('results').style.display = 'block';
+}
+
+function setFilter(filter) {
+    currentFilter = filter;
+    // Uppdatera aktiva knappar
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        if (btn.dataset.filter === filter) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    displayResults();
 }
 
 async function handleFiles(files) {
@@ -361,7 +410,8 @@ function exportReport() {
         'Senaste värde': r.lastValue,
         'Förändring %': r.change.toFixed(1),
         'Period': `${r.firstDate} → ${r.lastDate}`,
-        'Ignorerad': ignoredIds.has(r.id) ? 'Ja' : 'Nej',
+        'Intressant': interestingIds.has(r.id) ? '⭐ Ja' : '',
+        'Ignorerad': ignoredIds.has(r.id) ? 'Ja' : '',
         'Historik': r.history
     }));
     
@@ -375,24 +425,29 @@ function exportReport() {
 document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
 document.getElementById('fileInput').onchange = (e) => handleFiles(Array.from(e.target.files));
 document.getElementById('analyzeBtn').onclick = () => analyzeAllData();
-document.getElementById('clearBtn').onclick = () => { uploadedFiles = []; updateFileList(); document.getElementById('results').style.display = 'none'; };
-document.getElementById('clearIgnoredBtn').onclick = () => clearAllIgnored();
+document.getElementById('clearBtn').onclick = () => { 
+    uploadedFiles = []; 
+    updateFileList(); 
+    document.getElementById('results').style.display = 'none';
+    ignoredIds.clear();
+    interestingIds.clear();
+    saveIgnored();
+    saveInteresting();
+};
 document.getElementById('exportBtn').onclick = exportReport;
 document.getElementById('searchInput').oninput = () => displayResults();
 
 // Filter-knappar
 document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.onclick = () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.dataset.filter;
-        displayResults();
-    };
+    btn.onclick = () => setFilter(btn.dataset.filter);
 });
 
 window.toggleIgnore = toggleIgnore;
+window.toggleInteresting = toggleInteresting;
 window.removeFile = removeFile;
-loadIgnored();
+window.setFilter = setFilter;
+
+loadSaved();
 updateFileList();
 </script>
 </body>

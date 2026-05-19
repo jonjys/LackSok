@@ -3,474 +3,397 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök | Smart Mätaranalys</title>
+    <title>Läcksök - Smart Mätaranalys</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-            min-height: 100vh;
-            padding: 24px;
-        }
-        .app-container { max-width: 1600px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 32px; }
-        .header h1 { font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #a8d8ea 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .header p { color: rgba(255,255,255,0.7); font-size: 1rem; }
-        .main-card { background: rgba(255,255,255,0.98); border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden; }
-        .upload-section { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 28px 32px; border-bottom: 1px solid rgba(0,0,0,0.08); }
-        .upload-area { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 20px; }
-        .btn { padding: 12px 28px; border: none; border-radius: 60px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; }
-        .btn:hover { transform: translateY(-2px); }
-        .btn-primary { background: linear-gradient(135deg, #1a5f7a, #0f3b4f); color: white; }
-        .btn-success { background: linear-gradient(135deg, #2c7a4d, #1e5a38); color: white; }
-        .btn-danger { background: linear-gradient(135deg, #c0392b, #a93226); color: white; }
-        .btn-outline { background: white; border: 2px solid #2c7da0; color: #2c7da0; }
-        .btn-sm { padding: 6px 16px; font-size: 12px; }
-        .file-grid { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
-        .file-chip { background: #e9ecef; padding: 6px 16px; border-radius: 40px; font-size: 12px; cursor: pointer; }
-        .search-box { margin: 20px 0 0 0; position: relative; }
-        .search-input { width: 100%; padding: 14px 20px 14px 50px; font-size: 16px; border: 2px solid #e2e8f0; border-radius: 60px; }
-        .search-input:focus { outline: none; border-color: #2c7da0; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 28px; }
-        .stat-card { background: white; border-radius: 20px; padding: 18px 12px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .stat-card .stat-number { font-size: 36px; font-weight: 800; background: linear-gradient(135deg, #1a5f7a, #2c7da0); background-clip: text; -webkit-background-clip: text; color: transparent; }
-        .stat-card.critical .stat-number { background: linear-gradient(135deg, #c0392b, #e74c3c); background-clip: text; }
-        .table-wrapper { overflow-x: auto; border-radius: 16px; background: white; max-height: 500px; overflow-y: auto; }
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; }
+        header { background: #1a5f7a; color: white; padding: 20px 24px; }
+        header h1 { font-size: 1.8rem; }
+        .upload-section { padding: 20px 24px; background: #f8f9fa; border-bottom: 1px solid #e0e4e8; }
+        .btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: #1a5f7a; color: white; }
+        .btn-success { background: #2c7a4d; color: white; }
+        .btn-danger { background: #c0392b; color: white; }
+        .btn-warning { background: #e67e22; color: white; }
+        .file-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        .file-chip { background: #e9ecef; padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
+        .search-section { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #ddd; }
+        .search-input { width: 100%; padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; }
+        .search-input:focus { outline: none; border-color: #1a5f7a; }
+        .results-section { padding: 20px 24px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { background: #f1f5f9; padding: 14px 12px; text-align: left; font-weight: 600; position: sticky; top: 0; }
-        td { padding: 12px 12px; border-bottom: 1px solid #f1f5f9; }
-        tr:hover { background: #f8fafc; }
-        .critical-row { background: linear-gradient(90deg, #fee2e2, #ffffff); border-left: 4px solid #e74c3c; }
-        .high-row { background: linear-gradient(90deg, #fff3e0, #ffffff); border-left: 4px solid #f39c12; }
-        .ignored-row { background: #f1f1f1 !important; opacity: 0.6; text-decoration: line-through; }
-        .trend-up { color: #e74c3c; font-weight: 700; }
-        .trend-down { color: #27ae60; font-weight: 700; }
-        .ignore-btn { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 20px; transition: all 0.2s; }
-        .ignore-btn:hover { background: #dee2e6; transform: scale(1.1); }
-        .restore-btn { background: #27ae60; color: white; border: none; padding: 4px 12px; border-radius: 20px; cursor: pointer; font-size: 11px; }
-        .info-footer { background: #f1f5f9; padding: 14px 24px; border-top: 1px solid #e2e8f0; font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; }
-        .results-section { padding: 24px 32px; background: white; }
-        .badge { background: #e9ecef; padding: 4px 12px; border-radius: 20px; font-size: 11px; display: inline-block; margin: 2px; }
-        .debug-console { background: #1a1a2e; color: #0f0; font-family: monospace; font-size: 11px; padding: 10px; margin-top: 15px; border-radius: 8px; max-height: 150px; overflow-y: auto; display: none; }
-        @media (max-width: 768px) { body { padding: 16px; } th, td { font-size: 10px; padding: 6px; } }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #e9ecef; position: sticky; top: 0; }
+        .critical { background: #fee2e2; }
+        .high { background: #fff3e0; }
+        .ignored { background: #f0f0f0 !important; opacity: 0.6; text-decoration: line-through; }
+        .trend-up { color: #c0392b; font-weight: bold; }
+        .summary-cards { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .card { background: #f0f4f8; padding: 10px 20px; border-radius: 10px; text-align: center; }
+        .card .num { font-size: 28px; font-weight: bold; }
+        .info-box { background: #e8f4f8; padding: 10px; border-radius: 8px; margin-top: 15px; font-size: 13px; }
+        .action-buttons { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
+        .ignore-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px 8px; border-radius: 20px; }
+        .ignore-btn:hover { background: #dee2e6; }
+        .filter-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin: 15px 0; }
+        .filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 12px; }
+        .filter-btn.active { background: #1a5f7a; color: white; border-color: #1a5f7a; }
     </style>
 </head>
 <body>
-<div class="app-container">
-    <div class="header">
+<div class="container">
+    <header>
         <h1>🔍 Läcksök</h1>
-        <p>Analysera mätardata • Ignorera oönskade • Upptäck läckage</p>
+        <p>Analysera mätardata • Upptäck läckage • Ignorera oönskade</p>
+    </header>
+
+    <div class="upload-section">
+        <button id="uploadBtn" class="btn btn-primary">➕ Lägg till mätarfiler</button>
+        <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
+        <div id="fileList" class="file-grid"></div>
+        
+        <div class="action-buttons">
+            <button id="analyzeBtn" class="btn btn-success">📊 Analysera</button>
+            <button id="clearBtn" class="btn btn-danger">🗑️ Rensa alla</button>
+            <button id="clearIgnoredBtn" class="btn btn-warning">👁️ Återställ alla ignorerade</button>
+        </div>
+
+        <div class="search-section">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress... t.ex. 'trast' eller 'björkvändan'">
+        </div>
+        
+        <div class="filter-buttons">
+            <button class="filter-btn active" data-filter="all">📋 Alla</button>
+            <button class="filter-btn" data-filter="critical">🔥 >100%</button>
+            <button class="filter-btn" data-filter="high">⚠️ 50-100%</button>
+            <button class="filter-btn" data-filter="positive">✅ Positiva</button>
+            <button class="filter-btn" data-filter="ignored">🚫 Ignorerade</button>
+        </div>
     </div>
-    <div class="main-card">
-        <div class="upload-section">
-            <div class="upload-area">
-                <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
-                <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
-                <button id="analyzeBtn" class="btn btn-success">📊 Analysera alla datum</button>
-                <button id="clearBtn" class="btn btn-outline">🗑️ Rensa alla</button>
-                <button id="toggleDebugBtn" class="btn btn-outline btn-sm">🐛 Debug</button>
-            </div>
-            <div id="fileList" class="file-grid"></div>
-            <div class="search-box">
-                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress eller serienummer... (t.ex. 'trast' eller '14733')">
-            </div>
-            <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-                <button id="showAllBtn" class="btn btn-sm btn-outline">📋 Visa alla</button>
-                <button id="showCriticalBtn" class="btn btn-sm btn-outline">🔥 Kritiska >100%</button>
-                <button id="showHighBtn" class="btn btn-sm btn-outline">⚠️ Höga 50-100%</button>
-                <button id="showPositiveBtn" class="btn btn-sm btn-outline">✅ Positiva</button>
-                <button id="showIgnoredBtn" class="btn btn-sm btn-outline">🚫 Visa ignorerade</button>
-            </div>
-            <div id="debugConsole" class="debug-console"></div>
-        </div>
-        <div id="results" class="results-section" style="display:none">
-            <div class="stats-grid" id="statsGrid"></div>
-            <div class="table-wrapper">
-                <table>
-                    <thead><tr><th>📍 Adress</th><th>🔢 Serienummer</th><th>📊 Utveckling</th><th>📈 Total</th><th>📅 Period</th><th>⚙️</th></tr></thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
-            </div>
-            <div class="info-footer">
-                <span>💡 Klicka på 👁️ för att ignorera/återställa mätare</span>
-                <span>✅ Sorterat efter högsta procentuella ökning</span>
-            </div>
-            <button id="exportBtn" class="btn btn-primary" style="margin-top:24px; width:100%;">📎 Exportera rapport (Excel)</button>
-        </div>
+
+    <div id="results" class="results-section" style="display:none">
+        <div class="summary-cards" id="summaryCards"></div>
+        <div id="trendTable"></div>
+        <button id="exportBtn" class="btn btn-primary" style="margin-top:15px;">📎 Exportera till Excel</button>
     </div>
 </div>
 
 <script>
-    let uploadedFiles = [];
-    let currentResults = [];
-    let currentFilter = "all";
-    let ignoredMeters = new Set(); // Sparar ignorerade mätare (id)
-    let debugLogs = [];
+let uploadedFiles = [];
+let currentResults = [];
+let ignoredIds = new Set(); // Sparar ignorerade mätare
+let currentFilter = "all";
 
-    function addDebugLog(msg) {
-        const timestamp = new Date().toLocaleTimeString();
-        debugLogs.unshift(`[${timestamp}] ${msg}`);
-        if (debugLogs.length > 20) debugLogs.pop();
-        const debugDiv = document.getElementById('debugConsole');
-        if (debugDiv) debugDiv.innerHTML = debugLogs.map(l => `> ${l}`).join('<br>');
-        console.log(msg);
+// Ladda ignorerade från localStorage
+function loadIgnored() {
+    const saved = localStorage.getItem('lacksok_ignored');
+    if (saved) {
+        ignoredIds = new Set(JSON.parse(saved));
     }
+}
 
-    function extractDateFromFilename(filename) {
-        const match = filename.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2})-(\d{2})/);
-        if (match) return new Date(`${match[1]}T${match[2]}:${match[3]}:00`);
-        const match2 = filename.match(/(\d{4}-\d{2}-\d{2})/);
-        if (match2) return new Date(match2[1]);
-        return new Date();
+function saveIgnored() {
+    localStorage.setItem('lacksok_ignored', JSON.stringify([...ignoredIds]));
+}
+
+function toggleIgnore(id) {
+    if (ignoredIds.has(id)) {
+        ignoredIds.delete(id);
+    } else {
+        ignoredIds.add(id);
     }
+    saveIgnored();
+    displayResults();
+}
 
-    function formatShortDate(date) {
-        if (!date || isNaN(date)) return "okänt";
-        return `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
-    }
+function clearAllIgnored() {
+    ignoredIds.clear();
+    saveIgnored();
+    displayResults();
+}
 
-    async function parseExcelFile(file) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
-                    
-                    if (!rows || rows.length < 2) { resolve([]); return; }
-                    
-                    addDebugLog(`📄 ${file.name}: ${rows.length} rader totalt`);
-                    
-                    // Hitta raden med Adress
-                    let startRow = -1;
-                    let adressCol = 0, serialCol = 1, valueCol = -1;
-                    
-                    for (let i = 0; i < Math.min(30, rows.length); i++) {
-                        const row = rows[i];
-                        if (!row) continue;
-                        for (let c = 0; c < Math.min(15, row.length); c++) {
-                            const cell = row[c] ? String(row[c]).toLowerCase() : "";
-                            if (cell.includes('adress')) { startRow = i; adressCol = c; }
-                            if (cell.includes('serienummer')) serialCol = c;
-                            if (cell.includes('sensate') || cell === 'sensate värde' || cell === 'värde') valueCol = c;
-                        }
-                        if (startRow !== -1) break;
-                    }
-                    
-                    // Om vi inte hittade rubrik, anta standard
-                    if (startRow === -1) {
-                        startRow = 0;
-                        adressCol = 0;
-                        serialCol = 1;
-                        // Leta efter kolumn med siffror
-                        for (let c = 2; c < 12; c++) {
-                            let hasNumbers = false;
-                            for (let r = 1; r < Math.min(10, rows.length); r++) {
-                                const val = rows[r]?.[c];
-                                if (val !== undefined && !isNaN(parseFloat(val))) { hasNumbers = true; break; }
-                            }
-                            if (hasNumbers) { valueCol = c; break; }
-                        }
-                        if (valueCol === -1) valueCol = 4;
-                    }
-                    
-                    addDebugLog(`📍 Kolumner: Adress=${adressCol}, Serienr=${serialCol}, Värde=${valueCol}, startRad=${startRow}`);
-                    
-                    const meters = [];
-                    let lästa = 0;
-                    
-                    for (let r = startRow + 1; r < rows.length; r++) {
-                        const row = rows[r];
-                        if (!row) continue;
-                        
-                        let adress = row[adressCol] ? String(row[adressCol]).trim().toUpperCase() : "";
-                        let serienummer = row[serialCol] ? String(row[serialCol]).trim() : "";
-                        let sensateValue = valueCol >= 0 ? row[valueCol] : null;
-                        
-                        // Rensa bort skräp
-                        if (adress === "FALSKT" || adress === "FALSE" || adress === "FALSK" || adress === "") {
-                            if (serienummer && serienummer !== "FALSKT") {
-                                adress = serienummer;
-                            } else {
-                                continue;
-                            }
-                        }
-                        
-                        // Parsa värdet
-                        if (sensateValue === undefined || sensateValue === "") continue;
-                        if (typeof sensateValue === 'string') {
-                            sensateValue = parseFloat(sensateValue.replace(',', '.').trim());
-                        } else {
-                            sensateValue = parseFloat(sensateValue);
-                        }
-                        
-                        if (isNaN(sensateValue)) continue;
-                        if (adress === "" && serienummer === "") continue;
-                        
-                        meters.push({
-                            id: serienummer || adress,
-                            adress: adress,
-                            serienummer: serienummer,
-                            sensateValue: sensateValue
-                        });
-                        lästa++;
-                    }
-                    
-                    addDebugLog(`✅ Läste ${lästa} mätare från ${file.name}`);
-                    resolve(meters);
-                } catch (err) {
-                    addDebugLog(`❌ Fel vid läsning av ${file.name}: ${err.message}`);
-                    resolve([]);
+function extractDateFromFilename(filename) {
+    const match = filename.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2})-(\d{2})/);
+    if (match) return new Date(`${match[1]}T${match[2]}:${match[3]}:00`);
+    return new Date();
+}
+
+async function parseExcelFile(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+            
+            if (!rows || rows.length < 2) { resolve([]); return; }
+            
+            let startRow = 0;
+            for (let r = 0; r < Math.min(10, rows.length); r++) {
+                if (String(rows[r]?.[0] || "").toLowerCase().includes('adress')) {
+                    startRow = r;
+                    break;
                 }
-            };
-            reader.onerror = () => resolve([]);
-            reader.readAsArrayBuffer(file);
-        });
-    }
-
-    function calcChange(oldVal, newVal) {
-        if (!oldVal || oldVal === 0 || isNaN(oldVal)) return null;
-        return ((newVal - oldVal) / oldVal) * 100;
-    }
-
-    function formatChange(change) {
-        if (change === null || isNaN(change)) return "-";
-        if (change >= 100) return `🔥 ${Math.round(change)}%`;
-        if (change >= 50) return `⚠️ ${Math.round(change)}%`;
-        if (change > 0) return `▲ ${change.toFixed(1)}%`;
-        if (change < 0) return `▼ ${Math.abs(change).toFixed(1)}%`;
-        return `0%`;
-    }
-
-    async function analyzeAllData() {
-        if (uploadedFiles.length < 2) {
-            alert("⚠️ Ladda upp minst två mätarfiler (olika datum).");
-            return;
-        }
-
-        uploadedFiles.sort((a,b) => a.date - b.date);
-        addDebugLog(`=== Analyserar ${uploadedFiles.length} filer ===`);
-        
-        const allMeters = new Map();
-
-        for (let fileData of uploadedFiles) {
-            addDebugLog(`📁 Bearbetar ${fileData.fileName} (${fileData.meters.length} mätare)`);
-            for (let meter of fileData.meters) {
-                if (!allMeters.has(meter.id)) {
-                    allMeters.set(meter.id, { 
-                        adress: meter.adress, 
-                        serienummer: meter.serienummer, 
-                        measurements: [] 
-                    });
-                }
-                allMeters.get(meter.id).measurements.push({
-                    date: fileData.date,
-                    dateStr: formatShortDate(fileData.date),
-                    value: meter.sensateValue
+            }
+            
+            const meters = [];
+            for (let r = startRow + 1; r < rows.length; r++) {
+                const row = rows[r];
+                if (!row) continue;
+                
+                let adress = row[0] ? String(row[0]).trim().toUpperCase() : "";
+                let serienummer = row[1] ? String(row[1]).trim() : "";
+                let sensateValue = parseFloat(row[4]);
+                
+                if (isNaN(sensateValue)) continue;
+                if (!adress && !serienummer) continue;
+                if (adress === "FALSKT" || adress === "FALSE") continue;
+                
+                meters.push({
+                    id: serienummer || adress,
+                    adress: adress,
+                    serienummer: serienummer,
+                    sensateValue: sensateValue
                 });
             }
-        }
+            resolve(meters);
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
 
-        addDebugLog(`📊 Unika mätare totalt: ${allMeters.size}`);
-        
-        const trends = [];
-        for (let [id, meter] of allMeters) {
-            meter.measurements.sort((a,b) => a.date - b.date);
-            if (meter.measurements.length < 2) continue;
-            
-            const first = meter.measurements[0];
-            const last = meter.measurements[meter.measurements.length-1];
-            const totalChange = calcChange(first.value, last.value);
-            
-            if (totalChange !== null && isFinite(totalChange)) {
-                trends.push({
-                    id: id,
+function calculateChange(oldVal, newVal) {
+    if (!oldVal || oldVal === 0) return null;
+    return ((newVal - oldVal) / oldVal) * 100;
+}
+
+async function analyzeAllData() {
+    if (uploadedFiles.length < 2) {
+        alert("Ladda upp minst 2 filer!");
+        return;
+    }
+    
+    uploadedFiles.sort((a, b) => a.date - b.date);
+    const metersMap = new Map();
+    
+    for (let fileData of uploadedFiles) {
+        for (let meter of fileData.meters) {
+            if (!metersMap.has(meter.id)) {
+                metersMap.set(meter.id, {
+                    id: meter.id,
                     adress: meter.adress,
                     serienummer: meter.serienummer,
-                    firstValue: first.value,
-                    lastValue: last.value,
-                    firstDate: first.dateStr,
-                    lastDate: last.dateStr,
-                    totalChange: totalChange,
-                    allMeasurements: meter.measurements.map(m => `${m.dateStr}:${m.value}`).join(' → ')
+                    measurements: []
                 });
             }
+            metersMap.get(meter.id).measurements.push({
+                date: fileData.date,
+                dateStr: formatDate(fileData.date),
+                value: meter.sensateValue
+            });
         }
-
-        trends.sort((a,b) => b.totalChange - a.totalChange);
-        currentResults = trends;
-        addDebugLog(`✅ ${trends.length} mätare jämfördes framgångsrikt!`);
-        renderResults();
     }
-
-    function toggleIgnore(id) {
-        if (ignoredMeters.has(id)) {
-            ignoredMeters.delete(id);
-            addDebugLog(`👁️ Återställde mätare ${id}`);
-        } else {
-            ignoredMeters.add(id);
-            addDebugLog(`🚫 Ignorerade mätare ${id}`);
-        }
-        renderResults();
-    }
-
-    function renderResults() {
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-        const showIgnored = currentFilter === 'ignored';
-        
-        let filtered = currentResults.filter(r => !ignoredMeters.has(r.id));
-        
-        if (showIgnored) {
-            filtered = currentResults.filter(r => ignoredMeters.has(r.id));
-        }
-        
-        if (searchTerm) {
-            filtered = filtered.filter(r => 
-                r.adress.toLowerCase().includes(searchTerm) || 
-                (r.serienummer && r.serienummer.includes(searchTerm))
-            );
-        }
-        
-        if (!showIgnored) {
-            if (currentFilter === 'critical') {
-                filtered = filtered.filter(r => r.totalChange >= 100);
-            } else if (currentFilter === 'high') {
-                filtered = filtered.filter(r => r.totalChange >= 50 && r.totalChange < 100);
-            } else if (currentFilter === 'positive') {
-                filtered = filtered.filter(r => r.totalChange > 0);
-            }
-        }
-
-        const total = currentResults.length;
-        const active = currentResults.filter(r => !ignoredMeters.has(r.id)).length;
-        const critical = currentResults.filter(r => !ignoredMeters.has(r.id) && r.totalChange >= 100).length;
-        const high = currentResults.filter(r => !ignoredMeters.has(r.id) && r.totalChange >= 50 && r.totalChange < 100).length;
-        const positive = currentResults.filter(r => !ignoredMeters.has(r.id) && r.totalChange > 0).length;
-
-        document.getElementById('statsGrid').innerHTML = `
-            <div class="stat-card"><div class="stat-number">${active}</div><div class="stat-label">📊 Aktiva mätare</div></div>
-            <div class="stat-card critical"><div class="stat-number">${critical}</div><div class="stat-label">🔥 >100% ökning</div></div>
-            <div class="stat-card"><div class="stat-number">${high}</div><div class="stat-label">⚠️ 50-100%</div></div>
-            <div class="stat-card"><div class="stat-number">${positive}</div><div class="stat-label">✅ Positiv trend</div></div>
-            <div class="stat-card"><div class="stat-number">${ignoredMeters.size}</div><div class="stat-label">🚫 Ignorerade</div></div>
-        `;
-
-        const tbody = document.getElementById('tableBody');
-        if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar sökningen</td></tr>`;
-            document.getElementById('results').style.display = 'block';
-            return;
-        }
-
-        let html = '';
-        for (let r of filtered) {
-            const isIgnored = ignoredMeters.has(r.id);
-            const rowClass = isIgnored ? 'ignored-row' : (r.totalChange >= 100 ? 'critical-row' : (r.totalChange >= 50 ? 'high-row' : ''));
-            const changeFormatted = formatChange(r.totalChange);
-            
-            html += `<tr class="${rowClass}">
-                <td><strong>${r.adress}</strong></td>
-                <td>${r.serienummer || '-'}</td>
-                <td><span class="badge">${r.firstValue} → ${r.lastValue}</span>${r.allMeasurements ? `<br><small style="font-size:10px;">📋 ${r.allMeasurements}</small>` : ''}</td>
-                <td class="trend-up">${changeFormatted}</td>
-                <td>${r.firstDate} → ${r.lastDate}</td>
-                <td><button class="ignore-btn" onclick="toggleIgnore('${r.id}')" title="${isIgnored ? 'Återställ' : 'Ignorera'}">${isIgnored ? '✅' : '👁️'}</button></td>
-            </tr>`;
-        }
-        tbody.innerHTML = html;
-        document.getElementById('results').style.display = 'block';
-    }
-
-    async function handleFiles(files) {
-        for (let file of files) {
-            if (file.name.match(/\.(xlsx|xls)$/i)) {
-                const date = extractDateFromFilename(file.name);
-                const meters = await parseExcelFile(file);
-                uploadedFiles.push({ fileName: file.name, date, meters });
-                addDebugLog(`📁 ${file.name}: ${meters.length} mätare laddades`);
-            }
-        }
-        updateFileList();
-        if (uploadedFiles.length >= 2) analyzeAllData();
-    }
-
-    function updateFileList() {
-        const container = document.getElementById('fileList');
-        if (uploadedFiles.length === 0) {
-            container.innerHTML = '<div style="color:#718096;">📌 Inga filer uppladdade än</div>';
-            return;
-        }
-        let html = '';
-        uploadedFiles.forEach((f, idx) => {
-            html += `<div class="file-chip" onclick="removeFile(${idx})">📅 ${formatShortDate(f.date)} (${f.meters.length} mätare) ✖</div>`;
-        });
-        container.innerHTML = html;
-    }
-
-    window.removeFile = function(idx) {
-        uploadedFiles.splice(idx, 1);
-        updateFileList();
-        if (uploadedFiles.length >= 2) analyzeAllData();
-        else document.getElementById('results').style.display = 'none';
-    };
-
-    window.toggleIgnore = toggleIgnore;
-
-    function exportToExcel() {
-        if (currentResults.length === 0) return alert("Ingen data att exportera");
-        const exportData = currentResults.map(r => ({
-            'Adress': r.adress,
-            'Serienummer': r.serienummer,
-            'Första värde': r.firstValue,
-            'Senaste värde': r.lastValue,
-            'Total förändring (%)': r.totalChange.toFixed(2),
-            'Period': `${r.firstDate} → ${r.lastDate}`,
-            'Ignorerad': ignoredMeters.has(r.id) ? 'Ja' : 'Nej'
-        }));
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Läcksök_Rapport");
-        XLSX.writeFile(wb, `lacksok_${new Date().toISOString().slice(0,19)}.xlsx`);
-    }
-
-    function setFilter(filter) {
-        currentFilter = filter;
-        renderResults();
-    }
-
-    // Event listeners
-    document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
-    document.getElementById('fileInput').onchange = (e) => handleFiles(Array.from(e.target.files));
-    document.getElementById('analyzeBtn').onclick = () => analyzeAllData();
-    document.getElementById('clearBtn').onclick = () => {
-        uploadedFiles = [];
-        currentResults = [];
-        ignoredMeters.clear();
-        updateFileList();
-        document.getElementById('results').style.display = 'none';
-        document.getElementById('searchInput').value = '';
-        addDebugLog('🧹 All data rensad');
-    };
-    document.getElementById('exportBtn').onclick = exportToExcel;
-    document.getElementById('searchInput').addEventListener('input', () => renderResults());
-    document.getElementById('showAllBtn').onclick = () => setFilter('all');
-    document.getElementById('showCriticalBtn').onclick = () => setFilter('critical');
-    document.getElementById('showHighBtn').onclick = () => setFilter('high');
-    document.getElementById('showPositiveBtn').onclick = () => setFilter('positive');
-    document.getElementById('showIgnoredBtn').onclick = () => setFilter('ignored');
     
-    let debugVisible = false;
-    document.getElementById('toggleDebugBtn').onclick = () => {
-        const debugDiv = document.getElementById('debugConsole');
-        debugVisible = !debugVisible;
-        debugDiv.style.display = debugVisible ? 'block' : 'none';
-    };
+    const results = [];
+    for (let meter of metersMap.values()) {
+        meter.measurements.sort((a,b) => a.date - b.date);
+        if (meter.measurements.length < 2) continue;
+        
+        const first = meter.measurements[0];
+        const last = meter.measurements[meter.measurements.length-1];
+        const change = calculateChange(first.value, last.value);
+        
+        if (change !== null && isFinite(change)) {
+            results.push({
+                id: meter.id,
+                adress: meter.adress,
+                serienummer: meter.serienummer,
+                firstValue: first.value,
+                lastValue: last.value,
+                firstDate: first.dateStr,
+                lastDate: last.dateStr,
+                change: change,
+                history: meter.measurements.map(m => `${m.dateStr}:${m.value}`).join(' → ')
+            });
+        }
+    }
+    
+    results.sort((a,b) => b.change - a.change);
+    currentResults = results;
+    displayResults();
+}
 
+function formatDate(date) {
+    return `${date.getMonth()+1}/${date.getDate()} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+}
+
+function formatPercent(value) {
+    if (value > 1000) return "🔥 " + Math.round(value) + "%";
+    if (value > 100) return "⚠️ " + Math.round(value) + "%";
+    if (value > 0) return "▲ " + value.toFixed(1) + "%";
+    if (value < 0) return "▼ " + Math.abs(value).toFixed(1) + "%";
+    return "0%";
+}
+
+function displayResults() {
+    const searchInput = document.getElementById('searchInput').value.toLowerCase().trim();
+    
+    // Första filtrering: ignorerade eller inte
+    let filtered = currentResults;
+    if (currentFilter === 'ignored') {
+        filtered = currentResults.filter(r => ignoredIds.has(r.id));
+    } else {
+        filtered = currentResults.filter(r => !ignoredIds.has(r.id));
+    }
+    
+    // Andra filtrering: sökord
+    if (searchInput) {
+        filtered = filtered.filter(r => 
+            r.adress.toLowerCase().includes(searchInput) ||
+            (r.serienummer && r.serienummer.includes(searchInput))
+        );
+    }
+    
+    // Tredje filtrering: procentfilter (bara om inte "ignored" vy)
+    if (currentFilter !== 'ignored') {
+        if (currentFilter === 'critical') {
+            filtered = filtered.filter(r => r.change >= 100);
+        } else if (currentFilter === 'high') {
+            filtered = filtered.filter(r => r.change >= 50 && r.change < 100);
+        } else if (currentFilter === 'positive') {
+            filtered = filtered.filter(r => r.change > 0);
+        }
+    }
+    
+    const total = currentResults.length;
+    const active = currentResults.filter(r => !ignoredIds.has(r.id)).length;
+    const critical = currentResults.filter(r => !ignoredIds.has(r.id) && r.change >= 100).length;
+    const high = currentResults.filter(r => !ignoredIds.has(r.id) && r.change >= 50 && r.change < 100).length;
+    const positive = currentResults.filter(r => !ignoredIds.has(r.id) && r.change > 0).length;
+    const ignoredCount = ignoredIds.size;
+    
+    document.getElementById('summaryCards').innerHTML = `
+        <div class="card"><h3>📊 Totalt</h3><div class="num">${total}</div></div>
+        <div class="card"><h3>✅ Aktiva</h3><div class="num">${active}</div></div>
+        <div class="card"><h3>🔥 >100%</h3><div class="num">${critical}</div></div>
+        <div class="card"><h3>⚠️ 50-100%</h3><div class="num">${high}</div></div>
+        <div class="card"><h3>✅ Ökning</h3><div class="num">${positive}</div></div>
+        <div class="card"><h3>🚫 Ignorerade</h3><div class="num">${ignoredCount}</div></div>
+    `;
+    
+    if (filtered.length === 0) {
+        document.getElementById('trendTable').innerHTML = `<div class="info-box">🔍 Ingen mätare matchar "${searchInput || currentFilter}"</div>`;
+        document.getElementById('results').style.display = 'block';
+        return;
+    }
+    
+    let html = `<table><thead><tr>
+        <th>⚙️</th><th>Adress</th><th>Serienummer</th><th>Första</th><th>Senaste</th><th>📈 Förändring</th><th>Period</th>
+    </tr></thead><tbody>`;
+    
+    for (let r of filtered) {
+        const isIgnored = ignoredIds.has(r.id);
+        const riskClass = !isIgnored && r.change >= 100 ? 'critical' : (!isIgnored && r.change >= 50 ? 'high' : '');
+        const rowClass = isIgnored ? 'ignored' : riskClass;
+        
+        html += `<tr class="${rowClass}">
+            <td><button class="ignore-btn" onclick="toggleIgnore('${r.id}')" title="${isIgnored ? 'Återställ' : 'Ignorera'}">${isIgnored ? '✅' : '👁️'}</button></td>
+            <td><strong>${r.adress}</strong></td>
+            <td>${r.serienummer || "-"}</td>
+            <td>${r.firstValue}</td>
+            <td><strong>${r.lastValue}</strong></td>
+            <td class="trend-up">${formatPercent(r.change)}</td>
+            <td>${r.firstDate} → ${r.lastDate}</td>
+        </tr>`;
+    }
+    
+    html += `</tbody></table>
+    <div class="info-box">
+        👁️ <strong>Ignorera:</strong> Klicka på ögat för att dölja/visa mätare.<br>
+        🔍 Visar ${filtered.length} av ${currentResults.length} mätare${searchInput ? ` som matchar "${searchInput}"` : ''}
+    </div>`;
+    
+    document.getElementById('trendTable').innerHTML = html;
+    document.getElementById('results').style.display = 'block';
+}
+
+async function handleFiles(files) {
+    for (let file of files) {
+        if (file.name.match(/\.(xlsx|xls)$/i)) {
+            const date = extractDateFromFilename(file.name);
+            const meters = await parseExcelFile(file);
+            uploadedFiles.push({ fileName: file.name, date: date, meters: meters });
+        }
+    }
     updateFileList();
-    addDebugLog('🔍 Läcksök redo! Ladda upp dina Excel-filer.');
+    if (uploadedFiles.length >= 2) analyzeAllData();
+}
+
+function updateFileList() {
+    const container = document.getElementById('fileList');
+    if (uploadedFiles.length === 0) {
+        container.innerHTML = '<p style="color:#999;">Inga filer uppladdade</p>';
+        return;
+    }
+    let html = '<div class="file-grid">';
+    uploadedFiles.forEach((f, idx) => {
+        html += `<div class="file-chip" onclick="removeFile(${idx})">📅 ${formatDate(f.date)} - ${f.meters.length} st</div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function removeFile(index) {
+    uploadedFiles.splice(index, 1);
+    updateFileList();
+    if (uploadedFiles.length >= 2) analyzeAllData();
+    else document.getElementById('results').style.display = 'none';
+}
+
+function exportReport() {
+    let exportData = currentResults.map(r => ({
+        'Adress': r.adress,
+        'Serienummer': r.serienummer,
+        'Första värde': r.firstValue,
+        'Senaste värde': r.lastValue,
+        'Förändring %': r.change.toFixed(1),
+        'Period': `${r.firstDate} → ${r.lastDate}`,
+        'Ignorerad': ignoredIds.has(r.id) ? 'Ja' : 'Nej',
+        'Historik': r.history
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Läcksök");
+    XLSX.writeFile(wb, `lacksok_${new Date().toISOString().slice(0,19)}.xlsx`);
+}
+
+// Event listeners
+document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange = (e) => handleFiles(Array.from(e.target.files));
+document.getElementById('analyzeBtn').onclick = () => analyzeAllData();
+document.getElementById('clearBtn').onclick = () => { uploadedFiles = []; updateFileList(); document.getElementById('results').style.display = 'none'; };
+document.getElementById('clearIgnoredBtn').onclick = () => clearAllIgnored();
+document.getElementById('exportBtn').onclick = exportReport;
+document.getElementById('searchInput').oninput = () => displayResults();
+
+// Filter-knappar
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        displayResults();
+    };
+});
+
+window.toggleIgnore = toggleIgnore;
+window.removeFile = removeFile;
+loadIgnored();
+updateFileList();
 </script>
 </body>
 </html>

@@ -7,49 +7,174 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #eef2f5; padding: 20px; }
-        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; }
-        header { background: #1a5f7a; color: white; padding: 20px 24px; }
+        body { 
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; 
+            background: #eef2f5; 
+            padding: 20px; 
+        }
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+        }
+        header { 
+            background: linear-gradient(135deg, #1a5f7a, #0f3b4f); 
+            color: white; 
+            padding: 24px 32px; 
+        }
         header h1 { font-size: 1.8rem; }
-        .upload-section { padding: 20px 24px; background: #f8f9fa; border-bottom: 1px solid #e0e4e8; }
-        .btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 2px; }
+        header p { font-size: 0.9rem; opacity: 0.8; margin-top: 5px; }
+        
+        .upload-section { 
+            padding: 24px 32px; 
+            background: #f8f9fa; 
+            border-bottom: 1px solid #e0e4e8; 
+        }
+        
+        .btn { 
+            padding: 8px 20px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); opacity: 0.9; }
         .btn-primary { background: #1a5f7a; color: white; }
         .btn-success { background: #2c7a4d; color: white; }
         .btn-danger { background: #c0392b; color: white; }
         .btn-warning { background: #e67e22; color: white; }
-        .btn-interesting { background: #f39c12; color: white; }
-        .btn-interesting-active { background: #e67e22; color: white; box-shadow: 0 0 0 2px #f39c12; }
-        .file-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
-        .file-chip { background: #e9ecef; padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
-        .search-section { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #ddd; }
-        .search-input { width: 100%; padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; }
-        .search-input:focus { outline: none; border-color: #1a5f7a; }
-        .results-section { padding: 20px 24px; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e9ecef; }
-        th { background: #e9ecef; position: sticky; top: 0; }
-        .critical { background: #fee2e2; }
-        .high { background: #fff3e0; }
-        .ignored { background: #f0f0f0 !important; opacity: 0.5; text-decoration: line-through; }
-        .interesting { background: #fff8e7 !important; border-left: 4px solid #f39c12; }
-        .trend-up { color: #c0392b; font-weight: bold; }
-        .summary-cards { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
-        .card { background: #f0f4f8; padding: 10px 20px; border-radius: 10px; text-align: center; cursor: pointer; transition: all 0.2s; }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .card .num { font-size: 28px; font-weight: bold; }
-        .card.interesting-card { background: #fff8e7; border: 1px solid #f39c12; }
-        .info-box { background: #e8f4f8; padding: 10px; border-radius: 8px; margin-top: 15px; font-size: 13px; }
-        .action-buttons { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
-        .ignore-btn, .interesting-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px 8px; border-radius: 20px; transition: all 0.2s; }
-        .ignore-btn:hover, .interesting-btn:hover { background: #dee2e6; transform: scale(1.05); }
-        .filter-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin: 15px 0; }
-        .filter-btn { padding: 6px 16px; border-radius: 30px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        
+        .file-grid { display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0; }
+        .file-chip { 
+            background: white; 
+            padding: 6px 16px; 
+            border-radius: 30px; 
+            font-size: 12px; 
+            border: 1px solid #ddd;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .file-chip:hover { background: #e9ecef; border-color: #1a5f7a; }
+        
+        .search-section { margin: 20px 0 15px 0; }
+        .search-input { 
+            width: 100%; 
+            padding: 14px 20px; 
+            font-size: 16px; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 50px; 
+            outline: none;
+            transition: all 0.2s;
+        }
+        .search-input:focus { border-color: #1a5f7a; box-shadow: 0 0 0 3px rgba(26,95,122,0.1); }
+        
+        .filter-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin: 15px 0; }
+        .filter-btn { 
+            padding: 6px 18px; 
+            border-radius: 30px; 
+            border: 1px solid #ddd; 
+            background: white; 
+            cursor: pointer; 
+            font-size: 13px;
+            transition: all 0.2s;
+        }
         .filter-btn:hover { background: #e9ecef; }
         .filter-btn.active { background: #1a5f7a; color: white; border-color: #1a5f7a; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; margin-left: 8px; }
+        
+        .results-section { padding: 24px 32px; background: white; }
+        
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); 
+            gap: 15px; 
+            margin-bottom: 25px; 
+        }
+        .stat-card { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 12px; 
+            text-align: center; 
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #e9ecef;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .stat-card .num { font-size: 32px; font-weight: 700; color: #1a5f7a; }
+        .stat-card .label { font-size: 12px; color: #666; margin-top: 5px; }
+        .stat-card.interesting { background: #fff8e7; border-color: #f39c12; }
+        
+        .table-wrapper { 
+            overflow-x: auto; 
+            border-radius: 12px; 
+            border: 1px solid #e9ecef;
+            background: white;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 13px; 
+            min-width: 700px;
+        }
+        th { 
+            background: #f1f5f9; 
+            padding: 14px 12px; 
+            text-align: left; 
+            font-weight: 600; 
+            color: #1e293b; 
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+        }
+        td { 
+            padding: 12px 12px; 
+            border-bottom: 1px solid #f1f5f9; 
+            vertical-align: middle;
+        }
+        tr:hover { background: #f8fafc; }
+        
+        .critical { background: #fee2e2 !important; }
+        .high { background: #fff3e0 !important; }
+        .ignored-row { background: #f5f5f5 !important; opacity: 0.6; }
+        .interesting-row { background: #fff8e7 !important; border-left: 3px solid #f39c12; }
+        
+        .trend-up { color: #c0392b; font-weight: 700; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; margin-left: 6px; }
         .badge-interesting { background: #f39c12; color: white; }
-        .ready-badge { background: #27ae60; color: white; }
-        @media (max-width: 768px) { body { padding: 12px; } th, td { font-size: 11px; padding: 6px; } .btn { padding: 6px 12px; font-size: 12px; } }
+        .badge-ignored { background: #95a5a6; color: white; }
+        
+        .action-btn { 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 18px; 
+            padding: 4px 8px; 
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        .action-btn:hover { background: #e9ecef; transform: scale(1.05); }
+        
+        .info-box { 
+            background: #e8f4f8; 
+            padding: 12px 16px; 
+            border-radius: 10px; 
+            margin-top: 20px; 
+            font-size: 13px; 
+            color: #1a5f7a;
+        }
+        
+        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin: 15px 0; }
+        
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .upload-section, .results-section { padding: 16px; }
+            th, td { padding: 8px 8px; font-size: 11px; }
+            .stat-card .num { font-size: 24px; }
+        }
     </style>
 </head>
 <body>
@@ -60,33 +185,50 @@
     </header>
 
     <div class="upload-section">
-        <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
-        <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
-        <div id="fileList" class="file-grid"></div>
-        
-        <div class="action-buttons">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
+            <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
             <button id="analyzeBtn" class="btn btn-success">📊 Analysera</button>
             <button id="clearBtn" class="btn btn-danger">🗑️ Rensa alla</button>
         </div>
-
+        
+        <div id="fileList" class="file-grid"></div>
+        
         <div class="search-section">
-            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress... t.ex. 'trast' eller 'björkvändan'">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress... t.ex. 'trast' eller 'uggle'">
         </div>
         
         <div class="filter-buttons">
             <button class="filter-btn active" data-filter="all">📋 Alla</button>
             <button class="filter-btn" data-filter="critical">🔥 >100%</button>
             <button class="filter-btn" data-filter="high">⚠️ 50-100%</button>
-            <button class="filter-btn" data-filter="positive">✅ Positiva</button>
+            <button class="filter-btn" data-filter="positive">✅ Positiva (>0%)</button>
             <button class="filter-btn" data-filter="interesting">⭐ Intressanta</button>
             <button class="filter-btn" data-filter="ignored">🚫 Ignorerade</button>
         </div>
     </div>
 
     <div id="results" class="results-section" style="display:none">
-        <div class="summary-cards" id="summaryCards"></div>
-        <div id="trendTable"></div>
-        <button id="exportBtn" class="btn btn-primary" style="margin-top:15px;">📎 Exportera till Excel</button>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="table-wrapper">
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 45px">⭐</th>
+                        <th style="width: 45px">👁️</th>
+                        <th>Adress</th>
+                        <th style="width: 100px">Serienummer</th>
+                        <th style="width: 70px">Första</th>
+                        <th style="width: 70px">Senaste</th>
+                        <th style="width: 90px">📈 Förändring</th>
+                        <th style="width: 140px">Period</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <div class="info-box" id="infoBox"></div>
+        <button id="exportBtn" class="btn btn-primary" style="margin-top:20px;">📎 Exportera till Excel</button>
     </div>
 </div>
 
@@ -97,7 +239,6 @@ let ignoredIds = new Set();
 let interestingIds = new Set();
 let currentFilter = "all";
 
-// Ladda från localStorage
 function loadSaved() {
     const savedIgnored = localStorage.getItem('lacksok_ignored');
     if (savedIgnored) ignoredIds = new Set(JSON.parse(savedIgnored));
@@ -105,20 +246,14 @@ function loadSaved() {
     if (savedInteresting) interestingIds = new Set(JSON.parse(savedInteresting));
 }
 
-function saveIgnored() {
-    localStorage.setItem('lacksok_ignored', JSON.stringify([...ignoredIds]));
-}
-
-function saveInteresting() {
-    localStorage.setItem('lacksok_interesting', JSON.stringify([...interestingIds]));
-}
+function saveIgnored() { localStorage.setItem('lacksok_ignored', JSON.stringify([...ignoredIds])); }
+function saveInteresting() { localStorage.setItem('lacksok_interesting', JSON.stringify([...interestingIds])); }
 
 function toggleIgnore(id) {
     if (ignoredIds.has(id)) {
         ignoredIds.delete(id);
     } else {
         ignoredIds.add(id);
-        // Om vi ignorerar, ta bort från intressanta om den finns där
         if (interestingIds.has(id)) interestingIds.delete(id);
     }
     saveIgnored();
@@ -131,7 +266,6 @@ function toggleInteresting(id) {
         interestingIds.delete(id);
     } else {
         interestingIds.add(id);
-        // Om vi lägger till som intressant, ta bort från ignorerad om den finns där
         if (ignoredIds.has(id)) ignoredIds.delete(id);
     }
     saveInteresting();
@@ -197,7 +331,7 @@ function calculateChange(oldVal, newVal) {
 
 async function analyzeAllData() {
     if (uploadedFiles.length < 2) {
-        alert("Ladda upp minst 2 filer!");
+        alert("Ladda upp minst 2 filer (olika datum)!");
         return;
     }
     
@@ -240,8 +374,7 @@ async function analyzeAllData() {
                 lastValue: last.value,
                 firstDate: first.dateStr,
                 lastDate: last.dateStr,
-                change: change,
-                history: meter.measurements.map(m => `${m.dateStr}:${m.value}`).join(' → ')
+                change: change
             });
         }
     }
@@ -266,18 +399,18 @@ function formatPercent(value) {
 function displayResults() {
     const searchInput = document.getElementById('searchInput').value.toLowerCase().trim();
     
-    // Basfiltrering baserat på flik
-    let filtered = currentResults;
+    let filtered = [...currentResults];
     
+    // Filtrera baserat på flik
     if (currentFilter === 'ignored') {
-        filtered = currentResults.filter(r => ignoredIds.has(r.id));
+        filtered = filtered.filter(r => ignoredIds.has(r.id));
     } else if (currentFilter === 'interesting') {
-        filtered = currentResults.filter(r => interestingIds.has(r.id));
+        filtered = filtered.filter(r => interestingIds.has(r.id));
     } else {
-        filtered = currentResults.filter(r => !ignoredIds.has(r.id));
+        filtered = filtered.filter(r => !ignoredIds.has(r.id));
     }
     
-    // Sökfiltrering
+    // Sökfilter
     if (searchInput) {
         filtered = filtered.filter(r => 
             r.adress.toLowerCase().includes(searchInput) ||
@@ -285,7 +418,7 @@ function displayResults() {
         );
     }
     
-    // Procentfiltrering (inte för ignored/interesting flikar)
+    // Procentfilter (ej för ignored/interesting)
     if (currentFilter !== 'ignored' && currentFilter !== 'interesting') {
         if (currentFilter === 'critical') {
             filtered = filtered.filter(r => r.change >= 100);
@@ -305,39 +438,39 @@ function displayResults() {
     const interestingCount = interestingIds.size;
     const ignoredCount = ignoredIds.size;
     
-    document.getElementById('summaryCards').innerHTML = `
-        <div class="card" onclick="setFilter('all')"><h3>📊 Totalt</h3><div class="num">${total}</div></div>
-        <div class="card" onclick="setFilter('positive')"><h3>✅ Aktiva</h3><div class="num">${active}</div></div>
-        <div class="card" onclick="setFilter('critical')"><h3>🔥 >100%</h3><div class="num">${critical}</div></div>
-        <div class="card" onclick="setFilter('high')"><h3>⚠️ 50-100%</h3><div class="num">${high}</div></div>
-        <div class="card interesting-card" onclick="setFilter('interesting')"><h3>⭐ Intressanta</h3><div class="num">${interestingCount}</div></div>
-        <div class="card" onclick="setFilter('ignored')"><h3>🚫 Ignorerade</h3><div class="num">${ignoredCount}</div></div>
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card" onclick="setFilter('all')"><div class="num">${total}</div><div class="label">📊 Totalt</div></div>
+        <div class="stat-card" onclick="setFilter('positive')"><div class="num">${active}</div><div class="label">✅ Aktiva</div></div>
+        <div class="stat-card" onclick="setFilter('critical')"><div class="num">${critical}</div><div class="label">🔥 >100%</div></div>
+        <div class="stat-card" onclick="setFilter('high')"><div class="num">${high}</div><div class="label">⚠️ 50-100%</div></div>
+        <div class="stat-card interesting" onclick="setFilter('interesting')"><div class="num">${interestingCount}</div><div class="label">⭐ Intressanta</div></div>
+        <div class="stat-card" onclick="setFilter('ignored')"><div class="num">${ignoredCount}</div><div class="label">🚫 Ignorerade</div></div>
     `;
     
+    const tbody = document.getElementById('tableBody');
     if (filtered.length === 0) {
-        document.getElementById('trendTable').innerHTML = `<div class="info-box">🔍 Ingen mätare matchar "${currentFilter}"${searchInput ? ` och "${searchInput}"` : ''}</div>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar</td></tr>`;
+        document.getElementById('infoBox').innerHTML = `💡 Tips: Prova att ändra filter eller sökord`;
         document.getElementById('results').style.display = 'block';
         return;
     }
     
-    let html = `<tr><thead><tr>
-        <th>⭐</th><th>👁️</th><th>Adress</th><th>Serienummer</th><th>Första</th><th>Senaste</th><th>📈 Förändring</th><th>Period</th>
-    </tr></thead><tbody>`;
-    
+    let html = '';
     for (let r of filtered) {
         const isIgnored = ignoredIds.has(r.id);
         const isInteresting = interestingIds.has(r.id);
-        const riskClass = !isIgnored && r.change >= 100 ? 'critical' : (!isIgnored && r.change >= 50 ? 'high' : '');
+        
         let rowClass = '';
-        if (isIgnored) rowClass = 'ignored';
-        else if (isInteresting) rowClass = 'interesting';
-        else if (riskClass) rowClass = riskClass;
+        if (isIgnored) rowClass = 'ignored-row';
+        else if (isInteresting) rowClass = 'interesting-row';
+        else if (r.change >= 100) rowClass = 'critical';
+        else if (r.change >= 50) rowClass = 'high';
         
         html += `<tr class="${rowClass}">
-            <td><button class="interesting-btn" onclick="toggleInteresting('${r.id}')" title="${isInteresting ? 'Ta bort från intressanta' : 'Markera som intressant (åka till)'}" style="color: ${isInteresting ? '#f39c12' : '#ccc'}">${isInteresting ? '⭐' : '☆'}</button></td>
-            <td><button class="ignore-btn" onclick="toggleIgnore('${r.id}')" title="${isIgnored ? 'Återställ' : 'Ignorera'}">${isIgnored ? '✅' : '👁️'}</button></td>
-            <td><strong>${r.adress}</strong>${isInteresting ? ' <span class="badge badge-interesting">⭐ Att åka till</span>' : ''}${isIgnored ? ' <span class="badge">🚫 Ignorerad</span>' : ''}</td>
-            <td>${r.serienummer || "-"}</td>
+            <td><button class="action-btn" onclick="toggleInteresting('${r.id}')" title="${isInteresting ? 'Ta bort från intressanta' : 'Markera som intressant'}">${isInteresting ? '⭐' : '☆'}</button></td>
+            <td><button class="action-btn" onclick="toggleIgnore('${r.id}')" title="${isIgnored ? 'Återställ' : 'Ignorera'}">${isIgnored ? '✅' : '👁️'}</button></td>
+            <td><strong>${r.adress}</strong>${isInteresting ? ' <span class="badge badge-interesting">⭐ Att åka till</span>' : ''}${isIgnored ? ' <span class="badge badge-ignored">Ignorerad</span>' : ''}</td>
+            <td>${r.serienummer || '-'}</td>
             <td>${r.firstValue}</td>
             <td><strong>${r.lastValue}</strong></td>
             <td class="trend-up">${formatPercent(r.change)}</td>
@@ -345,26 +478,22 @@ function displayResults() {
         </tr>`;
     }
     
-    html += `</tbody></table>
-    <div class="info-box">
+    tbody.innerHTML = html;
+    
+    document.getElementById('infoBox').innerHTML = `
         ⭐ <strong>Intressanta mätare:</strong> Klicka på ☆ för att lägga till mätare du vill åka till.<br>
         👁️ <strong>Ignorera:</strong> Klicka på ögat för att dölja oönskade mätare.<br>
         📋 <strong>Tips:</strong> Klicka på korten ovan för att snabbt växla vy!
-    </div>`;
+    `;
     
-    document.getElementById('trendTable').innerHTML = html;
     document.getElementById('results').style.display = 'block';
 }
 
 function setFilter(filter) {
     currentFilter = filter;
-    // Uppdatera aktiva knappar
     document.querySelectorAll('.filter-btn').forEach(btn => {
-        if (btn.dataset.filter === filter) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
+        if (btn.dataset.filter === filter) btn.classList.add('active');
+        else btn.classList.remove('active');
     });
     displayResults();
 }
@@ -387,11 +516,10 @@ function updateFileList() {
         container.innerHTML = '<p style="color:#999;">Inga filer uppladdade</p>';
         return;
     }
-    let html = '<div class="file-grid">';
+    let html = '';
     uploadedFiles.forEach((f, idx) => {
-        html += `<div class="file-chip" onclick="removeFile(${idx})">📅 ${formatDate(f.date)} - ${f.meters.length} st</div>`;
+        html += `<div class="file-chip" onclick="removeFile(${idx})">📅 ${formatDate(f.date)} - ${f.meters.length} st ✖</div>`;
     });
-    html += '</div>';
     container.innerHTML = html;
 }
 
@@ -403,7 +531,8 @@ function removeFile(index) {
 }
 
 function exportReport() {
-    let exportData = currentResults.map(r => ({
+    if (currentResults.length === 0) return alert("Ingen data att exportera");
+    const exportData = currentResults.map(r => ({
         'Adress': r.adress,
         'Serienummer': r.serienummer,
         'Första värde': r.firstValue,
@@ -411,10 +540,8 @@ function exportReport() {
         'Förändring %': r.change.toFixed(1),
         'Period': `${r.firstDate} → ${r.lastDate}`,
         'Intressant': interestingIds.has(r.id) ? '⭐ Ja' : '',
-        'Ignorerad': ignoredIds.has(r.id) ? 'Ja' : '',
-        'Historik': r.history
+        'Ignorerad': ignoredIds.has(r.id) ? 'Ja' : ''
     }));
-    
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Läcksök");
@@ -429,15 +556,10 @@ document.getElementById('clearBtn').onclick = () => {
     uploadedFiles = []; 
     updateFileList(); 
     document.getElementById('results').style.display = 'none';
-    ignoredIds.clear();
-    interestingIds.clear();
-    saveIgnored();
-    saveInteresting();
 };
 document.getElementById('exportBtn').onclick = exportReport;
 document.getElementById('searchInput').oninput = () => displayResults();
 
-// Filter-knappar
 document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.onclick = () => setFilter(btn.dataset.filter);
 });

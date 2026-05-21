@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök - Korrekt mönsteranalys</title>
+    <title>Läcksök - Komplett mönsteranalys</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,21 +32,24 @@
         .search-input { width: 100%; padding: 14px 20px; font-size: 16px; border: 2px solid #e2e8f0; border-radius: 60px; outline: none; }
         .search-input:focus { border-color: #1a5f7a; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: white; border-radius: 16px; padding: 16px 12px; text-align: center; cursor: pointer; border: 1px solid #e9ecef; }
+        .stat-card { background: white; border-radius: 16px; padding: 16px 12px; text-align: center; cursor: pointer; border: 1px solid #e9ecef; transition: all 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .stat-card .num { font-size: 32px; font-weight: 700; color: #1a5f7a; }
         .stat-card.critical .num { color: #e74c3c; }
+        .stat-card.repaired .num { color: #27ae60; }
         .stat-card.suspicious .num { color: #f39c12; }
         .stat-card .label { font-size: 12px; color: #64748b; }
         .filter-group { display: flex; gap: 8px; flex-wrap: wrap; margin: 15px 0; }
-        .filter-btn { padding: 6px 16px; border-radius: 30px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 12px; }
+        .filter-btn { padding: 6px 16px; border-radius: 30px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 12px; transition: all 0.2s; }
         .filter-btn.active { background: #1a5f7a; color: white; border-color: #1a5f7a; }
-        .table-wrapper { overflow-x: auto; border-radius: 16px; background: white; max-height: 600px; overflow-y: auto; }
+        .table-wrapper { overflow-x: auto; border-radius: 16px; background: white; max-height: 550px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px; }
         th { background: #f1f5f9; padding: 12px 8px; text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 10; }
         td { padding: 8px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
         tr:hover { background: #f8fafc; }
         .active-leak { background: #fee2e2 !important; border-left: 4px solid #e74c3c; }
         .long-term-leak { background: #ffcdd2 !important; border-left: 4px solid #c0392b; }
+        .repaired-leak { background: #d4edda !important; border-left: 4px solid #27ae60; }
         .suspicious { background: #fff3e0 !important; border-left: 4px solid #f39c12; }
         .seasonal { background: #e0f2fe !important; border-left: 4px solid #3498db; }
         .false-alarm { background: #f5f5f5 !important; border-left: 4px solid #95a5a6; }
@@ -67,24 +70,25 @@
 <div class="app-container">
     <div class="header">
         <h1>🔍 Läcksök</h1>
-        <p>Korrekt mönsteranalys • Identifiera långvariga läckage • Upptäck störningar</p>
+        <p>Komplett mönsteranalys • Aktivt • Långvarigt • Lagat • Misstänkt • Falskt alarm • Säsong</p>
     </div>
     <div class="main-card">
         <div class="upload-section">
             <div class="upload-area">
                 <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
                 <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
-                <button id="analyzeBtn" class="btn btn-success">🔬 SMART ANALYS</button>
+                <button id="analyzeBtn" class="btn btn-success">🔬 ULTIMAT ANALYS</button>
                 <button id="clearBtn" class="btn btn-outline">🗑️ Rensa alla</button>
             </div>
             <div id="fileList" class="file-grid"></div>
             <div class="search-box">
-                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress eller serienummer...">
+                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress eller serienummer... t.ex. 'broängs' eller 'vattravägen'">
             </div>
             <div class="filter-group">
                 <button class="filter-btn active" data-filter="all">📋 Alla</button>
                 <button class="filter-btn" data-filter="active_leak">🚨 AKTIVT LÄCKAGE</button>
                 <button class="filter-btn" data-filter="long_term">📆 LÅNGVARIGT</button>
+                <button class="filter-btn" data-filter="repaired">✅ LAGAT</button>
                 <button class="filter-btn" data-filter="suspicious">⚠️ MISSTÄNKT</button>
                 <button class="filter-btn" data-filter="false_alarm">❌ FALSKT ALARM</button>
                 <button class="filter-btn" data-filter="seasonal">🍂 SÄSONG</button>
@@ -106,7 +110,7 @@
                             <th>Första → Senaste</th>
                             <th>📈 Förändring</th>
                             <th>Status</th>
-                            <th>Analys</th>
+                            <th>Analys & Åtgärd</th>
                             <th>Historik</th>
                         </tr>
                     </thead>
@@ -114,7 +118,7 @@
                 </table>
             </div>
             <div class="info-footer">
-                💡 <strong>Smart analys:</strong> 🚨 Aktivt läckage = högt värde + fortsatt ökning. 📆 Långvarigt = högt under lång tid.<br>
+                💡 <strong>SMART ANALYS:</strong> 🚨 AKTIVT = åk dit omgående | 📆 LÅNGVARIGT = varit högt länge | ✅ LAGAT = var läcka, nu åtgärdat | ⚠️ MISSTÄNKT = kolla upp | ❌ FALSKT = tillfällig störning | 🍂 SÄSONG = normalt årstidsmönster<br>
                 ⭐ Klicka på ☆ för att spara till "Intressanta"
             </div>
             <button id="exportBtn" class="btn btn-primary" style="margin-top:20px; width:100%;">📎 Exportera rapport (Excel)</button>
@@ -233,30 +237,47 @@
         return ((newVal - oldVal) / oldVal) * 100;
     }
 
-    // KORRIGERAD MÖNSTERKLASSIFICERING
-    function classifyMeter(measurements) {
-        if (measurements.length < 2) return { type: "insufficient", label: "⚠️ För få mätningar", css: "suspicious", priority: 4 };
+    // KOMPLETT MÖNSTERKLASSIFICERING
+    function classifyMeter(measurements, adress) {
+        if (measurements.length < 2) return { type: "insufficient", label: "⚠️ För få mätningar", css: "suspicious", priority: 5, action: "Ladda upp fler datum för analys" };
         
         const values = measurements.map(m => m.value);
         const firstVal = values[0];
         const lastVal = values[values.length-1];
         const maxVal = Math.max(...values);
+        const minVal = Math.min(...values);
         const totalChange = calcChange(firstVal, lastVal);
         
         // Beräkna trender
         let increases = 0;
         let decreases = 0;
         let significantIncreases = 0;
+        let changes = [];
         
         for (let i = 1; i < measurements.length; i++) {
             const change = calcChange(measurements[i-1].value, measurements[i].value);
-            if (change > 0) increases++;
-            if (change < 0) decreases++;
-            if (change > 30) significantIncreases++;
+            if (change !== null) {
+                changes.push(change);
+                if (change > 0) increases++;
+                if (change < 0) decreases++;
+                if (change > 30) significantIncreases++;
+            }
         }
         
-        const lastChange = calcChange(measurements[measurements.length-2].value, lastVal);
+        const lastChange = changes.length > 0 ? changes[changes.length-1] : 0;
         const isIncreasing = lastChange > 0;
+        
+        // Kolla om det är LAGAT LÄCKAGE (som Broängsvägen 22)
+        // Mönster: Högt värde → nedgång → stabilt lågt
+        const wasHigh = values.filter(v => v > 60).length >= 2;
+        const isNowLow = lastVal < 40;
+        const hadDecrease = decreases > 0;
+        const isStableLow = lastVal < 35 && values.slice(-2).every(v => v < 40);
+        const hadHighPeak = maxVal > 100;
+        
+        if (wasHigh && isNowLow && hadDecrease && isStableLow && hadHighPeak) {
+            return { type: "repaired", label: "✅ LAGAT LÄCKAGE", css: "repaired-leak", priority: 3, action: "Åtgärdat. Bra jobbat! 👍" };
+        }
         
         // Kriterier för AKTIVT LÄCKAGE (högt värde + fortsatt ökning)
         const isHighValue = lastVal > 50;
@@ -266,39 +287,42 @@
         
         // AKTIVT LÄCKAGE (åk dit omgående)
         if (isHighValue && isIncreasing && totalChange > 20) {
-            return { type: "active_leak", label: "🚨 AKTIVT LÄCKAGE", css: "active-leak", priority: 1 };
+            return { type: "active_leak", label: "🚨 AKTIVT LÄCKAGE", css: "active-leak", priority: 1, action: "Åk dit OMGÅENDE! 🚗💨" };
         }
         
         // LÅNGVARIGT LÄCKAGE (högt under lång tid, oavsett senaste trend)
-        if (isLongTermHigh && maxVal > 100 && measurements.length >= 3) {
-            return { type: "long_term", label: "📆 LÅNGVARIGT LÄCKAGE", css: "long-term-leak", priority: 1 };
+        if (isLongTermHigh && maxVal > 80 && measurements.length >= 3) {
+            return { type: "long_term", label: "📆 LÅNGVARIGT LÄCKAGE", css: "long-term-leak", priority: 1, action: "Varit högt länge. Prioritera att åtgärda!" };
         }
         
         // HÖG NIVÅ (potentiellt läckage)
         if (isVeryHigh && lastVal > 150) {
-            return { type: "active_leak", label: "🚨 HÖGT LÄCKAGE", css: "active-leak", priority: 1 };
+            return { type: "active_leak", label: "🚨 HÖGT LÄCKAGE", css: "active-leak", priority: 1, action: "Mycket högt värde. Åk dit omgående!" };
         }
         
         // MISSTÄNKT (ökning men inte akut)
-        if (totalChange > 30 && isIncreasing) {
-            return { type: "suspicious", label: "⚠️ MISSTÄNKT LÄCKAGE", css: "suspicious", priority: 2 };
+        if (totalChange > 30 && isIncreasing && lastVal > 30) {
+            return { type: "suspicious", label: "⚠️ MISSTÄNKT LÄCKAGE", css: "suspicious", priority: 2, action: "Ökande trend. Kolla upp vid tillfälle." };
         }
         
         // Säsongsvariation (går upp och ner, men inte extremt högt)
         const hasBothUpAndDown = increases > 0 && decreases > 0;
         const notTooHigh = maxVal < 80;
-        if (hasBothUpAndDown && notTooHigh && measurements.length >= 4) {
-            return { type: "seasonal", label: "🍂 SÄSONGSVARIATION", css: "seasonal", priority: 4 };
+        const hasCyclePattern = changes.filter((c, i) => i > 0 && ((c > 0 && changes[i-1] < 0) || (c < 0 && changes[i-1] > 0))).length >= 2;
+        
+        if ((hasBothUpAndDown || hasCyclePattern) && notTooHigh && measurements.length >= 4) {
+            return { type: "seasonal", label: "🍂 SÄSONGSVARIATION", css: "seasonal", priority: 4, action: "Normalt mönster. Ingen åtgärd." };
         }
         
         // Falskt alarm (tillfällig topp som gått ner till normal nivå)
-        const hasReturnedToNormal = lastVal < 20 && maxVal > 100;
-        if (hasReturnedToNormal && !isIncreasing) {
-            return { type: "false_alarm", label: "❌ TILLFÄLLIG STÖRNING", css: "false-alarm", priority: 4 };
+        const hasReturnedToNormal = lastVal < 20 && maxVal > 80;
+        const peakWasTemporary = maxVal > 100 && lastVal < 30;
+        if ((hasReturnedToNormal || peakWasTemporary) && !isIncreasing && measurements.length >= 3) {
+            return { type: "false_alarm", label: "❌ TILLFÄLLIG STÖRNING", css: "false-alarm", priority: 4, action: "Falskt alarm. Troligen pump, spolning eller annan störning." };
         }
         
         // Stabil
-        return { type: "stable", label: "✅ STABIL", css: "stable", priority: 5 };
+        return { type: "stable", label: "✅ STABIL", css: "stable", priority: 5, action: "Inget att åtgärda." };
     }
 
     function formatPercent(value) {
@@ -357,7 +381,7 @@
             const last = meter.measurements[meter.measurements.length-1];
             const totalChange = calcChange(first.value, last.value);
             
-            const classification = classifyMeter(meter.measurements);
+            const classification = classifyMeter(meter.measurements, meter.adress);
             
             if (totalChange !== null && isFinite(totalChange)) {
                 results.push({
@@ -383,27 +407,8 @@
         displayResults();
     }
 
-    function getAnalysisText(classification, measurements, changePercent) {
-        const values = measurements.map(m => m.value);
-        const lastVal = values[values.length-1];
-        const maxVal = Math.max(...values);
-        
-        if (classification.type === 'active_leak') {
-            return `🚨 AKUT! Värde ${lastVal} (högt) och fortsätter öka. Åk dit omgående!`;
-        }
-        if (classification.type === 'long_term') {
-            return `📆 Långvarigt högt värde (${maxVal} som mest). Sannolikt aktivt läckage sedan länge.`;
-        }
-        if (classification.type === 'suspicious') {
-            return `⚠️ Ökat +${formatPercent(changePercent)} senaste perioden. Kolla upp vid tillfälle.`;
-        }
-        if (classification.type === 'false_alarm') {
-            return `❌ Tillfällig topp som planat ut. Troligen störning (pump, spolning), inte läckage.`;
-        }
-        if (classification.type === 'seasonal') {
-            return `🍂 Varierar naturligt med årstiderna (vinter/sommar). Normalt, inget läckage.`;
-        }
-        return `✅ Stabil. Inget att åtgärda.`;
+    function getActionText(classification) {
+        return classification.action || "Analysera vid behov";
     }
 
     function displayResults() {
@@ -417,6 +422,7 @@
         if (currentFilter === 'interesting') filtered = filtered.filter(r => interestingIds.has(r.id));
         if (currentFilter === 'active_leak') filtered = filtered.filter(r => r.classification.type === 'active_leak');
         if (currentFilter === 'long_term') filtered = filtered.filter(r => r.classification.type === 'long_term');
+        if (currentFilter === 'repaired') filtered = filtered.filter(r => r.classification.type === 'repaired');
         if (currentFilter === 'suspicious') filtered = filtered.filter(r => r.classification.type === 'suspicious');
         if (currentFilter === 'false_alarm') filtered = filtered.filter(r => r.classification.type === 'false_alarm');
         if (currentFilter === 'seasonal') filtered = filtered.filter(r => r.classification.type === 'seasonal');
@@ -430,17 +436,20 @@
         
         const activeLeakCount = currentResults.filter(r => r.classification.type === 'active_leak').length;
         const longTermCount = currentResults.filter(r => r.classification.type === 'long_term').length;
+        const repairedCount = currentResults.filter(r => r.classification.type === 'repaired').length;
         const suspiciousCount = currentResults.filter(r => r.classification.type === 'suspicious').length;
         const falseAlarmCount = currentResults.filter(r => r.classification.type === 'false_alarm').length;
         const seasonalCount = currentResults.filter(r => r.classification.type === 'seasonal').length;
         const interestingCount = interestingIds.size;
         
         document.getElementById('insightBox').innerHTML = `
-            🔍 <strong>Smart analys:</strong> 🚨 ${activeLeakCount} AKTIVA läckage (åk dit!) | 📆 ${longTermCount} långvariga | ⚠️ ${suspiciousCount} misstänkta | ❌ ${falseAlarmCount} falska alarm | 🍂 ${seasonalCount} säsongsvariationer
+            🔍 <strong>ULTIMAT ANALYS:</strong> 🚨 ${activeLeakCount + longTermCount} LÄCKAGE (åk dit!) | ✅ ${repairedCount} LAGADE | ⚠️ ${suspiciousCount} MISSTÄNKTA | ❌ ${falseAlarmCount} FALSKT ALARM | 🍂 ${seasonalCount} SÄSONGSVARIATIONER
         `;
         
         document.getElementById('statsGrid').innerHTML = `
-            <div class="stat-card critical" onclick="setFilter('active_leak')"><div class="num">${activeLeakCount + longTermCount}</div><div class="label">🚨 LÄCKAGE (aktivt/långvarigt)</div></div>
+            <div class="stat-card critical" onclick="setFilter('active_leak')"><div class="num">${activeLeakCount}</div><div class="label">🚨 AKTIVA</div></div>
+            <div class="stat-card critical" onclick="setFilter('long_term')"><div class="num">${longTermCount}</div><div class="label">📆 LÅNGVARIGA</div></div>
+            <div class="stat-card repaired" onclick="setFilter('repaired')"><div class="num">${repairedCount}</div><div class="label">✅ LAGADE</div></div>
             <div class="stat-card suspicious" onclick="setFilter('suspicious')"><div class="num">${suspiciousCount}</div><div class="label">⚠️ MISSTÄNKTA</div></div>
             <div class="stat-card" onclick="setFilter('false_alarm')"><div class="num">${falseAlarmCount}</div><div class="label">❌ FALSKT ALARM</div></div>
             <div class="stat-card" onclick="setFilter('seasonal')"><div class="num">${seasonalCount}</div><div class="label">🍂 SÄSONG</div></div>
@@ -449,7 +458,7 @@
         
         const tbody = document.getElementById('tableBody');
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar sökningen/filtret</td></tr>`;
             document.getElementById('results').style.display = 'block';
             return;
         }
@@ -460,12 +469,12 @@
             const isInteresting = interestingIds.has(r.id);
             const rowClass = isIgnored ? 'ignored-row' : (isInteresting ? 'interesting-row' : r.classification.css);
             const changeFormatted = r.changePercent > 0 ? `▲ ${formatPercent(r.changePercent)} ${r.trendIcon}` : `▼ ${formatPercent(Math.abs(r.changePercent))}`;
-            const analysisText = getAnalysisText(r.classification, r.measurements, r.changePercent);
+            const actionText = getActionText(r.classification);
             
-            // Färgkod för statusbadge
             let badgeColor = '#3498db';
             if (r.classification.type === 'active_leak') badgeColor = '#c0392b';
             else if (r.classification.type === 'long_term') badgeColor = '#e74c3c';
+            else if (r.classification.type === 'repaired') badgeColor = '#27ae60';
             else if (r.classification.type === 'suspicious') badgeColor = '#f39c12';
             else if (r.classification.type === 'false_alarm') badgeColor = '#95a5a6';
             else if (r.classification.type === 'seasonal') badgeColor = '#3498db';
@@ -478,8 +487,8 @@
                 <td>${r.firstValue} → <strong>${r.lastValue}</strong></td>
                 <td class="${r.changePercent > 0 ? 'trend-up' : 'trend-down'}">${changeFormatted}</td>
                 <td><span class="badge" style="background:${badgeColor}; color:white;">${r.classification.label}</span></td>
-                <td><small>${analysisText}</small></td>
-                <td><small>${r.history}</small></td>
+                <td><small><strong>📋 Åtgärd:</strong> ${actionText}</small></td>
+                <td><small title="${r.history}">${r.history.substring(0, 50)}${r.history.length > 50 ? '...' : ''}</small></td>
             </tr>`;
         }
         tbody.innerHTML = html;
@@ -501,6 +510,7 @@
                 const date = extractDateFromFilename(file.name);
                 const meters = await parseExcelFile(file);
                 uploadedFiles.push({ fileName: file.name, date: date, meters: meters });
+                console.log(`📁 ${file.name}: ${meters.length} mätare lästes in`);
             }
         }
         updateFileList();
@@ -537,7 +547,7 @@
             'Total förändring %': r.changePercent.toFixed(2),
             'Period': `${r.firstDate} → ${r.lastDate}`,
             'Status': r.classification.label,
-            'Analys': getAnalysisText(r.classification, r.measurements, r.changePercent),
+            'Rekommendation': getActionText(r.classification),
             'Infokod': r.infokod || '',
             'Historik': r.history
         }));
@@ -570,6 +580,7 @@
     
     loadSaved();
     updateFileList();
+    console.log("🔍 Läcksök ULTIMATE redo - ladda upp dina Excel-filer!");
 </script>
 </body>
 </html>

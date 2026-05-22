@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök - Kompakt mätarhantering</title>
+    <title>Läcksök - Enkel mätarhantering</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,49 +32,45 @@
         .search-input { width: 100%; padding: 14px 20px; font-size: 16px; border: 2px solid #e2e8f0; border-radius: 60px; outline: none; }
         .search-input:focus { border-color: #1a5f7a; }
         
-        .category-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 15px 0; }
-        .category-btn { padding: 8px 20px; border-radius: 40px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+        /* Enkla kategoriknappar - bara 4 st */
+        .category-tabs { display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0 15px 0; }
+        .category-btn { padding: 10px 24px; border-radius: 40px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; }
         .category-btn.all { background: #1a5f7a; color: white; }
-        .category-btn.active-leak { background: #c0392b; color: white; }
-        .category-btn.long-term { background: #e74c3c; color: white; }
-        .category-btn.suspicious { background: #f39c12; color: white; }
-        .category-btn.known-leak { background: #8e44ad; color: white; }
+        .category-btn.active { background: #c0392b; color: white; }
+        .category-btn.heatpump { background: #e67e22; color: white; }
         .category-btn.disturbance { background: #7f8c8d; color: white; }
-        .category-btn.repaired { background: #27ae60; color: white; }
-        .category-btn.false-alarm { background: #95a5a6; color: white; }
-        .category-btn.seasonal { background: #3498db; color: white; }
+        .category-btn.known { background: #27ae60; color: white; }
         .category-btn.interesting { background: #2ecc71; color: white; }
-        .category-btn.ignored { background: #7f8c8d; color: white; }
+        .category-btn.ignored { background: #95a5a6; color: white; }
         .category-btn.active { box-shadow: 0 0 0 3px rgba(0,0,0,0.2); transform: scale(1.02); }
         
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; margin-bottom: 25px; }
-        .stat-card { background: white; border-radius: 16px; padding: 12px 8px; text-align: center; cursor: pointer; border: 1px solid #e9ecef; transition: all 0.2s; }
-        .stat-card:hover { transform: translateY(-2px); }
-        .stat-card .num { font-size: 28px; font-weight: 700; }
+        .stats-grid { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 16px; padding: 10px 16px; text-align: center; cursor: pointer; border: 1px solid #e9ecef; }
+        .stat-card .num { font-size: 24px; font-weight: 700; }
         .stat-card .label { font-size: 11px; color: #64748b; }
         
         .table-wrapper { overflow-x: auto; border-radius: 16px; background: white; max-height: 500px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1000px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 900px; }
         th { background: #f1f5f9; padding: 10px 6px; text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 10; }
         td { padding: 8px 6px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
         tr:hover { background: #f8fafc; }
         
-        .row-active-leak { background: #fee2e2 !important; border-left: 4px solid #c0392b; }
-        .row-long-term { background: #ffcdd2 !important; border-left: 4px solid #e74c3c; }
-        .row-suspicious { background: #fff3e0 !important; border-left: 4px solid #f39c12; }
-        .row-known-leak { background: #f3e5f5 !important; border-left: 4px solid #8e44ad; }
+        /* Radfärger för de 4 kategorierna */
+        .row-active { background: #fee2e2 !important; border-left: 4px solid #c0392b; }
+        .row-heatpump { background: #fff3e0 !important; border-left: 4px solid #e67e22; }
         .row-disturbance { background: #eceff1 !important; border-left: 4px solid #7f8c8d; }
-        .row-repaired { background: #d4edda !important; border-left: 4px solid #27ae60; }
-        .row-false-alarm { background: #f5f5f5 !important; border-left: 4px solid #95a5a6; }
-        .row-seasonal { background: #e0f2fe !important; border-left: 4px solid #3498db; }
+        .row-known { background: #d4edda !important; border-left: 4px solid #27ae60; }
         .row-ignored { background: #f5f5f5 !important; opacity: 0.5; text-decoration: line-through; }
         .row-interesting { background: #e8f5e9 !important; border-left: 4px solid #2ecc71; }
         
         .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; margin-left: 5px; }
         .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 20px; }
         .action-btn:hover { background: #e9ecef; }
+        
+        /* Kompakt kategori-väljare med 4 symboler */
         .category-select-compact { width: 48px; padding: 4px 2px; font-size: 13px; text-align: center; border-radius: 20px; border: none; cursor: pointer; font-weight: bold; }
         .category-select-compact:hover { transform: scale(1.05); }
+        
         .info-footer { background: #f1f5f9; padding: 12px 20px; border-top: 1px solid #e2e8f0; font-size: 12px; }
         .results-section { padding: 20px 24px; background: white; }
         .insight-box { background: #e8f4f8; padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; }
@@ -87,14 +83,14 @@
 <div class="app-container">
     <div class="header">
         <h1>🔍 Läcksök</h1>
-        <p>Komplett mätarhantering • Kompakt kategori • Prioritera rätt</p>
+        <p>Enkel mätarhantering • 4 kategorier • Klicka på symbolen för att ändra</p>
     </div>
     <div class="main-card">
         <div class="upload-section">
             <div class="upload-area">
                 <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
                 <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
-                <button id="analyzeBtn" class="btn btn-success">🔬 ULTIMAT ANALYS</button>
+                <button id="analyzeBtn" class="btn btn-success">🔬 ANALYSERA</button>
                 <button id="clearBtn" class="btn btn-outline">🗑️ Rensa alla</button>
             </div>
             <div id="fileList" class="file-grid"></div>
@@ -102,16 +98,13 @@
                 <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress eller serienummer...">
             </div>
             
+            <!-- 4 enkla kategorier + intressanta/ignorerade -->
             <div class="category-tabs" id="categoryTabs">
                 <button class="category-btn all active" data-category="all">📋 Alla</button>
-                <button class="category-btn active-leak" data-category="active_leak">🚨 AKTIVT</button>
-                <button class="category-btn long-term" data-category="long_term">📆 LÅNGVARIGT</button>
-                <button class="category-btn suspicious" data-category="suspicious">⚠️ MISSTÄNKT</button>
-                <button class="category-btn known-leak" data-category="known_leak">📬 KÄND LÄCKA</button>
-                <button class="category-btn disturbance" data-category="disturbance">⚡ STÖRNING</button>
-                <button class="category-btn repaired" data-category="repaired">✅ LAGAT</button>
-                <button class="category-btn false-alarm" data-category="false_alarm">❌ FALSKT</button>
-                <button class="category-btn seasonal" data-category="seasonal">🍂 SÄSONG</button>
+                <button class="category-btn active" data-category="active">🚨 AKTIVT LÄCKAGE</button>
+                <button class="category-btn heatpump" data-category="heatpump">🔥 VÄRMEPANNA</button>
+                <button class="category-btn disturbance" data-category="disturbance">⚡ ANNAN STÖRNING</button>
+                <button class="category-btn known" data-category="known">✅ KÄNT/KONSTATERAT</button>
                 <button class="category-btn interesting" data-category="interesting">⭐ Intressanta</button>
                 <button class="category-btn ignored" data-category="ignored">🚫 Ignorerade</button>
             </div>
@@ -128,9 +121,8 @@
                             <th style="width:55px">K</th>
                             <th>Adress</th>
                             <th style="width:80px">Serienr</th>
-                            <th style="width:100px">Första → Senaste</th>
+                            <th style="width:100px">Värden</th>
                             <th style="width:90px">📈 Förändring</th>
-                            <th style="width:140px">Status</th>
                             <th>Historik</th>
                         </tr>
                     </thead>
@@ -138,8 +130,8 @@
                 </table>
             </div>
             <div class="info-footer">
-                💡 <strong>K = Kategori:</strong> Klicka på symbolen (🚨📆⚠️📬⚡✅❌🍂) för att ändra. Ändringarna sparas automatiskt!<br>
-                📌 <strong>Prioriteringsordning:</strong> 🚨 AKTIVT > 📆 LÅNGVARIGT > ⚠️ MISSTÄNKT > 📬 KÄND LÄCKA > ⚡ STÖRNING > ✅ LAGAT > ❌ FALSKT > 🍂 SÄSONG
+                💡 <strong>Klicka på symbolen (🚨🔥⚡✅) för att ändra kategori.</strong> Mätaren flyttas direkt till rätt flik.<br>
+                📌 <strong>Kategorier:</strong> 🚨 Aktivt läckage (åk dit) | 🔥 Värmepanna (normalt) | ⚡ Annan störning (fjärrvärme/pump) | ✅ Känt/konstaterat läckage
             </div>
             <button id="exportBtn" class="btn btn-primary" style="margin-top:20px; width:100%;">📎 Exportera rapport (Excel)</button>
         </div>
@@ -151,19 +143,16 @@
     let currentResults = [];
     let ignoredIds = new Set();
     let interestingIds = new Set();
-    let userCategories = new Map();
+    let userCategories = new Map(); // "active", "heatpump", "disturbance", "known"
     let currentCategoryFilter = "all";
 
+    // BARA 4 KATEGORIER
     const categories = {
-        active_leak: { label: "🚨 AKTIVT LÄCKAGE", symbol: "🚨", priority: 1, action: "Åk dit OMGÅENDE! 🚗💨", color: "#c0392b", bg: "#fee2e2" },
-        long_term: { label: "📆 LÅNGVARIGT LÄCKAGE", symbol: "📆", priority: 2, action: "Varit högt länge. Prioritera att åtgärda!", color: "#e74c3c", bg: "#ffcdd2" },
-        suspicious: { label: "⚠️ MISSTÄNKT LÄCKAGE", symbol: "⚠️", priority: 3, action: "Kolla upp vid tillfälle.", color: "#f39c12", bg: "#fff3e0" },
-        known_leak: { label: "📬 KÄND LÄCKA", symbol: "📬", priority: 4, action: "Skicka lapp i låda – informera kunden", color: "#8e44ad", bg: "#f3e5f5" },
-        disturbance: { label: "⚡ STÖRNING (fjärrvärme/pump)", symbol: "⚡", priority: 5, action: "Ingen åtgärd – känt störningsmoment", color: "#7f8c8d", bg: "#eceff1" },
-        repaired: { label: "✅ LAGAT LÄCKAGE", symbol: "✅", priority: 6, action: "Åtgärdat. Bra jobbat! 👍", color: "#27ae60", bg: "#d4edda" },
-        false_alarm: { label: "❌ TILLFÄLLIG STÖRNING", symbol: "❌", priority: 7, action: "Falskt alarm. Ingen åtgärd.", color: "#95a5a6", bg: "#f5f5f5" },
-        seasonal: { label: "🍂 SÄSONGSVARIATION", symbol: "🍂", priority: 8, action: "Normalt mönster. Ingen åtgärd.", color: "#3498db", bg: "#e0f2fe" },
-        stable: { label: "✅ STABIL", symbol: "✅", priority: 9, action: "Inget att åtgärda.", color: "#6c757d", bg: "#ffffff" }
+        active: { label: "🚨 AKTIVT LÄCKAGE", symbol: "🚨", priority: 1, action: "Åk dit OMGÅENDE!", color: "#c0392b", bg: "#fee2e2" },
+        heatpump: { label: "🔥 VÄRMEPANNA", symbol: "🔥", priority: 2, action: "Normalt säsongsmönster. Ingen åtgärd.", color: "#e67e22", bg: "#fff3e0" },
+        disturbance: { label: "⚡ ANNAN STÖRNING", symbol: "⚡", priority: 3, action: "Fjärrvärme, pump, trafik. Ingen åtgärd.", color: "#7f8c8d", bg: "#eceff1" },
+        known: { label: "✅ KÄNT/KONSTATERAT", symbol: "✅", priority: 4, action: "Redan känt eller lagat läckage.", color: "#27ae60", bg: "#d4edda" },
+        single: { label: "📌 ENDAST EN MÄTNING", symbol: "📌", priority: 5, action: "Ladda upp fler datum för analys", color: "#95a5a6", bg: "#f5f5f5" }
     };
 
     function loadSaved() {
@@ -171,13 +160,13 @@
         if (savedIgnored) ignoredIds = new Set(JSON.parse(savedIgnored));
         const savedInteresting = localStorage.getItem('lacksok_interesting');
         if (savedInteresting) interestingIds = new Set(JSON.parse(savedInteresting));
-        const savedCategories = localStorage.getItem('lacksok_categories');
+        const savedCategories = localStorage.getItem('lacksok_categories_simple');
         if (savedCategories) userCategories = new Map(JSON.parse(savedCategories));
     }
 
     function saveIgnored() { localStorage.setItem('lacksok_ignored', JSON.stringify([...ignoredIds])); }
     function saveInteresting() { localStorage.setItem('lacksok_interesting', JSON.stringify([...interestingIds])); }
-    function saveCategories() { localStorage.setItem('lacksok_categories', JSON.stringify([...userCategories])); }
+    function saveCategories() { localStorage.setItem('lacksok_categories_simple', JSON.stringify([...userCategories])); }
 
     function toggleIgnore(id) {
         if (ignoredIds.has(id)) ignoredIds.delete(id);
@@ -279,42 +268,35 @@
         return ((newVal - oldVal) / oldVal) * 100;
     }
 
+    // Enkel auto-klassificering
     function autoClassify(measurements, infokod) {
-        if (measurements.length < 2) return "stable";
+        if (measurements.length < 2) return "single";
         
         const values = measurements.map(m => m.value);
         const lastVal = values[values.length-1];
-        const maxVal = Math.max(...values);
         const totalChange = calcChange(values[0], lastVal);
         
+        // Känd LEAK från systemet
+        if (infokod && infokod.includes("LEAK")) return "known";
+        
+        // Aktivt läckage (högt värde + ökning)
+        if (lastVal > 50 && totalChange > 20) return "active";
+        
+        // Värmepanna (högt på vintern, säsongsvariation)
         let increases = 0, decreases = 0;
         for (let i = 1; i < measurements.length; i++) {
             const change = calcChange(measurements[i-1].value, measurements[i].value);
             if (change > 0) increases++;
             if (change < 0) decreases++;
         }
-        
-        const lastChange = calcChange(measurements[measurements.length-2]?.value, lastVal);
-        const isIncreasing = lastChange > 0;
-        
-        if (infokod && infokod.includes("LEAK")) return "known_leak";
-        if (lastVal > 50 && isIncreasing && totalChange > 20) return "active_leak";
-        
-        const highValueCount = values.filter(v => v > 50).length;
-        if (highValueCount > measurements.length * 0.5 && maxVal > 80) return "long_term";
-        
-        const wasHigh = values.filter(v => v > 60).length >= 2;
-        const isNowLow = lastVal < 40;
-        if (wasHigh && isNowLow && decreases > 0) return "repaired";
-        
-        if (totalChange > 30 && isIncreasing && lastVal > 30) return "suspicious";
-        
         const hasBothUpAndDown = increases > 0 && decreases > 0;
-        if (hasBothUpAndDown && maxVal < 80 && measurements.length >= 4) return "seasonal";
+        if (hasBothUpAndDown && measurements.length >= 3 && lastVal < 100) return "heatpump";
         
-        if (maxVal > 100 && lastVal < 30 && !isIncreasing) return "false_alarm";
+        // Annan störning (tillfällig topp som planat ut)
+        const maxVal = Math.max(...values);
+        if (maxVal > 80 && lastVal < 30) return "disturbance";
         
-        return "stable";
+        return "active"; // default till aktiv för att inte missa något
     }
 
     async function analyzeAllData() {
@@ -348,36 +330,39 @@
         const results = [];
         for (let meter of allMeters.values()) {
             meter.measurements.sort((a,b) => a.date - b.date);
-            if (meter.measurements.length < 2) continue;
             
             const first = meter.measurements[0];
             const last = meter.measurements[meter.measurements.length-1];
-            const totalChange = calcChange(first.value, last.value);
+            let totalChange = null;
+            if (meter.measurements.length >= 2) {
+                totalChange = calcChange(first.value, last.value);
+            }
             
+            // Använd användarens kategori eller auto-klassificera
             let category = userCategories.get(meter.id);
             if (!category) category = autoClassify(meter.measurements, meter.infokod);
             
-            const categoryInfo = categories[category] || categories.stable;
+            const categoryInfo = categories[category] || categories.active;
             
-            if (totalChange !== null && isFinite(totalChange)) {
-                results.push({
-                    id: meter.id,
-                    adress: meter.adress,
-                    serienummer: meter.serienummer,
-                    firstValue: first.value,
-                    lastValue: last.value,
-                    firstDate: first.dateStr,
-                    lastDate: last.dateStr,
-                    changePercent: totalChange,
-                    infokod: meter.infokod,
-                    category: category,
-                    categoryInfo: categoryInfo,
-                    measurements: meter.measurements,
-                    history: meter.measurements.map(m => `${m.dateStr}:${m.value}`).join(' → ')
-                });
-            }
+            results.push({
+                id: meter.id,
+                adress: meter.adress,
+                serienummer: meter.serienummer,
+                firstValue: first.value,
+                lastValue: last.value,
+                firstDate: first.dateStr,
+                lastDate: last.dateStr,
+                changePercent: totalChange !== null ? totalChange : 0,
+                infokod: meter.infokod,
+                category: category,
+                categoryInfo: categoryInfo,
+                measurements: meter.measurements,
+                measurementCount: meter.measurements.length,
+                history: meter.measurements.map(m => `${m.dateStr}:${m.value}`).join(' → ')
+            });
         }
         
+        // Sortera efter prioritet (active först)
         results.sort((a,b) => a.categoryInfo.priority - b.categoryInfo.priority);
         currentResults = results;
         displayResults();
@@ -404,15 +389,11 @@
 
     function getCategoryColor(category) {
         const colors = {
-            active_leak: "#fee2e2",
-            long_term: "#ffcdd2",
-            suspicious: "#fff3e0",
-            known_leak: "#f3e5f5",
+            active: "#fee2e2",
+            heatpump: "#fff3e0",
             disturbance: "#eceff1",
-            repaired: "#d4edda",
-            false_alarm: "#f5f5f5",
-            seasonal: "#e0f2fe",
-            stable: "#ffffff"
+            known: "#d4edda",
+            single: "#f5f5f5"
         };
         return colors[category] || "#ffffff";
     }
@@ -437,32 +418,35 @@
             );
         }
         
-        const stats = {};
-        for (let cat in categories) {
-            stats[cat] = currentResults.filter(r => !ignoredIds.has(r.id) && r.category === cat).length;
-        }
-        stats.interesting = interestingIds.size;
+        // Statistik
+        const stats = {
+            total: currentResults.length,
+            active: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'active').length,
+            heatpump: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'heatpump').length,
+            disturbance: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'disturbance').length,
+            known: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'known').length,
+            single: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'single').length,
+            interesting: interestingIds.size
+        };
         
         document.getElementById('insightBox').innerHTML = `
-            🔍 <strong>SMART ANALYS:</strong> 
-            🚨 ${stats.active_leak} AKTIVA | 📆 ${stats.long_term} LÅNGVARIGA | ⚠️ ${stats.suspicious} MISSTÄNKTA | 
-            📬 ${stats.known_leak} KÄNDA | ⚡ ${stats.disturbance} STÖRNINGAR | ✅ ${stats.repaired} LAGADE | 
-            ❌ ${stats.false_alarm} FALSKTA | 🍂 ${stats.seasonal} SÄSONG
+            🔍 <strong>SMART ANALYS:</strong> 🚨 ${stats.active} AKTIVA läckage (åk dit!) | 
+            🔥 ${stats.heatpump} värmepannor | ⚡ ${stats.disturbance} andra störningar | 
+            ✅ ${stats.known} kända/konstaterade | 📌 ${stats.single} enstaka mätningar
         `;
         
         document.getElementById('statsGrid').innerHTML = `
-            <div class="stat-card" onclick="setCategoryFilter('active_leak')"><div class="num" style="color:#c0392b;">${stats.active_leak}</div><div class="label">🚨 AKTIVA</div></div>
-            <div class="stat-card" onclick="setCategoryFilter('long_term')"><div class="num" style="color:#e74c3c;">${stats.long_term}</div><div class="label">📆 LÅNGVARIGA</div></div>
-            <div class="stat-card" onclick="setCategoryFilter('suspicious')"><div class="num" style="color:#f39c12;">${stats.suspicious}</div><div class="label">⚠️ MISSTÄNKTA</div></div>
-            <div class="stat-card" onclick="setCategoryFilter('known_leak')"><div class="num" style="color:#8e44ad;">${stats.known_leak}</div><div class="label">📬 KÄNDA LEAK</div></div>
-            <div class="stat-card" onclick="setCategoryFilter('disturbance')"><div class="num" style="color:#7f8c8d;">${stats.disturbance}</div><div class="label">⚡ STÖRNINGAR</div></div>
-            <div class="stat-card" onclick="setCategoryFilter('repaired')"><div class="num" style="color:#27ae60;">${stats.repaired}</div><div class="label">✅ LAGADE</div></div>
+            <div class="stat-card" onclick="setCategoryFilter('all')"><div class="num" style="color:#1a5f7a;">${stats.total}</div><div class="label">📊 TOTALT</div></div>
+            <div class="stat-card" onclick="setCategoryFilter('active')"><div class="num" style="color:#c0392b;">${stats.active}</div><div class="label">🚨 AKTIVA</div></div>
+            <div class="stat-card" onclick="setCategoryFilter('heatpump')"><div class="num" style="color:#e67e22;">${stats.heatpump}</div><div class="label">🔥 VÄRMEPANNA</div></div>
+            <div class="stat-card" onclick="setCategoryFilter('disturbance')"><div class="num" style="color:#7f8c8d;">${stats.disturbance}</div><div class="label">⚡ STÖRNING</div></div>
+            <div class="stat-card" onclick="setCategoryFilter('known')"><div class="num" style="color:#27ae60;">${stats.known}</div><div class="label">✅ KÄNT</div></div>
             <div class="stat-card" onclick="setCategoryFilter('interesting')"><div class="num" style="color:#2ecc71;">${stats.interesting}</div><div class="label">⭐ INTRESSANTA</div></div>
         `;
         
         const tbody = document.getElementById('tableBody');
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar sökningen/filtret</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar sökningen/filtret</td></tr>`;
             document.getElementById('results').style.display = 'block';
             return;
         }
@@ -472,7 +456,9 @@
             const isIgnored = ignoredIds.has(r.id);
             const isInteresting = interestingIds.has(r.id);
             const rowClass = isIgnored ? 'row-ignored' : (isInteresting ? 'row-interesting' : `row-${r.category}`);
-            const changeFormatted = r.changePercent > 0 ? `▲ ${formatPercent(r.changePercent)} ${getTrendIcon(r.measurements)}` : `▼ ${formatPercent(Math.abs(r.changePercent))}`;
+            const changeText = r.measurementCount >= 2 ? `${r.changePercent > 0 ? '▲' : '▼'} ${formatPercent(r.changePercent)} ${getTrendIcon(r.measurements)}` : "— (endast en mätning)";
+            const changeClass = r.changePercent > 0 ? 'trend-up' : (r.changePercent < 0 ? 'trend-down' : '');
+            const valuesText = `${r.firstValue} → ${r.lastValue}`;
             const categoryColor = getCategoryColor(r.category);
             
             html += `<tr class="${rowClass}">
@@ -480,24 +466,18 @@
                 <td><button class="action-btn" onclick="toggleIgnore('${r.id}')" title="Ignorera">${isIgnored ? '✅' : '👁️'}</button></td>
                 <td style="text-align:center;">
                     <select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)" style="background:${categoryColor};">
-                        <option value="active_leak" ${r.category === 'active_leak' ? 'selected' : ''}>🚨</option>
-                        <option value="long_term" ${r.category === 'long_term' ? 'selected' : ''}>📆</option>
-                        <option value="suspicious" ${r.category === 'suspicious' ? 'selected' : ''}>⚠️</option>
-                        <option value="known_leak" ${r.category === 'known_leak' ? 'selected' : ''}>📬</option>
+                        <option value="active" ${r.category === 'active' ? 'selected' : ''}>🚨</option>
+                        <option value="heatpump" ${r.category === 'heatpump' ? 'selected' : ''}>🔥</option>
                         <option value="disturbance" ${r.category === 'disturbance' ? 'selected' : ''}>⚡</option>
-                        <option value="repaired" ${r.category === 'repaired' ? 'selected' : ''}>✅</option>
-                        <option value="false_alarm" ${r.category === 'false_alarm' ? 'selected' : ''}>❌</option>
-                        <option value="seasonal" ${r.category === 'seasonal' ? 'selected' : ''}>🍂</option>
-                        <option value="stable" ${r.category === 'stable' ? 'selected' : ''}>✅</option>
+                        <option value="known" ${r.category === 'known' ? 'selected' : ''}>✅</option>
                     </select>
                 </td>
-                <td><strong title="${r.adress}">${r.adress.length > 35 ? r.adress.substring(0,32)+"..." : r.adress}</strong>${isInteresting ? ' ⭐' : ''}${isIgnored ? ' 🚫' : ''}</td>
+                <td><strong title="${r.adress}">${r.adress.length > 35 ? r.adress.substring(0,32)+"..." : r.adress}</strong>${isInteresting ? ' ⭐' : ''}${isIgnored ? ' 🚫' : ''} <span style="font-size:10px; color:#888;">(${r.measurementCount} mätningar)</span></td>
                 <td>${r.serienummer || '-'}</td>
-                <td>${r.firstValue} → <strong>${r.lastValue}</strong></td>
-                <td class="${r.changePercent > 0 ? 'trend-up' : 'trend-down'}">${changeFormatted}</td>
-                <td><span class="badge" style="background:${r.categoryInfo.color}; color:white;">${r.categoryInfo.label}</span></td>
+                <td>${valuesText}</td>
+                <td class="${changeClass}">${changeText}</td>
                 <td><small title="${r.history}">${r.history.substring(0, 45)}${r.history.length > 45 ? '...' : ''}</small></td>
-            </tr>`;
+             </tr>`;
         }
         tbody.innerHTML = html;
         document.getElementById('results').style.display = 'block';
@@ -518,6 +498,7 @@
                 const date = extractDateFromFilename(file.name);
                 const meters = await parseExcelFile(file);
                 uploadedFiles.push({ fileName: file.name, date: date, meters: meters });
+                console.log(`📁 ${file.name}: ${meters.length} mätare`);
             }
         }
         updateFileList();
@@ -549,12 +530,12 @@
         const exportData = currentResults.map(r => ({
             'Adress': r.adress,
             'Serienummer': r.serienummer,
+            'Antal mätningar': r.measurementCount,
             'Första värde': r.firstValue,
             'Senaste värde': r.lastValue,
             'Total förändring %': r.changePercent.toFixed(2),
             'Period': `${r.firstDate} → ${r.lastDate}`,
-            'Status': r.categoryInfo.label,
-            'Åtgärd': r.categoryInfo.action,
+            'Kategori': r.categoryInfo.label,
             'Infokod': r.infokod || '',
             'Historik': r.history
         }));

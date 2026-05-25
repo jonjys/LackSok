@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök - Smart mönsteranalys</title>
+    <title>Läcksök - Smart adressjämförelse</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,7 +32,6 @@
         .search-input { width: 100%; padding: 14px 20px; font-size: 16px; border: 2px solid #e2e8f0; border-radius: 60px; outline: none; }
         .search-input:focus { border-color: #1a5f7a; }
         
-        /* Kategoriknappar */
         .category-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 15px 0; }
         .category-btn { padding: 8px 20px; border-radius: 40px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
         .category-btn.all { background: #1a5f7a; color: white; }
@@ -52,12 +51,11 @@
         .stat-card .label { font-size: 11px; color: #64748b; }
         
         .table-wrapper { overflow-x: auto; border-radius: 16px; background: white; max-height: 500px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1000px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px; }
         th { background: #f1f5f9; padding: 10px 6px; text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 10; }
         td { padding: 8px 6px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
         tr:hover { background: #f8fafc; }
         
-        /* Radfärger */
         .row-active { background: #fee2e2 !important; border-left: 4px solid #c0392b; }
         .row-suspicious { background: #fff3e0 !important; border-left: 4px solid #f39c12; }
         .row-disturbance { background: #eceff1 !important; border-left: 4px solid #7f8c8d; }
@@ -79,6 +77,7 @@
         .insight-box { background: #e8f4f8; padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; }
         .trend-up { color: #e74c3c; font-weight: 700; }
         .trend-down { color: #27ae60; font-weight: 700; }
+        .outlier-badge { background: #e74c3c; color: white; padding: 2px 6px; border-radius: 12px; font-size: 10px; margin-left: 6px; }
         @media (max-width: 768px) { body { padding: 12px; } th, td { font-size: 10px; padding: 4px; } .category-select-compact { width: 40px; font-size: 11px; } }
     </style>
 </head>
@@ -86,7 +85,7 @@
 <div class="app-container">
     <div class="header">
         <h1>🔍 Läcksök</h1>
-        <p>Smart mönsteranalys • Jämför med närliggande • Upptäck avvikelser</p>
+        <p>Smart adressjämförelse • Jämför alla mätare på samma adress • Upptäck avvikelser</p>
     </div>
     <div class="main-card">
         <div class="upload-section">
@@ -127,15 +126,15 @@
                             <th style="width:80px">Serienr</th>
                             <th style="width:100px">Värden</th>
                             <th style="width:90px">📈 Förändring</th>
-                            <th>Historik & Analys</th>
+                            <th>Analys & Jämförelse</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>
             <div class="info-footer">
-                💡 <strong>SMART ANALYS:</strong> 🚨 Aktivt läckage | ⚠️ Misstänkt (appens gissning) | ⚡ Störning | 🔥 Värmepanna | ✅ Konstaterat | 👀 Bevakning (ny mätare)<br>
-                📌 <strong>Jämför med närliggande adresser</strong> – appen upptäcker avvikelser från områdets normalvärde
+                💡 <strong>SMART ADRESSJÄMFÖRELSE:</strong> Appen jämför alla mätare på samma adress. Om en mätare avviker mycket från de andra → flaggas som avvikande.<br>
+                📌 <strong>Outlier-markering:</strong> 🚨 visar när en mätare sticker ut från andra på samma adress
             </div>
             <button id="exportBtn" class="btn btn-primary" style="margin-top:20px; width:100%;">📎 Exportera rapport (Excel)</button>
         </div>
@@ -150,7 +149,6 @@
     let userCategories = new Map();
     let currentCategoryFilter = "all";
 
-    // Kategorier
     const categories = {
         active: { label: "🚨 AKTIVT LÄCKAGE", symbol: "🚨", priority: 1, action: "Åk dit OMGÅENDE!", color: "#c0392b", bg: "#fee2e2" },
         suspicious: { label: "⚠️ MISSTÄNKT", symbol: "⚠️", priority: 2, action: "Kolla upp vid tillfälle. Appen gissar läckage.", color: "#f39c12", bg: "#fff3e0" },
@@ -166,13 +164,13 @@
         if (savedIgnored) ignoredIds = new Set(JSON.parse(savedIgnored));
         const savedInteresting = localStorage.getItem('lacksok_interesting');
         if (savedInteresting) interestingIds = new Set(JSON.parse(savedInteresting));
-        const savedCategories = localStorage.getItem('lacksok_categories_smart');
+        const savedCategories = localStorage.getItem('lacksok_categories_address');
         if (savedCategories) userCategories = new Map(JSON.parse(savedCategories));
     }
 
     function saveIgnored() { localStorage.setItem('lacksok_ignored', JSON.stringify([...ignoredIds])); }
     function saveInteresting() { localStorage.setItem('lacksok_interesting', JSON.stringify([...interestingIds])); }
-    function saveCategories() { localStorage.setItem('lacksok_categories_smart', JSON.stringify([...userCategories])); }
+    function saveCategories() { localStorage.setItem('lacksok_categories_address', JSON.stringify([...userCategories])); }
 
     function toggleIgnore(id) {
         if (ignoredIds.has(id)) ignoredIds.delete(id);
@@ -253,21 +251,16 @@
                         if (isNaN(sensateValue)) continue;
                         if (!adress && !serienummer) continue;
                         
-                        // Extrahera område (stad) för jämförelse
-                        let area = "";
-                        if (adress.includes("TUMBA")) area = "Tumba";
-                        else if (adress.includes("UTTRAN")) area = "Uttran";
-                        else if (adress.includes("GRÖDINGE")) area = "Grödinge";
-                        else if (adress.includes("NORSBORG")) area = "Norsborg";
-                        else if (adress.includes("TULLINGE")) area = "Tullinge";
+                        // Rensa adressen för jämförelse (ta bort postnummer)
+                        let cleanAddress = adress.replace(/\s+\d{5}$/, '').trim();
                         
                         meters.push({
                             id: serienummer || adress,
                             adress: adress,
+                            cleanAddress: cleanAddress,
                             serienummer: serienummer,
                             sensateValue: sensateValue,
-                            infokod: infokod,
-                            area: area
+                            infokod: infokod
                         });
                     }
                     resolve(meters);
@@ -283,48 +276,64 @@
         return ((newVal - oldVal) / oldVal) * 100;
     }
 
-    // SMART KLASSIFICERING med hänsyn till ålder, historik och närliggande
-    function smartClassify(meter, allMetersMap) {
+    // Hitta avvikelser inom samma adress
+    function findAddressOutliers(allMetersMap) {
+        const addressGroups = new Map();
+        
+        // Gruppera mätare per adress
+        for (let meter of allMetersMap.values()) {
+            const addr = meter.cleanAddress;
+            if (!addressGroups.has(addr)) addressGroups.set(addr, []);
+            addressGroups.get(addr).push(meter);
+        }
+        
+        // För varje adress med flera mätare, beräkna median och flagga avvikare
+        const outliers = new Set();
+        for (let [addr, meters] of addressGroups) {
+            if (meters.length < 2) continue;
+            
+            // Ta senaste värdet för varje mätare
+            const lastValues = [];
+            for (let meter of meters) {
+                if (meter.measurements.length > 0) {
+                    const lastVal = meter.measurements[meter.measurements.length-1].value;
+                    lastValues.push({ id: meter.id, value: lastVal });
+                }
+            }
+            
+            if (lastValues.length < 2) continue;
+            
+            // Beräkna median
+            const sorted = [...lastValues].sort((a,b) => a.value - b.value);
+            const median = sorted[Math.floor(sorted.length/2)].value;
+            
+            // Flagga mätare som är >2x medianen eller >50 över medianen
+            for (let item of lastValues) {
+                if (item.value > median * 2 && item.value > 50) {
+                    outliers.add(item.id);
+                }
+            }
+        }
+        return outliers;
+    }
+
+    function smartClassify(meter, allMetersMap, isOutlier) {
         const measurements = meter.measurements;
         if (measurements.length < 2) return "single";
         
         const values = measurements.map(m => m.value);
         const firstDate = measurements[0].date;
         const lastDate = measurements[measurements.length-1].date;
-        const firstVal = values[0];
         const lastVal = values[values.length-1];
         const maxVal = Math.max(...values);
-        const totalChange = calcChange(firstVal, lastVal);
+        const totalChange = calcChange(values[0], lastVal);
         
-        // Beräkna tidsperiod (hur länge mätaren funnits)
         const timeSpanMonths = (lastDate - firstDate) / (1000 * 60 * 60 * 24 * 30);
-        const isNewMeter = timeSpanMonths < 1.5; // Mindre än 1.5 månad = ny mätare
+        const isNewMeter = timeSpanMonths < 1.5;
         
-        // Känd LEAK från systemet
         if (meter.infokod && meter.infokod.includes("LEAK")) return "known";
+        if (isNewMeter && measurements.length < 4) return "watch";
         
-        // Ny mätare – behöver mer data
-        if (isNewMeter && measurements.length < 4) {
-            return "watch";
-        }
-        
-        // Jämför med närliggande adresser i samma område
-        let areaAvg = 0;
-        let areaCount = 0;
-        if (meter.area && allMetersMap) {
-            for (let other of allMetersMap.values()) {
-                if (other.area === meter.area && other.id !== meter.id && other.measurements.length > 0) {
-                    const otherLastVal = other.measurements[other.measurements.length-1].value;
-                    areaAvg += otherLastVal;
-                    areaCount++;
-                }
-            }
-            if (areaCount > 0) areaAvg = areaAvg / areaCount;
-        }
-        
-        const isHigherThanNeighbors = areaAvg > 0 && lastVal > areaAvg * 2;
-        
-        // Beräkna trend
         let increases = 0, decreases = 0;
         for (let i = 1; i < measurements.length; i++) {
             const change = calcChange(measurements[i-1].value, measurements[i].value);
@@ -336,34 +345,23 @@
         const isIncreasing = lastChange > 0;
         const hasBothUpAndDown = increases > 0 && decreases > 0;
         
-        // AKTIVT LÄCKAGE (högt värde + ökning + högre än grannar)
-        if (lastVal > 50 && isIncreasing && totalChange > 20 && isHigherThanNeighbors) {
+        // Prioritera avvikare från samma adress
+        if (isOutlier && lastVal > 50 && isIncreasing) {
             return "active";
         }
-        
-        // MISSTÄNKT (appens gissning) – ökning men inte extremt, eller högre än grannar
-        if ((totalChange > 30 && isIncreasing) || (isHigherThanNeighbors && lastVal > 40)) {
+        if (isOutlier && lastVal > 40) {
             return "suspicious";
         }
         
-        // VÄRMEPANNA (säsongsvariation, cykliskt mönster)
-        if (hasBothUpAndDown && maxVal < 80 && measurements.length >= 4 && !isHigherThanNeighbors) {
-            return "heatpump";
-        }
+        if (lastVal > 50 && isIncreasing && totalChange > 20) return "active";
+        if (totalChange > 30 && isIncreasing) return "suspicious";
+        if (hasBothUpAndDown && maxVal < 80 && measurements.length >= 4) return "heatpump";
         
-        // STÖRNING (tillfällig topp som planat ut)
         const maxIndex = values.indexOf(maxVal);
         const hasReturnedToNormal = lastVal < 30 && maxVal > 80 && maxIndex < measurements.length-2;
-        if (hasReturnedToNormal) {
-            return "disturbance";
-        }
+        if (hasReturnedToNormal) return "disturbance";
         
-        // Långvarigt normalt värde – stabilt
-        if (measurements.length >= 4 && Math.abs(totalChange) < 20 && lastVal < 40) {
-            return "known"; // Konstaterat normalt
-        }
-        
-        // Default – misstänkt om värde över 30
+        if (measurements.length >= 4 && Math.abs(totalChange) < 20 && lastVal < 40) return "known";
         if (lastVal > 30) return "suspicious";
         
         return "known";
@@ -384,10 +382,10 @@
                     allMeters.set(meter.id, {
                         id: meter.id,
                         adress: meter.adress,
+                        cleanAddress: meter.cleanAddress,
                         serienummer: meter.serienummer,
                         measurements: [],
-                        infokod: meter.infokod || "",
-                        area: meter.area || ""
+                        infokod: meter.infokod || ""
                     });
                 }
                 allMeters.get(meter.id).measurements.push({
@@ -397,6 +395,9 @@
                 });
             }
         }
+        
+        // Hitta avvikare inom samma adress
+        const outliers = findAddressOutliers(allMeters);
         
         const results = [];
         for (let meter of allMeters.values()) {
@@ -409,13 +410,12 @@
                 totalChange = calcChange(first.value, last.value);
             }
             
-            // Använd användarens kategori eller smart-klassificera
             let category = userCategories.get(meter.id);
-            if (!category) category = smartClassify(meter, allMeters);
+            if (!category) category = smartClassify(meter, allMeters, outliers.has(meter.id));
             
             const categoryInfo = categories[category] || categories.suspicious;
+            const isOutlier = outliers.has(meter.id);
             
-            // Bygg analys-text
             let analysisText = "";
             if (category === "active") analysisText = "🚨 Högt värde + ökning. Åk dit!";
             else if (category === "suspicious") analysisText = "⚠️ Appen gissar läckage. Kolla upp.";
@@ -425,9 +425,14 @@
             else if (category === "watch") analysisText = "👀 Ny mätare. Fortsätt bevaka.";
             else analysisText = "📌 För lite data. Ladda upp fler filer.";
             
+            if (isOutlier) {
+                analysisText += " 🚨 AVVIKER från andra mätare på samma adress!";
+            }
+            
             results.push({
                 id: meter.id,
                 adress: meter.adress,
+                cleanAddress: meter.cleanAddress,
                 serienummer: meter.serienummer,
                 firstValue: first.value,
                 lastValue: last.value,
@@ -439,7 +444,7 @@
                 categoryInfo: categoryInfo,
                 measurements: meter.measurements,
                 measurementCount: meter.measurements.length,
-                area: meter.area,
+                isOutlier: isOutlier,
                 analysisText: analysisText,
                 history: meter.measurements.map(m => `${m.dateStr}:${m.value}`).join(' → ')
             });
@@ -514,7 +519,7 @@
         };
         
         document.getElementById('insightBox').innerHTML = `
-            🔍 <strong>SMART ANALYS:</strong> 🚨 ${stats.active} AKTIVA | ⚠️ ${stats.suspicious} MISSTÄNKTA | ⚡ ${stats.disturbance} STÖRNINGAR | 
+            🔍 <strong>SMART ADRESSJÄMFÖRELSE:</strong> 🚨 ${stats.active} AKTIVA | ⚠️ ${stats.suspicious} MISSTÄNKTA | ⚡ ${stats.disturbance} STÖRNINGAR | 
             🔥 ${stats.heatpump} VÄRMEPANNOR | ✅ ${stats.known} KONSTATERADE | 👀 ${stats.watch} BEVAKNING
         `;
         
@@ -547,7 +552,7 @@
             const categoryColor = getCategoryColor(r.category);
             
             html += `<tr class="${rowClass}">
-                <td><button class="action-btn" onclick="toggleInteresting('${r.id}')" title="Markera som intressant">${isInteresting ? '⭐' : '☆'}</button></td>
+                <td><button class="action-btn" onclick="toggleInteresting('${r.id}')" title="Markera som intressant">${isInteresting ? '⭐' : '☆'}</button></tr>
                 <td><button class="action-btn" onclick="toggleIgnore('${r.id}')" title="Ignorera">${isIgnored ? '✅' : '👁️'}</button></td>
                 <td style="text-align:center;">
                     <select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)" style="background:${categoryColor};">
@@ -559,12 +564,12 @@
                         <option value="watch" ${r.category === 'watch' ? 'selected' : ''}>👀</option>
                     </select>
                 </td>
-                <td><strong title="${r.adress}">${r.adress.length > 35 ? r.adress.substring(0,32)+"..." : r.adress}</strong>${isInteresting ? ' ⭐' : ''}${isIgnored ? ' 🚫' : ''} <span style="font-size:10px; color:#888;">(${r.measurementCount} mätn)</span>${r.area ? ` <span style="font-size:9px; background:#e9ecef; padding:2px 6px; border-radius:12px;">${r.area}</span>` : ''}</td>
+                <td><strong title="${r.adress}">${r.adress.length > 35 ? r.adress.substring(0,32)+"..." : r.adress}</strong>${isInteresting ? ' ⭐' : ''}${isIgnored ? ' 🚫' : ''} <span style="font-size:10px; color:#888;">(${r.measurementCount} mätn)</span>${r.isOutlier ? ' <span class="outlier-badge">🚨 AVVIKANDE</span>' : ''}</td>
                 <td>${r.serienummer || '-'}</td>
                 <td>${valuesText}</td>
                 <td class="${changeClass}">${changeText}</td>
                 <td><small><strong>${r.categoryInfo.label}</strong><br>${r.analysisText}<br><span style="color:#888;">📅 ${r.firstDate} → ${r.lastDate}</span></small></td>
-             </tr>`;
+            </tr>`;
         }
         tbody.innerHTML = html;
         document.getElementById('results').style.display = 'block';
@@ -617,13 +622,13 @@
         const exportData = currentResults.map(r => ({
             'Adress': r.adress,
             'Serienummer': r.serienummer,
-            'Område': r.area || '',
             'Antal mätningar': r.measurementCount,
             'Första värde': r.firstValue,
             'Senaste värde': r.lastValue,
             'Total förändring %': r.changePercent.toFixed(2),
             'Period': `${r.firstDate} → ${r.lastDate}`,
             'Kategori': r.categoryInfo.label,
+            'Avvikande från adress': r.isOutlier ? 'Ja 🚨' : 'Nej',
             'Analys': r.analysisText,
             'Infokod': r.infokod || '',
             'Historik': r.history

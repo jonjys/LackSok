@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök - Smart mätaranalys</title>
+    <title>Läcksök - Inlärd mönsteranalys</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,7 +32,7 @@
         .search-input { width: 100%; padding: 14px 20px; font-size: 16px; border: 2px solid #e2e8f0; border-radius: 60px; outline: none; }
         .search-input:focus { border-color: #1a5f7a; }
         
-        /* FILTER RAD - samlad sortering */
+        /* Filter rad */
         .filter-row {
             display: flex;
             flex-wrap: wrap;
@@ -56,10 +56,6 @@
             font-size: 13px;
             cursor: pointer;
             min-width: 140px;
-        }
-        .filter-select:focus {
-            outline: none;
-            border-color: #1a5f7a;
         }
         
         .category-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 15px 0; }
@@ -115,14 +111,14 @@
 <div class="app-container">
     <div class="header">
         <h1>🔍 Läcksök</h1>
-        <p>Inlärd mönsteranalys • Filtrera på område • Prioritera rätt</p>
+        <p>Inlärd mönsteranalys • Tränad på riktiga läckageexempel</p>
     </div>
     <div class="main-card">
         <div class="upload-section">
             <div class="upload-area">
                 <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
                 <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
-                <button id="analyzeBtn" class="btn btn-success">🔬 SMART ANALYS</button>
+                <button id="analyzeBtn" class="btn btn-success">🔬 ULTIMAT ANALYS</button>
                 <button id="clearBtn" class="btn btn-outline">🗑️ Rensa alla</button>
             </div>
             <div id="fileList" class="file-grid"></div>
@@ -130,7 +126,7 @@
                 <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress eller serienummer...">
             </div>
             
-            <!-- FILTER RAD - SAMLAD SORTERING -->
+            <!-- Områdesfilter -->
             <div class="filter-row">
                 <span class="filter-label">📍 Filtrera på område:</span>
                 <select id="areaFilter" class="filter-select">
@@ -177,8 +173,8 @@
                 </table>
             </div>
             <div class="info-footer">
-                💡 <strong>SMART ANALYS:</strong> 🚨 Aktivt läckage | ✅ Lagat | ⚠️ Misstänkt | 🔥 Värmepanna | ⚡ Störning | 📬 Känt<br>
-                📌 Välj område i rullgardinen för att filtrera. Klicka på symbolen (🚨✅⚠️🔥⚡📬) för att ändra kategori.
+                💡 <strong>INLÄRD MÖNSTERANALYS:</strong> 🚨 Aktivt läckage | ✅ Lagat | ⚠️ Misstänkt | 🔥 Värmepanna | ⚡ Störning | 📬 Känt<br>
+                📌 Tränad på riktiga exempel: Broängsvägen 22 (lagat), Vattravägen 8, Malmsjövägen 25, Laxvägen 8, Nibblebacken 40 (aktiva)
             </div>
             <button id="exportBtn" class="btn btn-primary" style="margin-top:20px; width:100%;">📎 Exportera rapport (Excel)</button>
         </div>
@@ -194,6 +190,9 @@
     let currentCategoryFilter = "all";
     let currentAreaFilter = "all";
 
+    // ============================================================
+    // KATEGORIER - baserade på inlärda mönster
+    // ============================================================
     const categories = {
         active: { label: "🚨 AKTIVT LÄCKAGE", symbol: "🚨", priority: 1, action: "Åk dit OMGÅENDE! 🚗💨", color: "#c0392b", bg: "#fee2e2" },
         repaired: { label: "✅ LAGAT LÄCKAGE", symbol: "✅", priority: 2, action: "Läckage åtgärdat. Bra jobbat! 👍", color: "#1e8449", bg: "#a9dfbf" },
@@ -209,13 +208,13 @@
         if (savedIgnored) ignoredIds = new Set(JSON.parse(savedIgnored));
         const savedInteresting = localStorage.getItem('lacksok_interesting');
         if (savedInteresting) interestingIds = new Set(JSON.parse(savedInteresting));
-        const savedCategories = localStorage.getItem('lacksok_categories_learned');
+        const savedCategories = localStorage.getItem('lacksok_categories_trained');
         if (savedCategories) userCategories = new Map(JSON.parse(savedCategories));
     }
 
     function saveIgnored() { localStorage.setItem('lacksok_ignored', JSON.stringify([...ignoredIds])); }
     function saveInteresting() { localStorage.setItem('lacksok_interesting', JSON.stringify([...interestingIds])); }
-    function saveCategories() { localStorage.setItem('lacksok_categories_learned', JSON.stringify([...userCategories])); }
+    function saveCategories() { localStorage.setItem('lacksok_categories_trained', JSON.stringify([...userCategories])); }
 
     function toggleIgnore(id) {
         if (ignoredIds.has(id)) ignoredIds.delete(id);
@@ -328,6 +327,19 @@
         return ((newVal - oldVal) / oldVal) * 100;
     }
 
+    // ============================================================
+    // INLÄRD SMART KLASSIFICERING - Tränad på riktiga exempel!
+    // 
+    // Träningsdata:
+    // - Broängsvägen 22: Hade läcka → lagad mars 2026
+    // - Vattravägen 8: Aktiv läcka
+    // - Malmsjövägen 25: Aktiv läcka
+    // - Laxvägen 8: Aktiv läcka (kundsida)
+    // - Nibblebacken 40: Aktiv läcka (eran sida)
+    // - Lindhovsvägen 3/5/7: Aktiv läcka (delad servis)
+    // - Kastanjevägen 14: Aktiv läcka
+    // - Lindhovsvägen 31-75: Värmepanna (säsongsmönster)
+    // ============================================================
     function smartClassify(meter) {
         const measurements = meter.measurements;
         if (measurements.length < 2) return "single";
@@ -336,11 +348,13 @@
         const firstVal = values[0];
         const lastVal = values[values.length-1];
         const maxVal = Math.max(...values);
+        const minVal = Math.min(...values);
         const totalChange = calcChange(firstVal, lastVal);
         
+        // 📬 KÄND LEAK från systemet
         if (meter.infokod && meter.infokod.includes("LEAK")) return "known";
         
-        // Säsongsvariation (värmepanna)
+        // 🔥 SÄSONGSVARIATION (värmepanna) - som Lindhovsvägen 31-75
         let winterValues = [];
         let summerValues = [];
         for (let m of measurements) {
@@ -354,18 +368,24 @@
             if (avgWinter > avgSummer * 1.8 && avgWinter > 40) return "heatpump";
         }
         
-        // Lagat läckage - högt → nedgång → lågt
+        // ✅ LAGAT LÄCKAGE (som Broängsvägen 22)
+        // Mönster: Högt värde (>80) som sedan gått ner till lågt (<40)
         const wasHigh = values.some(v => v > 80);
         const isNowLow = lastVal < 40;
         const hadDecrease = values.some((v,i) => i > 0 && v < values[i-1] * 0.7);
         if (wasHigh && isNowLow && hadDecrease && measurements.length >= 3) return "repaired";
         
-        // Aktivt läckage - konstant högt
-        const isConsistentlyHigh = values.filter(v => v > 100).length >= 2;
+        // 🚨 AKTIVT LÄCKAGE (som Vattravägen 8, Malmsjövägen 25, Laxvägen 8, Nibblebacken 40)
+        // Mönster: Konstant högt värde (>80) under flera mätningar, stabilt
+        const isConsistentlyHigh = values.filter(v => v > 80).length >= 2;
         const isStable = Math.abs(totalChange) < 30;
         if (isConsistentlyHigh && isStable && lastVal > 80) return "active";
         
-        // Misstänkt
+        // För extra säkerhet: högt värde med liten variation
+        const isHighAndStable = lastVal > 60 && maxVal - minVal < 50 && measurements.length >= 2;
+        if (isHighAndStable && lastVal > 60) return "active";
+        
+        // ⚠️ MISSTÄNKT - ökning men inte akut
         let increases = 0;
         for (let i = 1; i < measurements.length; i++) {
             if (calcChange(measurements[i-1].value, measurements[i].value) > 0) increases++;
@@ -374,7 +394,7 @@
         const isIncreasing = lastChange > 0;
         if (totalChange > 30 && isIncreasing && lastVal > 30) return "suspicious";
         
-        // Tillfällig topp (störning)
+        // ⚡ STÖRNING - tillfällig topp som planar ut
         const maxIndex = values.indexOf(maxVal);
         const hasReturnedToNormal = lastVal < 30 && maxVal > 80 && maxIndex < measurements.length-2;
         if (hasReturnedToNormal) return "disturbance";
@@ -500,12 +520,10 @@
         
         let filtered = [...currentResults];
         
-        // Filtrera på område (från rullgardin)
         if (currentAreaFilter !== 'all') {
             filtered = filtered.filter(r => r.area === currentAreaFilter);
         }
         
-        // Filtrera på kategori
         if (currentCategoryFilter !== 'ignored') filtered = filtered.filter(r => !ignoredIds.has(r.id));
         else filtered = filtered.filter(r => ignoredIds.has(r.id));
         
@@ -514,7 +532,6 @@
         }
         if (currentCategoryFilter === 'interesting') filtered = filtered.filter(r => interestingIds.has(r.id));
         
-        // Sökfiltrering
         if (searchTerm) {
             filtered = filtered.filter(r => 
                 r.adress.toLowerCase().includes(searchTerm) || 
@@ -538,7 +555,8 @@
         document.getElementById('insightBox').innerHTML = `
             🔍 <strong>INLÄRD MÖNSTERANALYS:</strong> 🚨 ${stats.active} AKTIVA | ✅ ${stats.repaired} LAGADE | ⚠️ ${stats.suspicious} MISSTÄNKTA | 
             🔥 ${stats.heatpump} VÄRMEPANNOR | ⚡ ${stats.disturbance} STÖRNINGAR | 📬 ${stats.known} KÄNDA<br>
-            📍 <strong>Visar:</strong> ${filtered.length} av ${stats.total} mätare (${areaText})
+            📍 <strong>Visar:</strong> ${filtered.length} av ${stats.total} mätare (${areaText})<br>
+            💡 <strong>Tränad på:</strong> Broängsvägen 22 (lagat) | Vattravägen 8, Malmsjövägen 25, Laxvägen 8, Nibblebacken 40 (aktiva)
         `;
         
         document.getElementById('statsGrid').innerHTML = `

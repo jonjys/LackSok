@@ -32,7 +32,6 @@
         .search-input { width: 100%; padding: 14px 20px; font-size: 16px; border: 2px solid #e2e8f0; border-radius: 60px; outline: none; }
         .search-input:focus { border-color: #1a5f7a; }
         
-        /* Filter rad */
         .filter-row {
             display: flex;
             flex-wrap: wrap;
@@ -66,7 +65,7 @@
         .category-btn.suspicious { background: #f39c12; color: white; }
         .category-btn.heatpump { background: #e67e22; color: white; }
         .category-btn.disturbance { background: #7f8c8d; color: white; }
-        .category-btn.known { background: #27ae60; color: white; }
+        .category-btn.customer { background: #8e44ad; color: white; }
         .category-btn.interesting { background: #2ecc71; color: white; }
         .category-btn.ignored { background: #95a5a6; color: white; }
         .category-btn.active { box-shadow: 0 0 0 3px rgba(0,0,0,0.2); transform: scale(1.02); }
@@ -87,7 +86,7 @@
         .row-suspicious { background: #fff3e0 !important; border-left: 4px solid #f39c12; }
         .row-heatpump { background: #fdebd0 !important; border-left: 4px solid #e67e22; }
         .row-disturbance { background: #eceff1 !important; border-left: 4px solid #7f8c8d; }
-        .row-known { background: #d4edda !important; border-left: 4px solid #27ae60; }
+        .row-customer { background: #f3e5f5 !important; border-left: 4px solid #8e44ad; }
         .row-ignored { background: #f5f5f5 !important; opacity: 0.5; text-decoration: line-through; }
         .row-interesting { background: #e8f5e9 !important; border-left: 4px solid #2ecc71; }
         
@@ -111,7 +110,7 @@
 <div class="app-container">
     <div class="header">
         <h1>🔍 Läcksök</h1>
-        <p>Inlärd mönsteranalys • Tränad på riktiga läckageexempel</p>
+        <p>Inlärd mönsteranalys • Särskilj kundleckage från värmepannor</p>
     </div>
     <div class="main-card">
         <div class="upload-section">
@@ -126,7 +125,6 @@
                 <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress eller serienummer...">
             </div>
             
-            <!-- Områdesfilter -->
             <div class="filter-row">
                 <span class="filter-label">📍 Filtrera på område:</span>
                 <select id="areaFilter" class="filter-select">
@@ -141,12 +139,12 @@
             
             <div class="category-tabs" id="categoryTabs">
                 <button class="category-btn all active" data-category="all">📋 Alla</button>
-                <button class="category-btn active" data-category="active">🚨 AKTIVT</button>
+                <button class="category-btn active" data-category="active">🚨 AKTIVT (vår sida)</button>
+                <button class="category-btn customer" data-category="customer">📬 KUNDLÄCKAGE (LEAK)</button>
                 <button class="category-btn repaired" data-category="repaired">✅ LAGAT</button>
                 <button class="category-btn suspicious" data-category="suspicious">⚠️ MISSTÄNKT</button>
                 <button class="category-btn heatpump" data-category="heatpump">🔥 VÄRMEPANNA</button>
                 <button class="category-btn disturbance" data-category="disturbance">⚡ STÖRNING</button>
-                <button class="category-btn known" data-category="known">📬 KÄNT</button>
                 <button class="category-btn interesting" data-category="interesting">⭐ Intressanta</button>
                 <button class="category-btn ignored" data-category="ignored">🚫 Ignorerade</button>
             </div>
@@ -173,8 +171,8 @@
                 </table>
             </div>
             <div class="info-footer">
-                💡 <strong>INLÄRD MÖNSTERANALYS:</strong> 🚨 Aktivt läckage | ✅ Lagat | ⚠️ Misstänkt | 🔥 Värmepanna | ⚡ Störning | 📬 Känt<br>
-                📌 Tränad på riktiga exempel: Broängsvägen 22 (lagat), Vattravägen 8, Malmsjövägen 25, Laxvägen 8, Nibblebacken 40 (aktiva)
+                💡 <strong>INLÄRD MÖNSTERANALYS:</strong> 🚨 Aktivt läckage (vår sida) | 📬 Kundleckage (LEAK i systemet) | ✅ Lagat | ⚠️ Misstänkt | 🔥 Värmepanna (högt vinter/lågt sommar) | ⚡ Störning<br>
+                📌 <strong>VÄRMEPANNA:</strong> Höga värden nov-mars, låga värden april-okt. Detta är NORMALT!
             </div>
             <button id="exportBtn" class="btn btn-primary" style="margin-top:20px; width:100%;">📎 Exportera rapport (Excel)</button>
         </div>
@@ -191,15 +189,15 @@
     let currentAreaFilter = "all";
 
     // ============================================================
-    // KATEGORIER - baserade på inlärda mönster
+    // KATEGORIER
     // ============================================================
     const categories = {
-        active: { label: "🚨 AKTIVT LÄCKAGE", symbol: "🚨", priority: 1, action: "Åk dit OMGÅENDE! 🚗💨", color: "#c0392b", bg: "#fee2e2" },
-        repaired: { label: "✅ LAGAT LÄCKAGE", symbol: "✅", priority: 2, action: "Läckage åtgärdat. Bra jobbat! 👍", color: "#1e8449", bg: "#a9dfbf" },
-        suspicious: { label: "⚠️ MISSTÄNKT", symbol: "⚠️", priority: 3, action: "Kolla upp vid tillfälle.", color: "#f39c12", bg: "#fff3e0" },
-        heatpump: { label: "🔥 VÄRMEPANNA", symbol: "🔥", priority: 4, action: "Normalt säsongsmönster. Ingen åtgärd.", color: "#e67e22", bg: "#fdebd0" },
-        disturbance: { label: "⚡ STÖRNING", symbol: "⚡", priority: 5, action: "Fjärrvärme, pump, trafik. Ingen åtgärd.", color: "#7f8c8d", bg: "#eceff1" },
-        known: { label: "📬 KÄNT/KONSTATERAT", symbol: "📬", priority: 6, action: "Redan känt läckage. Lapp i låda.", color: "#27ae60", bg: "#d4edda" },
+        active: { label: "🚨 AKTIVT (vår sida)", symbol: "🚨", priority: 1, action: "Åk dit OMGÅENDE! 🚗💨", color: "#c0392b", bg: "#fee2e2" },
+        customer: { label: "📬 KUNDLÄCKAGE (LEAK)", symbol: "📬", priority: 2, action: "Lapp i låda - informera kunden om läckage efter mätare", color: "#8e44ad", bg: "#f3e5f5" },
+        repaired: { label: "✅ LAGAT LÄCKAGE", symbol: "✅", priority: 3, action: "Läckage åtgärdat. Bra jobbat! 👍", color: "#1e8449", bg: "#a9dfbf" },
+        suspicious: { label: "⚠️ MISSTÄNKT", symbol: "⚠️", priority: 4, action: "Kolla upp vid tillfälle.", color: "#f39c12", bg: "#fff3e0" },
+        heatpump: { label: "🔥 VÄRMEPANNA", symbol: "🔥", priority: 5, action: "Normalt säsongsmönster (högt vinter/lågt sommar). Ingen åtgärd.", color: "#e67e22", bg: "#fdebd0" },
+        disturbance: { label: "⚡ STÖRNING", symbol: "⚡", priority: 6, action: "Fjärrvärme, pump, trafik. Ingen åtgärd.", color: "#7f8c8d", bg: "#eceff1" },
         single: { label: "📌 ENDAST EN MÄTNING", symbol: "📌", priority: 7, action: "Ladda upp fler datum för analys", color: "#95a5a6", bg: "#f5f5f5" }
     };
 
@@ -328,17 +326,7 @@
     }
 
     // ============================================================
-    // INLÄRD SMART KLASSIFICERING - Tränad på riktiga exempel!
-    // 
-    // Träningsdata:
-    // - Broängsvägen 22: Hade läcka → lagad mars 2026
-    // - Vattravägen 8: Aktiv läcka
-    // - Malmsjövägen 25: Aktiv läcka
-    // - Laxvägen 8: Aktiv läcka (kundsida)
-    // - Nibblebacken 40: Aktiv läcka (eran sida)
-    // - Lindhovsvägen 3/5/7: Aktiv läcka (delad servis)
-    // - Kastanjevägen 14: Aktiv läcka
-    // - Lindhovsvägen 31-75: Värmepanna (säsongsmönster)
+    // INLÄRD SMART KLASSIFICERING
     // ============================================================
     function smartClassify(meter) {
         const measurements = meter.measurements;
@@ -351,10 +339,10 @@
         const minVal = Math.min(...values);
         const totalChange = calcChange(firstVal, lastVal);
         
-        // 📬 KÄND LEAK från systemet
-        if (meter.infokod && meter.infokod.includes("LEAK")) return "known";
+        // 📬 KUNDLÄCKAGE (LEAK i Infokod) - systemet har upptäckt konstant flöde efter mätaren
+        if (meter.infokod && meter.infokod.includes("LEAK")) return "customer";
         
-        // 🔥 SÄSONGSVARIATION (värmepanna) - som Lindhovsvägen 31-75
+        // 🔥 VÄRMEPANNA - höga värden på vintern (okt-mars), låga på sommaren (apr-sep)
         let winterValues = [];
         let summerValues = [];
         for (let m of measurements) {
@@ -368,24 +356,28 @@
             if (avgWinter > avgSummer * 1.8 && avgWinter > 40) return "heatpump";
         }
         
-        // ✅ LAGAT LÄCKAGE (som Broängsvägen 22)
-        // Mönster: Högt värde (>80) som sedan gått ner till lågt (<40)
+        // Kolla även om det finns tydligt säsongsmönster (högt nov-mars, lågt april-okt)
+        let winterHighCount = 0;
+        let summerLowCount = 0;
+        for (let m of measurements) {
+            const month = m.date.getMonth() + 1;
+            if ([11,12,1,2].includes(month) && m.value > 50) winterHighCount++;
+            if ([5,6,7,8].includes(month) && m.value < 40) summerLowCount++;
+        }
+        if (winterHighCount >= 2 && summerLowCount >= 2) return "heatpump";
+        
+        // ✅ LAGAT LÄCKAGE - högt värde som gått ner till lågt
         const wasHigh = values.some(v => v > 80);
         const isNowLow = lastVal < 40;
         const hadDecrease = values.some((v,i) => i > 0 && v < values[i-1] * 0.7);
         if (wasHigh && isNowLow && hadDecrease && measurements.length >= 3) return "repaired";
         
-        // 🚨 AKTIVT LÄCKAGE (som Vattravägen 8, Malmsjövägen 25, Laxvägen 8, Nibblebacken 40)
-        // Mönster: Konstant högt värde (>80) under flera mätningar, stabilt
+        // 🚨 AKTIVT LÄCKAGE (vår sida) - konstant högt värde, stabilt, ingen säsongsvariation
         const isConsistentlyHigh = values.filter(v => v > 80).length >= 2;
         const isStable = Math.abs(totalChange) < 30;
         if (isConsistentlyHigh && isStable && lastVal > 80) return "active";
         
-        // För extra säkerhet: högt värde med liten variation
-        const isHighAndStable = lastVal > 60 && maxVal - minVal < 50 && measurements.length >= 2;
-        if (isHighAndStable && lastVal > 60) return "active";
-        
-        // ⚠️ MISSTÄNKT - ökning men inte akut
+        // ⚠️ MISSTÄNKT
         let increases = 0;
         for (let i = 1; i < measurements.length; i++) {
             if (calcChange(measurements[i-1].value, measurements[i].value) > 0) increases++;
@@ -394,12 +386,12 @@
         const isIncreasing = lastChange > 0;
         if (totalChange > 30 && isIncreasing && lastVal > 30) return "suspicious";
         
-        // ⚡ STÖRNING - tillfällig topp som planar ut
+        // ⚡ STÖRNING
         const maxIndex = values.indexOf(maxVal);
         const hasReturnedToNormal = lastVal < 30 && maxVal > 80 && maxIndex < measurements.length-2;
         if (hasReturnedToNormal) return "disturbance";
         
-        return "known";
+        return "single";
     }
 
     async function analyzeAllData() {
@@ -449,12 +441,12 @@
             const isHeatpump = category === "heatpump";
             
             let analysisText = "";
-            if (category === "active") analysisText = "🚨 Konstant högt värde. AKTIVT LÄCKAGE! Åk dit!";
+            if (category === "active") analysisText = "🚨 Högt stabilt värde. AKTIVT LÄCKAGE på vår sida! Åk dit!";
+            else if (category === "customer") analysisText = "📬 LEAK i systemet = konstant flöde efter mätaren. Kundens problem. Lapp i låda.";
             else if (category === "repaired") analysisText = "✅ Högt värde som gått ner. LAGAT LÄCKAGE!";
             else if (category === "suspicious") analysisText = "⚠️ Appen gissar läckage. Kolla upp.";
-            else if (category === "heatpump") analysisText = "🔥 Högt vinter, lågt sommar. VÄRMEPANNA.";
+            else if (category === "heatpump") analysisText = "🔥 VÄRMEPANNA! Högt på vintern (okt-mars), lågt på sommaren (apr-sep). Normalt, ingen åtgärd.";
             else if (category === "disturbance") analysisText = "⚡ Tillfällig topp. STÖRNING.";
-            else if (category === "known") analysisText = "📬 KÄNT läckage. Lapp i låda.";
             else analysisText = "📌 För lite data. Ladda upp fler filer.";
             
             results.push({
@@ -505,11 +497,11 @@
     function getCategoryColor(category) {
         const colors = {
             active: "#fee2e2",
+            customer: "#f3e5f5",
             repaired: "#a9dfbf",
             suspicious: "#fff3e0",
             heatpump: "#fdebd0",
             disturbance: "#eceff1",
-            known: "#d4edda",
             single: "#f5f5f5"
         };
         return colors[category] || "#ffffff";
@@ -542,37 +534,37 @@
         const stats = {
             total: currentResults.length,
             active: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'active').length,
+            customer: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'customer').length,
             repaired: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'repaired').length,
             suspicious: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'suspicious').length,
             heatpump: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'heatpump').length,
             disturbance: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'disturbance').length,
-            known: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'known').length,
             interesting: interestingIds.size
         };
         
         const areaText = currentAreaFilter === 'all' ? 'alla områden' : currentAreaFilter;
         
         document.getElementById('insightBox').innerHTML = `
-            🔍 <strong>INLÄRD MÖNSTERANALYS:</strong> 🚨 ${stats.active} AKTIVA | ✅ ${stats.repaired} LAGADE | ⚠️ ${stats.suspicious} MISSTÄNKTA | 
-            🔥 ${stats.heatpump} VÄRMEPANNOR | ⚡ ${stats.disturbance} STÖRNINGAR | 📬 ${stats.known} KÄNDA<br>
+            🔍 <strong>INLÄRD MÖNSTERANALYS:</strong> 🚨 ${stats.active} AKTIVA (vår sida) | 📬 ${stats.customer} KUNDLÄCKAGE | ✅ ${stats.repaired} LAGADE | 
+            ⚠️ ${stats.suspicious} MISSTÄNKTA | 🔥 ${stats.heatpump} VÄRMEPANNOR | ⚡ ${stats.disturbance} STÖRNINGAR<br>
             📍 <strong>Visar:</strong> ${filtered.length} av ${stats.total} mätare (${areaText})<br>
-            💡 <strong>Tränad på:</strong> Broängsvägen 22 (lagat) | Vattravägen 8, Malmsjövägen 25, Laxvägen 8, Nibblebacken 40 (aktiva)
+            💡 <strong>VÄRMEPANNA:</strong> Höga värden på vintern, låga på sommaren - detta är NORMALT!
         `;
         
         document.getElementById('statsGrid').innerHTML = `
             <div class="stat-card" onclick="setCategoryFilter('all')"><div class="num" style="color:#1a5f7a;">${stats.total}</div><div class="label">📊 TOTALT</div></div>
-            <div class="stat-card" onclick="setCategoryFilter('active')"><div class="num" style="color:#c0392b;">${stats.active}</div><div class="label">🚨 AKTIVA</div></div>
+            <div class="stat-card" onclick="setCategoryFilter('active')"><div class="num" style="color:#c0392b;">${stats.active}</div><div class="label">🚨 AKTIVA (vår sida)</div></div>
+            <div class="stat-card" onclick="setCategoryFilter('customer')"><div class="num" style="color:#8e44ad;">${stats.customer}</div><div class="label">📬 KUNDLÄCKAGE</div></div>
             <div class="stat-card" onclick="setCategoryFilter('repaired')"><div class="num" style="color:#1e8449;">${stats.repaired}</div><div class="label">✅ LAGADE</div></div>
             <div class="stat-card" onclick="setCategoryFilter('suspicious')"><div class="num" style="color:#f39c12;">${stats.suspicious}</div><div class="label">⚠️ MISSTÄNKTA</div></div>
             <div class="stat-card" onclick="setCategoryFilter('heatpump')"><div class="num" style="color:#e67e22;">${stats.heatpump}</div><div class="label">🔥 VÄRMEPANNOR</div></div>
             <div class="stat-card" onclick="setCategoryFilter('disturbance')"><div class="num" style="color:#7f8c8d;">${stats.disturbance}</div><div class="label">⚡ STÖRNINGAR</div></div>
-            <div class="stat-card" onclick="setCategoryFilter('known')"><div class="num" style="color:#27ae60;">${stats.known}</div><div class="label">📬 KÄNDA</div></div>
             <div class="stat-card" onclick="setCategoryFilter('interesting')"><div class="num" style="color:#2ecc71;">${stats.interesting}</div><div class="label">⭐ INTRESSANTA</div></div>
         `;
         
         const tbody = document.getElementById('tableBody');
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar filtret (${areaText})</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar filtret (${areaText})</td></tr></tr>`;
             document.getElementById('results').style.display = 'block';
             return;
         }
@@ -596,7 +588,7 @@
             
             let seasonInfo = "";
             if (r.isHeatpump) {
-                seasonInfo = " <span class=\"heatpump-badge\">🔥 Säsong</span>";
+                seasonInfo = " <span class=\"heatpump-badge\">🔥 Säsong (vinterhögt/somlågt)</span>";
             }
             
             html += `<tr class="${rowClass}">
@@ -605,11 +597,11 @@
                 <td style="text-align:center;">
                     <select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)" style="background:${categoryColor};">
                         <option value="active" ${r.category === 'active' ? 'selected' : ''}>🚨</option>
+                        <option value="customer" ${r.category === 'customer' ? 'selected' : ''}>📬</option>
                         <option value="repaired" ${r.category === 'repaired' ? 'selected' : ''}>✅</option>
                         <option value="suspicious" ${r.category === 'suspicious' ? 'selected' : ''}>⚠️</option>
                         <option value="heatpump" ${r.category === 'heatpump' ? 'selected' : ''}>🔥</option>
                         <option value="disturbance" ${r.category === 'disturbance' ? 'selected' : ''}>⚡</option>
-                        <option value="known" ${r.category === 'known' ? 'selected' : ''}>📬</option>
                     </select>
                 </td>
                 <td><strong title="${r.adress}">${r.adress.length > 35 ? r.adress.substring(0,32)+"..." : r.adress}</strong>${isInteresting ? ' ⭐' : ''}${isIgnored ? ' 🚫' : ''}${seasonInfo} <span style="font-size:10px; color:#888;">(${r.measurementCount} mätn)</span></td>

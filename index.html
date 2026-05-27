@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök - Säsongsmedveten analys</title>
+    <title>Läcksök - Inlärd mönsteranalys</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,6 +32,11 @@
         .search-input { width: 100%; padding: 14px 20px; font-size: 16px; border: 2px solid #e2e8f0; border-radius: 60px; outline: none; }
         .search-input:focus { border-color: #1a5f7a; }
         
+        .area-filter { display: flex; gap: 10px; flex-wrap: wrap; margin: 15px 0 10px 0; }
+        .area-btn { padding: 5px 16px; border-radius: 30px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+        .area-btn:hover { background: #e9ecef; }
+        .area-btn.active { background: #1a5f7a; color: white; border-color: #1a5f7a; }
+        
         .category-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 15px 0; }
         .category-btn { padding: 8px 20px; border-radius: 40px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
         .category-btn.all { background: #1a5f7a; color: white; }
@@ -40,6 +45,7 @@
         .category-btn.heatpump { background: #e67e22; color: white; }
         .category-btn.disturbance { background: #7f8c8d; color: white; }
         .category-btn.known { background: #27ae60; color: white; }
+        .category-btn.repaired { background: #1e8449; color: white; }
         .category-btn.interesting { background: #2ecc71; color: white; }
         .category-btn.ignored { background: #95a5a6; color: white; }
         .category-btn.active { box-shadow: 0 0 0 3px rgba(0,0,0,0.2); transform: scale(1.02); }
@@ -60,6 +66,7 @@
         .row-heatpump { background: #fdebd0 !important; border-left: 4px solid #e67e22; }
         .row-disturbance { background: #eceff1 !important; border-left: 4px solid #7f8c8d; }
         .row-known { background: #d4edda !important; border-left: 4px solid #27ae60; }
+        .row-repaired { background: #a9dfbf !important; border-left: 4px solid #1e8449; }
         .row-ignored { background: #f5f5f5 !important; opacity: 0.5; text-decoration: line-through; }
         .row-interesting { background: #e8f5e9 !important; border-left: 4px solid #2ecc71; }
         
@@ -76,6 +83,7 @@
         .trend-up { color: #e74c3c; font-weight: 700; }
         .trend-down { color: #27ae60; font-weight: 700; }
         .heatpump-badge { background: #e67e22; color: white; padding: 2px 6px; border-radius: 12px; font-size: 10px; margin-left: 6px; }
+        .area-badge { background: #e9ecef; color: #1a5f7a; padding: 2px 6px; border-radius: 12px; font-size: 10px; margin-left: 6px; }
         @media (max-width: 768px) { body { padding: 12px; } th, td { font-size: 10px; padding: 4px; } .category-select-compact { width: 40px; font-size: 11px; } }
     </style>
 </head>
@@ -83,7 +91,7 @@
 <div class="app-container">
     <div class="header">
         <h1>🔍 Läcksök</h1>
-        <p>Säsongsmedveten analys • Upptäck värmepannor • Undvik falska alarm</p>
+        <p>Inlärd mönsteranalys • Upptäck aktiva läckage • Identifiera lagade</p>
     </div>
     <div class="main-card">
         <div class="upload-section">
@@ -98,13 +106,23 @@
                 <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök på adress eller serienummer...">
             </div>
             
+            <div class="area-filter" id="areaFilter">
+                <button class="area-btn active" data-area="all">📍 Alla områden</button>
+                <button class="area-btn" data-area="TUMBA">🏘️ Tumba</button>
+                <button class="area-btn" data-area="UTTRAN">🌊 Uttran</button>
+                <button class="area-btn" data-area="GRÖDINGE">🌳 Grödinge</button>
+                <button class="area-btn" data-area="NORSBORG">🏠 Norsborg</button>
+                <button class="area-btn" data-area="TULLINGE">🌲 Tullinge</button>
+            </div>
+            
             <div class="category-tabs" id="categoryTabs">
                 <button class="category-btn all active" data-category="all">📋 Alla</button>
                 <button class="category-btn active" data-category="active">🚨 AKTIVT</button>
+                <button class="category-btn repaired" data-category="repaired">✅ LAGAT</button>
                 <button class="category-btn suspicious" data-category="suspicious">⚠️ MISSTÄNKT</button>
                 <button class="category-btn heatpump" data-category="heatpump">🔥 VÄRMEPANNA</button>
                 <button class="category-btn disturbance" data-category="disturbance">⚡ STÖRNING</button>
-                <button class="category-btn known" data-category="known">✅ KONSTATERAT</button>
+                <button class="category-btn known" data-category="known">📬 KÄNT</button>
                 <button class="category-btn interesting" data-category="interesting">⭐ Intressanta</button>
                 <button class="category-btn ignored" data-category="ignored">🚫 Ignorerade</button>
             </div>
@@ -121,17 +139,18 @@
                             <th style="width:55px">K</th>
                             <th>Adress</th>
                             <th style="width:80px">Serienr</th>
+                            <th style="width:80px">Område</th>
                             <th style="width:100px">Värden</th>
                             <th style="width:90px">📈 Förändring</th>
-                            <th>Analys & Säsong</th>
-                        </tr>
+                            <th>Analys & Åtgärd</th>
+                        </td>
                     </thead>
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>
             <div class="info-footer">
-                💡 <strong>SÄSONGSDETEKTERING:</strong> 🔥 VÄRMEPANNA = höga värden nov-mars, låga värden april-okt. Dessa är NORMALA, inte läckage!<br>
-                📌 Mätare med säsongsmönster klassificeras automatiskt som värmepanna.
+                💡 <strong>INLÄRT MÖNSTER:</strong> 🚨 Aktivt läckage = högt & stabilt | ✅ Lagat = högt → nedgång → lågt | 🔥 Värmepanna = högt vinter, lågt sommar<br>
+                📌 Klicka på symbolen (🚨✅⚠️🔥⚡📬) för att ändra kategori. Appen lär sig dina val!
             </div>
             <button id="exportBtn" class="btn btn-primary" style="margin-top:20px; width:100%;">📎 Exportera rapport (Excel)</button>
         </div>
@@ -145,14 +164,16 @@
     let interestingIds = new Set();
     let userCategories = new Map();
     let currentCategoryFilter = "all";
+    let currentAreaFilter = "all";
 
     const categories = {
         active: { label: "🚨 AKTIVT LÄCKAGE", symbol: "🚨", priority: 1, action: "Åk dit OMGÅENDE! 🚗💨", color: "#c0392b", bg: "#fee2e2" },
-        suspicious: { label: "⚠️ MISSTÄNKT", symbol: "⚠️", priority: 2, action: "Kolla upp vid tillfälle. Appen gissar läckage.", color: "#f39c12", bg: "#fff3e0" },
-        heatpump: { label: "🔥 VÄRMEPANNA", symbol: "🔥", priority: 3, action: "Normalt säsongsmönster (högt vinter, lågt sommar). Ingen åtgärd.", color: "#e67e22", bg: "#fdebd0" },
-        disturbance: { label: "⚡ STÖRNING", symbol: "⚡", priority: 4, action: "Fjärrvärme, pump, trafik. Ingen åtgärd.", color: "#7f8c8d", bg: "#eceff1" },
-        known: { label: "✅ KONSTATERAT", symbol: "✅", priority: 5, action: "Redan känt eller lagat läckage.", color: "#27ae60", bg: "#d4edda" },
-        single: { label: "📌 ENDAST EN MÄTNING", symbol: "📌", priority: 6, action: "Ladda upp fler datum för analys", color: "#95a5a6", bg: "#f5f5f5" }
+        repaired: { label: "✅ LAGAT LÄCKAGE", symbol: "✅", priority: 2, action: "Läckage åtgärdat. Bra jobbat! 👍", color: "#1e8449", bg: "#a9dfbf" },
+        suspicious: { label: "⚠️ MISSTÄNKT", symbol: "⚠️", priority: 3, action: "Kolla upp vid tillfälle.", color: "#f39c12", bg: "#fff3e0" },
+        heatpump: { label: "🔥 VÄRMEPANNA", symbol: "🔥", priority: 4, action: "Normalt säsongsmönster. Ingen åtgärd.", color: "#e67e22", bg: "#fdebd0" },
+        disturbance: { label: "⚡ STÖRNING", symbol: "⚡", priority: 5, action: "Fjärrvärme, pump, trafik. Ingen åtgärd.", color: "#7f8c8d", bg: "#eceff1" },
+        known: { label: "📬 KÄNT/KONSTATERAT", symbol: "📬", priority: 6, action: "Redan känt läckage. Lapp i låda.", color: "#27ae60", bg: "#d4edda" },
+        single: { label: "📌 ENDAST EN MÄTNING", symbol: "📌", priority: 7, action: "Ladda upp fler datum för analys", color: "#95a5a6", bg: "#f5f5f5" }
     };
 
     function loadSaved() {
@@ -160,13 +181,13 @@
         if (savedIgnored) ignoredIds = new Set(JSON.parse(savedIgnored));
         const savedInteresting = localStorage.getItem('lacksok_interesting');
         if (savedInteresting) interestingIds = new Set(JSON.parse(savedInteresting));
-        const savedCategories = localStorage.getItem('lacksok_categories_seasonal');
+        const savedCategories = localStorage.getItem('lacksok_categories_learned');
         if (savedCategories) userCategories = new Map(JSON.parse(savedCategories));
     }
 
     function saveIgnored() { localStorage.setItem('lacksok_ignored', JSON.stringify([...ignoredIds])); }
     function saveInteresting() { localStorage.setItem('lacksok_interesting', JSON.stringify([...interestingIds])); }
-    function saveCategories() { localStorage.setItem('lacksok_categories_seasonal', JSON.stringify([...userCategories])); }
+    function saveCategories() { localStorage.setItem('lacksok_categories_learned', JSON.stringify([...userCategories])); }
 
     function toggleIgnore(id) {
         if (ignoredIds.has(id)) ignoredIds.delete(id);
@@ -199,6 +220,16 @@
     function formatShortDate(date) {
         if (!date || isNaN(date)) return "okänt";
         return `${date.getMonth()+1}/${date.getDate()}`;
+    }
+
+    function extractArea(adress) {
+        if (!adress) return "Okänt";
+        if (adress.includes("TUMBA")) return "Tumba";
+        if (adress.includes("UTTRAN")) return "Uttran";
+        if (adress.includes("GRÖDINGE")) return "Grödinge";
+        if (adress.includes("NORSBORG")) return "Norsborg";
+        if (adress.includes("TULLINGE")) return "Tullinge";
+        return "Övrigt";
     }
 
     async function parseExcelFile(file) {
@@ -247,15 +278,13 @@
                         if (isNaN(sensateValue)) continue;
                         if (!adress && !serienummer) continue;
                         
-                        let cleanAddress = adress.replace(/\s+\d{5}$/, '').trim();
-                        
                         meters.push({
                             id: serienummer || adress,
                             adress: adress,
-                            cleanAddress: cleanAddress,
                             serienummer: serienummer,
                             sensateValue: sensateValue,
-                            infokod: infokod
+                            infokod: infokod,
+                            area: extractArea(adress)
                         });
                     }
                     resolve(meters);
@@ -271,96 +300,65 @@
         return ((newVal - oldVal) / oldVal) * 100;
     }
 
-    // FÖRBÄTTRAD SÄSONGSDETEKTERING - känner igen värmepannor korrekt
-    function isSeasonalHeatpump(measurements) {
-        if (measurements.length < 4) return false;
-        
-        let winterValues = [];
-        let summerValues = [];
-        let winterMonths = [10, 11, 12, 1, 2, 3]; // Okt, Nov, Dec, Jan, Feb, Mar
-        let summerMonths = [4, 5, 6, 7, 8, 9]; // Apr, Maj, Jun, Jul, Aug, Sep
-        
-        for (let m of measurements) {
-            const month = m.date.getMonth() + 1;
-            const value = m.value;
-            
-            if (winterMonths.includes(month)) {
-                winterValues.push(value);
-            } else if (summerMonths.includes(month)) {
-                summerValues.push(value);
-            }
-        }
-        
-        if (winterValues.length >= 2 && summerValues.length >= 2) {
-            const avgWinter = winterValues.reduce((a,b) => a+b, 0) / winterValues.length;
-            const avgSummer = summerValues.reduce((a,b) => a+b, 0) / summerValues.length;
-            
-            // Vintervärden ska vara minst 80% högre än sommarvärden
-            if (avgWinter > avgSummer * 1.8 && avgWinter > 40) {
-                return true;
-            }
-        }
-        
-        // Kolla mönster: höga värden nov-feb, låga värden maj-aug
-        let winterHighCount = 0;
-        let summerLowCount = 0;
-        
-        for (let m of measurements) {
-            const month = m.date.getMonth() + 1;
-            if ([11, 12, 1, 2].includes(month) && m.value > 50) winterHighCount++;
-            if ([5, 6, 7, 8].includes(month) && m.value < 40) summerLowCount++;
-        }
-        
-        return winterHighCount >= 2 && summerLowCount >= 2;
-    }
-
+    // INLÄRD MÖNSTERANALYS - baserad på dina exempel
     function smartClassify(meter) {
         const measurements = meter.measurements;
         if (measurements.length < 2) return "single";
         
         const values = measurements.map(m => m.value);
-        const firstDate = measurements[0].date;
-        const lastDate = measurements[measurements.length-1].date;
         const firstVal = values[0];
         const lastVal = values[values.length-1];
         const maxVal = Math.max(...values);
+        const minVal = Math.min(...values);
         const totalChange = calcChange(firstVal, lastVal);
-        
-        const timeSpanMonths = (lastDate - firstDate) / (1000 * 60 * 60 * 24 * 30);
-        const isNewMeter = timeSpanMonths < 1.5;
         
         // Känd LEAK från systemet
         if (meter.infokod && meter.infokod.includes("LEAK")) return "known";
-        if (isNewMeter && measurements.length < 4) return "single";
         
-        // 🔥 PRIORITERA SÄSONGSDETEKTERING för värmepannor (detta är nyckeln!)
-        if (isSeasonalHeatpump(measurements)) {
-            return "heatpump";
+        // 🔥 Säsongsvariation (värmepanna) - högt vinter, lågt sommar
+        let winterValues = [];
+        let summerValues = [];
+        for (let m of measurements) {
+            const month = m.date.getMonth() + 1;
+            if ([10,11,12,1,2,3].includes(month)) winterValues.push(m.value);
+            if ([4,5,6,7,8,9].includes(month)) summerValues.push(m.value);
+        }
+        if (winterValues.length >= 2 && summerValues.length >= 2) {
+            const avgWinter = winterValues.reduce((a,b)=>a+b,0)/winterValues.length;
+            const avgSummer = summerValues.reduce((a,b)=>a+b,0)/summerValues.length;
+            if (avgWinter > avgSummer * 1.8 && avgWinter > 40) return "heatpump";
         }
         
-        // Beräkna trend
-        let increases = 0, decreases = 0;
+        // ✅ LAGAT LÄCKAGE (som Dalkärrsvägen 11) - högt → nedgång → lågt
+        // Kolla om det fanns ett högt värde som sedan sjönk till lågt
+        const wasHigh = values.some(v => v > 80);
+        const isNowLow = lastVal < 40;
+        const hadDecrease = values.some((v,i) => i > 0 && v < values[i-1] * 0.7);
+        if (wasHigh && isNowLow && hadDecrease && measurements.length >= 3) {
+            return "repaired";
+        }
+        
+        // 🚨 AKTIVT LÄCKAGE (som Vattravägen 8, Malmsjövägen 25) - konstant högt + stabilt
+        const isConsistentlyHigh = values.filter(v => v > 100).length >= 2;
+        const isStable = Math.abs(totalChange) < 30;
+        if (isConsistentlyHigh && isStable && lastVal > 80) {
+            return "active";
+        }
+        
+        // ⚠️ MISSTÄNKT - ökning men inte akut
+        let increases = 0;
         for (let i = 1; i < measurements.length; i++) {
-            const change = calcChange(measurements[i-1].value, measurements[i].value);
-            if (change > 0) increases++;
-            if (change < 0) decreases++;
+            if (calcChange(measurements[i-1].value, measurements[i].value) > 0) increases++;
         }
-        
         const lastChange = calcChange(measurements[measurements.length-2]?.value, lastVal);
         const isIncreasing = lastChange > 0;
         
-        // Aktivt läckage
-        if (lastVal > 50 && isIncreasing && totalChange > 20) return "active";
         if (totalChange > 30 && isIncreasing && lastVal > 30) return "suspicious";
         
         // Tillfällig topp (störning)
         const maxIndex = values.indexOf(maxVal);
         const hasReturnedToNormal = lastVal < 30 && maxVal > 80 && maxIndex < measurements.length-2;
         if (hasReturnedToNormal) return "disturbance";
-        
-        // Stabil eller normal
-        if (measurements.length >= 4 && Math.abs(totalChange) < 20 && lastVal < 40) return "known";
-        if (lastVal > 30) return "suspicious";
         
         return "known";
     }
@@ -380,10 +378,10 @@
                     allMeters.set(meter.id, {
                         id: meter.id,
                         adress: meter.adress,
-                        cleanAddress: meter.cleanAddress,
                         serienummer: meter.serienummer,
                         measurements: [],
-                        infokod: meter.infokod || ""
+                        infokod: meter.infokod || "",
+                        area: meter.area
                     });
                 }
                 allMeters.get(meter.id).measurements.push({
@@ -412,18 +410,19 @@
             const isHeatpump = category === "heatpump";
             
             let analysisText = "";
-            if (category === "active") analysisText = "🚨 Högt värde + ökning. Åk dit!";
+            if (category === "active") analysisText = "🚨 Konstant högt värde. AKTIVT LÄCKAGE! Åk dit!";
+            else if (category === "repaired") analysisText = "✅ Högt värde som gått ner. LAGAT LÄCKAGE!";
             else if (category === "suspicious") analysisText = "⚠️ Appen gissar läckage. Kolla upp.";
-            else if (category === "heatpump") analysisText = "🔥 VÄRMEPANNA! Högt på vintern (nov-mars), lågt på sommaren (apr-okt). Normalt, ingen åtgärd.";
-            else if (category === "disturbance") analysisText = "⚡ Tillfällig topp. Troligen störning.";
-            else if (category === "known") analysisText = "✅ Konstaterat. Ingen åtgärd.";
+            else if (category === "heatpump") analysisText = "🔥 Högt vinter, lågt sommar. VÄRMEPANNA.";
+            else if (category === "disturbance") analysisText = "⚡ Tillfällig topp. STÖRNING.";
+            else if (category === "known") analysisText = "📬 KÄNT läckage. Lapp i låda.";
             else analysisText = "📌 För lite data. Ladda upp fler filer.";
             
             results.push({
                 id: meter.id,
                 adress: meter.adress,
-                cleanAddress: meter.cleanAddress,
                 serienummer: meter.serienummer,
+                area: meter.area,
                 firstValue: first.value,
                 lastValue: last.value,
                 firstDate: first.dateStr,
@@ -467,6 +466,7 @@
     function getCategoryColor(category) {
         const colors = {
             active: "#fee2e2",
+            repaired: "#a9dfbf",
             suspicious: "#fff3e0",
             heatpump: "#fdebd0",
             disturbance: "#eceff1",
@@ -480,6 +480,10 @@
         const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
         
         let filtered = [...currentResults];
+        
+        if (currentAreaFilter !== 'all') {
+            filtered = filtered.filter(r => r.area === currentAreaFilter);
+        }
         
         if (currentCategoryFilter !== 'ignored') filtered = filtered.filter(r => !ignoredIds.has(r.id));
         else filtered = filtered.filter(r => ignoredIds.has(r.id));
@@ -499,6 +503,7 @@
         const stats = {
             total: currentResults.length,
             active: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'active').length,
+            repaired: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'repaired').length,
             suspicious: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'suspicious').length,
             heatpump: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'heatpump').length,
             disturbance: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'disturbance').length,
@@ -506,24 +511,34 @@
             interesting: interestingIds.size
         };
         
+        const areaStats = {
+            Tumba: currentResults.filter(r => r.area === 'Tumba').length,
+            Uttran: currentResults.filter(r => r.area === 'Uttran').length,
+            Grödinge: currentResults.filter(r => r.area === 'Grödinge').length,
+            Norsborg: currentResults.filter(r => r.area === 'Norsborg').length,
+            Tullinge: currentResults.filter(r => r.area === 'Tullinge').length
+        };
+        
         document.getElementById('insightBox').innerHTML = `
-            🔍 <strong>SÄSONGSANALYS:</strong> 🚨 ${stats.active} AKTIVA läckage | ⚠️ ${stats.suspicious} MISSTÄNKTA | 🔥 ${stats.heatpump} VÄRMEPANNOR | 
-            ⚡ ${stats.disturbance} STÖRNINGAR | ✅ ${stats.known} KONSTATERADE
+            🔍 <strong>INLÄRD MÖNSTERANALYS:</strong> 🚨 ${stats.active} AKTIVA | ✅ ${stats.repaired} LAGADE | ⚠️ ${stats.suspicious} MISSTÄNKTA | 
+            🔥 ${stats.heatpump} VÄRMEPANNOR | ⚡ ${stats.disturbance} STÖRNINGAR | 📬 ${stats.known} KÄNDA<br>
+            📍 <strong>Områden:</strong> 🏘️ Tumba ${areaStats.Tumba} | 🌊 Uttran ${areaStats.Uttran} | 🌳 Grödinge ${areaStats.Grödinge} | 🏠 Norsborg ${areaStats.Norsborg} | 🌲 Tullinge ${areaStats.Tullinge}
         `;
         
         document.getElementById('statsGrid').innerHTML = `
             <div class="stat-card" onclick="setCategoryFilter('all')"><div class="num" style="color:#1a5f7a;">${stats.total}</div><div class="label">📊 TOTALT</div></div>
             <div class="stat-card" onclick="setCategoryFilter('active')"><div class="num" style="color:#c0392b;">${stats.active}</div><div class="label">🚨 AKTIVA</div></div>
+            <div class="stat-card" onclick="setCategoryFilter('repaired')"><div class="num" style="color:#1e8449;">${stats.repaired}</div><div class="label">✅ LAGADE</div></div>
             <div class="stat-card" onclick="setCategoryFilter('suspicious')"><div class="num" style="color:#f39c12;">${stats.suspicious}</div><div class="label">⚠️ MISSTÄNKTA</div></div>
             <div class="stat-card" onclick="setCategoryFilter('heatpump')"><div class="num" style="color:#e67e22;">${stats.heatpump}</div><div class="label">🔥 VÄRMEPANNOR</div></div>
             <div class="stat-card" onclick="setCategoryFilter('disturbance')"><div class="num" style="color:#7f8c8d;">${stats.disturbance}</div><div class="label">⚡ STÖRNINGAR</div></div>
-            <div class="stat-card" onclick="setCategoryFilter('known')"><div class="num" style="color:#27ae60;">${stats.known}</div><div class="label">✅ KONSTATERADE</div></div>
+            <div class="stat-card" onclick="setCategoryFilter('known')"><div class="num" style="color:#27ae60;">${stats.known}</div><div class="label">📬 KÄNDA</div></div>
             <div class="stat-card" onclick="setCategoryFilter('interesting')"><div class="num" style="color:#2ecc71;">${stats.interesting}</div><div class="label">⭐ INTRESSANTA</div></div>
         `;
         
         const tbody = document.getElementById('tableBody');
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar sökningen/filtret</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px;">🔍 Ingen mätare matchar sökningen/filtret</td></tr>`;
             document.getElementById('results').style.display = 'block';
             return;
         }
@@ -538,9 +553,16 @@
             const valuesText = `${r.firstValue} → ${r.lastValue}`;
             const categoryColor = getCategoryColor(r.category);
             
+            let areaIcon = "";
+            if (r.area === "Tumba") areaIcon = "🏘️";
+            else if (r.area === "Uttran") areaIcon = "🌊";
+            else if (r.area === "Grödinge") areaIcon = "🌳";
+            else if (r.area === "Norsborg") areaIcon = "🏠";
+            else if (r.area === "Tullinge") areaIcon = "🌲";
+            
             let seasonInfo = "";
             if (r.isHeatpump) {
-                seasonInfo = " <span class=\"heatpump-badge\">🔥 Upp på vintern, ner på sommaren</span>";
+                seasonInfo = " <span class=\"heatpump-badge\">🔥 Säsong</span>";
             }
             
             html += `<tr class="${rowClass}">
@@ -549,18 +571,20 @@
                 <td style="text-align:center;">
                     <select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)" style="background:${categoryColor};">
                         <option value="active" ${r.category === 'active' ? 'selected' : ''}>🚨</option>
+                        <option value="repaired" ${r.category === 'repaired' ? 'selected' : ''}>✅</option>
                         <option value="suspicious" ${r.category === 'suspicious' ? 'selected' : ''}>⚠️</option>
                         <option value="heatpump" ${r.category === 'heatpump' ? 'selected' : ''}>🔥</option>
                         <option value="disturbance" ${r.category === 'disturbance' ? 'selected' : ''}>⚡</option>
-                        <option value="known" ${r.category === 'known' ? 'selected' : ''}>✅</option>
+                        <option value="known" ${r.category === 'known' ? 'selected' : ''}>📬</option>
                     </select>
                 </td>
                 <td><strong title="${r.adress}">${r.adress.length > 35 ? r.adress.substring(0,32)+"..." : r.adress}</strong>${isInteresting ? ' ⭐' : ''}${isIgnored ? ' 🚫' : ''}${seasonInfo} <span style="font-size:10px; color:#888;">(${r.measurementCount} mätn)</span></td>
                 <td>${r.serienummer || '-'}</td>
+                <td>${areaIcon} ${r.area}</td>
                 <td>${valuesText}</td>
                 <td class="${changeClass}">${changeText}</td>
                 <td><small><strong>${r.categoryInfo.label}</strong><br>${r.analysisText}<br><span style="color:#888;">📅 ${r.firstDate} → ${r.lastDate}</span></small></td>
-             </tr>`;
+            </tr>`;
         }
         tbody.innerHTML = html;
         document.getElementById('results').style.display = 'block';
@@ -570,6 +594,15 @@
         currentCategoryFilter = category;
         document.querySelectorAll('.category-btn').forEach(btn => {
             if (btn.dataset.category === category) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+        displayResults();
+    }
+
+    function setAreaFilter(area) {
+        currentAreaFilter = area;
+        document.querySelectorAll('.area-btn').forEach(btn => {
+            if (btn.dataset.area === area) btn.classList.add('active');
             else btn.classList.remove('active');
         });
         displayResults();
@@ -613,13 +646,13 @@
         const exportData = currentResults.map(r => ({
             'Adress': r.adress,
             'Serienummer': r.serienummer,
+            'Område': r.area,
             'Antal mätningar': r.measurementCount,
             'Första värde': r.firstValue,
             'Senaste värde': r.lastValue,
             'Total förändring %': r.changePercent.toFixed(2),
             'Period': `${r.firstDate} → ${r.lastDate}`,
             'Kategori': r.categoryInfo.label,
-            'Säsongsmönster (värmepanna)': r.isHeatpump ? 'Ja 🔥' : 'Nej',
             'Analys': r.analysisText,
             'Infokod': r.infokod || '',
             'Historik': r.history
@@ -647,10 +680,15 @@
         btn.onclick = () => setCategoryFilter(btn.dataset.category);
     });
     
+    document.querySelectorAll('.area-btn').forEach(btn => {
+        btn.onclick = () => setAreaFilter(btn.dataset.area);
+    });
+    
     window.toggleIgnore = toggleIgnore;
     window.toggleInteresting = toggleInteresting;
     window.changeCategory = changeCategory;
     window.setCategoryFilter = setCategoryFilter;
+    window.setAreaFilter = setAreaFilter;
     
     loadSaved();
     updateFileList();

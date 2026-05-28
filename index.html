@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök - Inlärd mönsteranalys</title>
+    <title>Läcksök - Avancerad mönsteranalys</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.185/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -25,7 +25,7 @@
         }
 
         .container {
-            max-width: 1350px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -42,79 +42,45 @@
         header h1 {
             margin: 0;
             font-size: 2.5em;
-            letter-spacing: 1px;
-        }
-
-        header p {
-            margin: 10px 0 0 0;
-            opacity: 0.9;
         }
 
         .controls {
             background: var(--card-bg);
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             margin-bottom: 20px;
             display: flex;
             flex-wrap: wrap;
             gap: 15px;
-            align-items: center;
             justify-content: space-between;
-        }
-
-        .file-upload {
-            display: flex;
             align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .file-upload input[type="file"] {
-            display: none;
         }
 
         .btn {
             background: linear-gradient(45deg, var(--primary), var(--secondary));
             color: white;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 8px;
             cursor: pointer;
             border: none;
             font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: inline-block;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s;
         }
 
         .btn-success {
             background: linear-gradient(45deg, #11998e, #38ef7d);
         }
 
-        .filter-group {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        select {
+        select, input {
             padding: 10px;
             border-radius: 8px;
             border: 1px solid var(--border);
-            background-color: white;
             font-size: 14px;
-            outline: none;
-            min-width: 200px;
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -124,80 +90,72 @@
             padding: 15px;
             border-radius: 10px;
             text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
             border-left: 5px solid var(--primary);
+            cursor: pointer;
+            transition: transform 0.2s;
         }
 
-        .stat-card.active-leak { border-left-color: #ff4a4a; }
-        .stat-card.customer-leak { border-left-color: #ff9f43; }
-        .stat-card.fixed-leak { border-left-color: #2ecc71; }
+        .stat-card:hover { transform: translateY(-3px); }
 
         .stat-num {
-            font-size: 1.8em;
+            font-size: 2em;
             font-weight: bold;
             margin-top: 5px;
-        }
-
-        .main-content {
-            background: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            overflow: hidden;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            text-align: left;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
         }
 
         th, td {
-            padding: 15px;
+            padding: 12px;
+            text-align: left;
             border-bottom: 1px solid var(--border);
         }
 
         th {
-            background-color: #f8fafc;
-            color: #4a5568;
-            font-weight: 600;
-        }
-
-        tr:hover {
-            background-color: #f8fafc;
+            background: #f8fafc;
+            position: sticky;
+            top: 0;
         }
 
         .badge {
-            padding: 5px 10px;
+            padding: 4px 10px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             display: inline-block;
         }
 
-        .badge-danger { background: #ffe3e3; color: #ff4a4a; }
-        .badge-warning { background: #fff0e0; color: #ff9f43; }
-        .badge-success { background: #e3fcef; color: #2ecc71; }
-        .badge-info { background: #e3f2fd; color: #2196f3; }
-        .badge-purple { background: #f3e5f5; color: #9c27b0; }
-        .badge-secondary { background: #eeeeee; color: #757575; }
-        .badge-light-orange { background: #fff5eb; color: #d946ef; }
-        .badge-light-blue { background: #f0fdfa; color: #0d9488; }
+        .badge-active { background: #ffe3e3; color: #c0392b; }
+        .badge-customer { background: #fff0e0; color: #e67e22; }
+        .badge-repaired { background: #e3fcef; color: #27ae60; }
+        .badge-suspect { background: #fff3cd; color: #856404; }
+        .badge-heatpump { background: #fdebd0; color: #e67e22; }
+        .badge-disturbance { background: #e8e8e8; color: #7f8c8d; }
+        .badge-leak { background: #ffcccc; color: #c0392b; font-weight: bold; }
 
-        .action-select {
-            padding: 5px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-        }
+        .trend-up { color: #e74c3c; }
+        .trend-down { color: #27ae60; }
 
-        .hidden-row {
-            opacity: 0.5;
-            background-color: #fafafa;
-        }
+        .hidden-row { opacity: 0.4; background: #f5f5f5; }
         
-        .history-days {
-            font-size: 11px;
-            color: #888;
-            display: block;
+        .insight-box {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            th, td { font-size: 11px; padding: 8px; }
+            .controls { flex-direction: column; }
         }
     </style>
 </head>
@@ -205,88 +163,50 @@
 
 <div class="container">
     <header>
-        <h1>Läcksök</h1>
-        <p>Intelligent mönsteranalys för vattenmätare</p>
+        <h1>🔍 Läcksök Pro</h1>
+        <p>Jämförande mönsteranalys - Särskilj läckage från värmepumpar och störningar</p>
     </header>
 
     <div class="controls">
-        <div class="file-upload">
-            <label class="btn" for="excel-files">Välj Excel-filer...</label>
-            <input type="file" id="excel-files" multiple>
-            <span id="file-count" style="font-size: 14px; font-weight: bold;">Inga filer valda</span>
-            <button id="analyze-btn" class="btn btn-success" style="display: none;">Kör mönsteranalys</button>
+        <div>
+            <label class="btn" for="excel-files">📂 Välj Excel-filer</label>
+            <input type="file" id="excel-files" multiple accept=".xlsx,.xls" style="display:none">
+            <span id="file-count" style="margin-left: 10px;">0 filer</span>
         </div>
+        <button id="analyze-btn" class="btn btn-success" style="display:none;">🔬 KÖR ANALYS</button>
+        <button id="export-btn" class="btn">📎 Exportera rapport</button>
+        
+        <select id="area-filter">
+            <option value="ALL">🌍 Alla områden</option>
+            <option value="TUMBA">🏘️ Tumba</option>
+            <option value="UTTRAN">🌊 Uttran</option>
+            <option value="GRÖDINGE">🌳 Grödinge</option>
+            <option value="NORSBORG">🏠 Norsborg</option>
+            <option value="TULLINGE">🌲 Tullinge</option>
+        </select>
 
-        <div class="filter-group">
-            <select id="area-filter">
-                <option value="ALL">Alla områden</option>
-                <option value="TUMBA">Tumba</option>
-                <option value="UTTRAN">Uttran</option>
-                <option value="GRÖDINGE">Grödinge</option>
-                <option value="NORSBORG">Norsborg</option>
-                <option value="TULLINGE">Tullinge</option>
-                <option value="ÖVRIGT">Övrigt</option>
-            </select>
-
-            <select id="category-filter">
-                <option value="ALL">Alla kategorier</option>
-                <option value="🚨 Aktivt läckage">🚨 Aktivt läckage</option>
-                <option value="📬 Kundläckage">📬 Kundläckage</option>
-                <option value="✅ Lagat">✅ Lagat</option>
-                <option value="⚠️ Misstänkt">⚠️ Misstänkt</option>
-                <option value="🔥 Värmepanna">🔥 Värmepanna</option>
-                <option value="⚡ Störning">⚡ Störning</option>
-                <option value="🆕 Ny (Kort historik) - Misstänkt Hög">🆕 Ny - Misstänkt Hög Flödesnivå</option>
-                <option value="🌱 Ny (Kort historik) - Osäkert Mönster">🌱 Ny - Osäkert Mönster (Låga värden)</option>
-                <option value="Oklassificerad">Oklassificerad</option>
-                <option value="HIDDEN">Dolda mätare</option>
-                <option value="FAVORITE">Intressanta mätare ⭐</option>
-            </select>
-        </div>
+        <select id="category-filter">
+            <option value="ALL">📋 Alla kategorier</option>
+            <option value="LEAK_ACTIVE">🚨 AKTIVT LÄCKAGE (vår sida)</option>
+            <option value="LEAK_CUSTOMER">📬 KUNDLÄCKAGE</option>
+            <option value="REPAIRED">✅ LAGAT</option>
+            <option value="SUSPECT">⚠️ MISSTÄNKT</option>
+            <option value="HEATPUMP">🔥 VÄRMEPANNA</option>
+            <option value="DISTURBANCE">⚡ STÖRNING (Fjärrvärme/Pump)</option>
+            <option value="FAVORITE">⭐ INTRESSANTA</option>
+            <option value="HIDDEN">🙈 GÖMDA</option>
+        </select>
     </div>
 
-    <div class="stats-grid">
-        <div class="stat-card active-leak">
-            <div>Aktivt läckage</div>
-            <div class="stat-num" id="stat-active">0</div>
-        </div>
-        <div class="stat-card customer-leak">
-            <div>Kundläckage</div>
-            <div class="stat-num" id="stat-customer">0</div>
-        </div>
-        <div class="stat-card fixed-leak">
-            <div>Lagat läckage</div>
-            <div class="stat-num" id="stat-fixed">0</div>
-        </div>
-        <div class="stat-card">
-            <div>Totalt Analyserade</div>
-            <div class="stat-num" id="stat-total">0</div>
-        </div>
-    </div>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="insight-box" id="insight-box"></div>
 
-    <div class="main-content">
+    <div style="background: white; border-radius: 12px; overflow-x: auto;">
         <table id="meters-table">
             <thead>
-                <tr>
-                    <th>⭐</th>
-                    <th>Område</th>
-                    <th>Adress</th>
-                    <th>Serienummer</th>
-                    <th>Mönsteranalys (AI)</th>
-                    <th>Tidsperiod</th>
-                    <th>% Förändring</th>
-                    <th>Senaste värde</th>
-                    <th>Kategori (Manuell)</th>
-                    <th>Åtgärd</th>
-                </tr>
+                <tr><th>⭐</th><th>Område</th><th>Adress</th><th>Serienr</th><th>Analys</th><th>Förändring</th><th>Senaste</th><th>Topp</th><th>Kategori</th><th>Åtgärd</th></tr>
             </thead>
-            <tbody id="table-body">
-                <tr>
-                    <td colspan="10" style="text-align: center; color: #888; padding: 40px;">
-                        Markera och ladda upp dina sparade Excel-filer för att köra analysen.
-                    </td>
-                </tr>
-            </tbody>
+            <tbody id="table-body"><tr><td colspan="10" style="text-align:center; padding:40px;">📁 Ladda upp Excel-filer och klicka på "KÖR ANALYS"</td></tr></tbody>
         </table>
     </div>
 </div>
@@ -294,380 +214,407 @@
 <script>
     let meterDatabase = {};
     let fileObjects = [];
-    let userClassifications = JSON.parse(localStorage.getItem('lacksok_classifications')) || {};
-    let hiddenMeters = JSON.parse(localStorage.getItem('lacksok_hidden')) || [];
-    let favoriteMeters = JSON.parse(localStorage.getItem('lacksok_favorites')) || [];
+    let userCategories = JSON.parse(localStorage.getItem('lacksok_pro_cats')) || {};
+    let hiddenMeters = JSON.parse(localStorage.getItem('lacksok_pro_hidden')) || [];
+    let favoriteMeters = JSON.parse(localStorage.getItem('lacksok_pro_fav')) || [];
 
-    const knownHeatpumps = [
-        "alice tegnérs väg 23",
-        "bergmovägen 1",
-        "klättrarstigen",
-        "morgonvägen",
-        "vårvägen"
-    ];
+    // --------------------------------------------------------------
+    // 1. FILHANTERING
+    // --------------------------------------------------------------
+    document.getElementById('excel-files').addEventListener('change', (e) => {
+        fileObjects = Array.from(e.target.files);
+        document.getElementById('file-count').textContent = `${fileObjects.length} fil(er)`;
+        document.getElementById('analyze-btn').style.display = fileObjects.length > 0 ? 'inline-block' : 'none';
+    });
 
-    document.getElementById('excel-files').addEventListener('change', handleFileSelect);
     document.getElementById('analyze-btn').addEventListener('click', runAnalysis);
-    document.getElementById('area-filter').addEventListener('change', updateTable);
-    document.getElementById('category-filter').addEventListener('change', updateTable);
-
-    function saveToLocalStorage() {
-        localStorage.setItem('lacksok_classifications', JSON.stringify(userClassifications));
-        localStorage.setItem('lacksok_hidden', JSON.stringify(hiddenMeters));
-        localStorage.setItem('lacksok_favorites', JSON.stringify(favoriteMeters));
-    }
-
-    function handleFileSelect(event) {
-        // Spara filerna i en global variabel så vi kommer åt dem ordentligt vid knapptryck
-        fileObjects = Array.from(event.target.files);
-        
-        if (fileObjects.length > 0) {
-            document.getElementById('file-count').textContent = `${fileObjects.length} fil(er) vald(a)`;
-            document.getElementById('analyze-btn').style.display = 'inline-block';
-        } else {
-            document.getElementById('file-count').textContent = `Inga filer valda`;
-            document.getElementById('analyze-btn').style.display = 'none';
-        }
-    }
-
-    function runAnalysis() {
-        if (fileObjects.length === 0) return;
-
-        meterDatabase = {};
-        let filesProcessed = 0;
-
-        fileObjects.forEach(file => {
-            const fileDate = extractDateFromFilename(file.name);
-            const reader = new FileReader();
-
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-
-                    parseExcelData(jsonData, fileDate);
-                } catch (err) {
-                    console.error("Fel vid inläsning av fil: " + file.name, err);
-                }
-                
-                filesProcessed++;
-                if (filesProcessed === fileObjects.length) {
-                    calculateTrendsAndRender();
-                }
-            };
-            
-            reader.readAsArrayBuffer(file);
-        });
-    }
+    document.getElementById('export-btn').addEventListener('click', exportReport);
+    document.getElementById('area-filter').addEventListener('change', renderTable);
+    document.getElementById('category-filter').addEventListener('change', renderTable);
 
     function extractDateFromFilename(filename) {
-        const reg = /(\d{4}-\d{2}-\d{2})/;
-        const match = filename.match(reg);
-        if (match) return new Date(match[1]);
-        return new Date(); 
+        const match = filename.match(/(\d{4}-\d{2}-\d{2})/);
+        return match ? new Date(match[1]) : new Date();
+    }
+
+    async function runAnalysis() {
+        if (fileObjects.length === 0) return;
+        meterDatabase = {};
+        let processed = 0;
+
+        for (let file of fileObjects) {
+            const fileDate = extractDateFromFilename(file.name);
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            
+            parseExcelData(rows, fileDate);
+            processed++;
+        }
+        
+        calculateAllTrends();
+        renderTable();
     }
 
     function parseExcelData(rows, fileDate) {
         if (rows.length < 2) return;
-
-        let addressIdx = -1;
-        let serialIdx = -1;
-        let valueIdx = -1; 
-        let infoIdx = -1;
-
-        // Smart headersökning i filerna
-        const headerRow = rows.find(r => r && r.length > 0);
-        if (!headerRow) return;
-
+        
+        // Hitta headers
+        let addrIdx = -1, serialIdx = -1, valueIdx = -1, infoIdx = -1;
+        const headerRow = rows[0];
+        
         for (let i = 0; i < headerRow.length; i++) {
-            if (!headerRow[i]) continue;
-            const h = headerRow[i].toString().toLowerCase().trim();
-            if (h === 'adress') addressIdx = i;
-            if (h === 'serienummer' || h.includes('mätarnummer') || h === 'serie') serialIdx = i;
-            if (h.includes('värde') || h.includes('senaste värde') || h.includes('flöde')) valueIdx = i;
-            if (h.includes('info') || h.includes('kod') || h.includes('infokod')) infoIdx = i;
+            const h = String(headerRow[i] || "").toLowerCase();
+            if (h === 'adress') addrIdx = i;
+            if (h === 'serienummer') serialIdx = i;
+            if (h.includes('värde') || h.includes('flöde')) valueIdx = i;
+            if (h.includes('info') || h.includes('kod')) infoIdx = i;
         }
-
-        // Fallbacks om exakta matchningar saknas
-        if (addressIdx === -1) addressIdx = 1; 
-        if (serialIdx === -1) serialIdx = 2;   
-        if (valueIdx === -1) valueIdx = 4;    
-
-        const startRow = rows.indexOf(headerRow) + 1;
-
-        for (let i = startRow; i < rows.length; i++) {
+        
+        // Fallbacks
+        if (addrIdx === -1) addrIdx = 1;
+        if (serialIdx === -1) serialIdx = 2;
+        if (valueIdx === -1) valueIdx = 4;
+        
+        const dateStr = fileDate.toISOString().split('T')[0];
+        
+        for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
-            if (!row || !row[addressIdx] || !row[serialIdx]) continue;
-
-            const address = row[addressIdx].toString().trim();
-            const serial = row[serialIdx].toString().trim();
-            const latestValue = parseFloat(row[valueIdx]);
-            const infocode = infoIdx !== -1 && row[infoIdx] ? row[infoIdx].toString().trim() : "";
-
-            if (isNaN(latestValue)) continue;
-
+            if (!row || !row[addrIdx]) continue;
+            
+            const address = String(row[addrIdx]).trim();
+            const serial = row[serialIdx] ? String(row[serialIdx]).trim() : address;
+            const value = parseFloat(row[valueIdx]);
+            const infocode = infoIdx !== -1 && row[infoIdx] ? String(row[infoIdx]).trim() : "";
+            
+            if (isNaN(value)) continue;
+            
             if (!meterDatabase[serial]) {
                 meterDatabase[serial] = {
                     serial: serial,
                     address: address,
                     area: extractArea(address),
                     history: [],
-                    infocodes: new Set()
+                    infocodes: new Set(),
+                    latestValue: value,
+                    latestDate: fileDate
                 };
             }
-
-            const dateStr = fileDate.toISOString().split('T')[0];
-            const alreadyExists = meterDatabase[serial].history.some(h => h.date.toISOString().split('T')[0] === dateStr);
             
-            if (!alreadyExists) {
-                meterDatabase[serial].history.push({
-                    date: fileDate,
-                    value: latestValue
-                });
+            // Undvik dubletter samma datum
+            const existing = meterDatabase[serial].history.find(h => h.date.toISOString().split('T')[0] === dateStr);
+            if (!existing) {
+                meterDatabase[serial].history.push({ date: fileDate, value: value });
             }
-
-            if (infocode) {
-                meterDatabase[serial].infocodes.add(infocode);
+            
+            if (infocode) meterDatabase[serial].infocodes.add(infocode);
+            
+            // Uppdatera senaste värde om detta datum är nyare
+            if (fileDate > meterDatabase[serial].latestDate) {
+                meterDatabase[serial].latestValue = value;
+                meterDatabase[serial].latestDate = fileDate;
             }
         }
     }
 
     function extractArea(address) {
-        const addrUpper = address.toUpperCase();
-        if (addrUpper.includes('TUMBA')) return 'TUMBA';
-        if (addrUpper.includes('UTTRAN')) return 'UTTRAN';
-        if (addrUpper.includes('GRÖDINGE')) return 'GRÖDINGE';
-        if (addrUpper.includes('NORSBORG')) return 'NORSBORG';
-        if (addrUpper.includes('TULLINGE')) return 'TULLINGE';
+        const a = address.toUpperCase();
+        if (a.includes('TUMBA')) return 'TUMBA';
+        if (a.includes('UTTRAN')) return 'UTTRAN';
+        if (a.includes('GRÖDINGE')) return 'GRÖDINGE';
+        if (a.includes('NORSBORG')) return 'NORSBORG';
+        if (a.includes('TULLINGE')) return 'TULLINGE';
         return 'ÖVRIGT';
     }
 
-    function calculateTrendsAndRender() {
-        for (const serial in meterDatabase) {
-            const meter = meterDatabase[serial];
+    // --------------------------------------------------------------
+    // 2. KÄRNAN: AVANCERAD KLASSIFICERING (med jämförelser)
+    // --------------------------------------------------------------
+    function calculateAllTrends() {
+        for (let id in meterDatabase) {
+            const m = meterDatabase[id];
+            m.history.sort((a,b) => a.date - b.date);
             
-            meter.history.sort((a, b) => a.date - b.date);
-
-            const firstEntry = meter.history[0];
-            const lastEntry = meter.history[meter.history.length - 1];
-
-            meter.firstValue = firstEntry.value;
-            meter.latestValue = lastEntry.value;
+            if (m.history.length === 0) continue;
             
-            const diffTime = Math.abs(lastEntry.date - firstEntry.date);
-            meter.daysOfHistory = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (meter.firstValue === 0) {
-                meter.percentChange = meter.latestValue > 0 ? meter.latestValue * 100 : 0;
-            } else {
-                meter.percentChange = ((meter.latestValue - meter.firstValue) / meter.firstValue) * 100;
+            const first = m.history[0];
+            const last = m.history[m.history.length - 1];
+            m.firstValue = first.value;
+            m.latestValue = last.value;
+            m.daysOfHistory = Math.ceil((last.date - first.date) / (1000*60*60*24));
+            
+            // Procentuell förändring
+            if (m.firstValue === 0) m.percentChange = m.latestValue > 0 ? 100 : 0;
+            else m.percentChange = ((m.latestValue - m.firstValue) / m.firstValue) * 100;
+            
+            // Högsta uppmätta värde
+            m.maxValue = Math.max(...m.history.map(h => h.value));
+            
+            // Beräkna vinter/sommar-medelvärden
+            let winterValues = [], summerValues = [];
+            for (let h of m.history) {
+                const month = h.date.getMonth() + 1;
+                // Vinter: november - mars (11,12,1,2,3)
+                if ([11,12,1,2,3].includes(month)) winterValues.push(h.value);
+                // Sommar: maj - september (5,6,7,8,9)
+                if ([5,6,7,8,9].includes(month)) summerValues.push(h.value);
             }
-
-            meter.aiClassification = smartClassify(meter);
+            
+            m.winterAvg = winterValues.length ? winterValues.reduce((a,b)=>a+b,0)/winterValues.length : null;
+            m.summerAvg = summerValues.length ? summerValues.reduce((a,b)=>a+b,0)/summerValues.length : null;
+            
+            // Detektera toppar som har återgått (störning)
+            let peakDetected = false;
+            for (let i = 1; i < m.history.length - 1; i++) {
+                const prev = m.history[i-1].value;
+                const curr = m.history[i].value;
+                const next = m.history[i+1].value;
+                if (curr > prev * 1.8 && curr > next * 1.5 && curr > 80) {
+                    peakDetected = true;
+                    break;
+                }
+            }
+            m.hasPeakThatReturned = peakDetected;
+            
+            // Konstant högt värde (stabilitet)
+            const recentValues = m.history.slice(-3).map(h => h.value);
+            const avgRecent = recentValues.reduce((a,b)=>a+b,0)/recentValues.length;
+            const isStableHigh = avgRecent > 80 && recentValues.every(v => Math.abs(v - avgRecent) < avgRecent * 0.3);
+            m.isStableHigh = isStableHigh;
+            
+            // KLASSIFICERA
+            m.classification = smartClassify(m);
         }
-
-        updateTable();
     }
 
-    function smartClassify(meter) {
-        const addrLower = meter.address.toLowerCase();
+    function smartClassify(m) {
+        // 1. Kolla Infokod för LEAK (kundens ansvar)
+        for (let code of m.infocodes) {
+            if (code.toUpperCase().includes('LEAK')) {
+                return { type: "LEAK_CUSTOMER", label: "📬 KUNDLÄCKAGE", desc: "LEAK i systemet - efter mätaren", priority: 2, action: "Informera kunden" };
+            }
+            if (code.includes("Ej fastställt") || code.includes("Annat brus")) {
+                // Detta är en viktig indikator på STÖRNING (fjärrvärme, pump etc)
+                if (m.latestValue > 50) {
+                    return { type: "DISTURBANCE", label: "⚡ STÖRNING (Fjärrvärme/Pump)", desc: "Infokod: 'Ej fastställt' tyder på extern störning", priority: 5, action: "Ingen åtgärd - övervaka" };
+                }
+            }
+        }
         
-        for (const hp of knownHeatpumps) {
-            if (addrLower.includes(hp)) return "🔥 Värmepanna";
-        }
-
-        let hasLeakCode = false;
-        meter.infocodes.forEach(code => {
-            if (code.toUpperCase().includes('LEAK')) hasLeakCode = true;
-        });
-        if (hasLeakCode) return "📬 Kundläckage";
-
-        if (meter.latestValue >= 500) {
-            return "🚨 Aktivt läckage (Skyhögt värde!)";
-        }
-
-        if (meter.daysOfHistory < 90) {
-            if (meter.latestValue > 150) {
-                return "🆕 Ny (Kort historik) - Misstänkt Hög";
+        // 2. Kort historik (< 30 dagar)
+        if (m.daysOfHistory < 30) {
+            if (m.latestValue > 150) {
+                return { type: "SUSPECT", label: "⚠️ MISSTÄNKT (ny mätare)", desc: "Kort historik men högt värde", priority: 3, action: "Kontrollera inom 2 veckor" };
             }
-            return "🌱 Ny (Kort historik) - Osäkert Mönster";
+            return { type: "SUSPECT", label: "🌱 NY MÄTARE", desc: "För kort historik för säker bedömning", priority: 6, action: "Samla in mer data" };
         }
-
-        let upsAndDowns = 0;
-        for (let i = 1; i < meter.history.length; i++) {
-            const current = meter.history[i].value;
-            const previous = meter.history[i-1].value;
-            if (Math.abs(current - previous) > 20) {
-                upsAndDowns++;
+        
+        // 3. VÄRMEPANNA - säsongsjämförelse (hög vinter, låg sommar)
+        if (m.winterAvg !== null && m.summerAvg !== null && m.winterAvg > 0 && m.summerAvg > 0) {
+            const ratio = m.winterAvg / m.summerAvg;
+            // Om vinter > sommar med faktor 1.5 och vinter > 40
+            if (ratio > 1.5 && m.winterAvg > 40 && m.summerAvg < 60) {
+                return { type: "HEATPUMP", label: "🔥 VÄRMEPANNA", desc: `Vinter ${Math.round(m.winterAvg)} / Sommar ${Math.round(m.summerAvg)} (ratio ${ratio.toFixed(1)})`, priority: 7, action: "Normalt säsongsmönster" };
             }
         }
-
-        let winterSum = 0, winterCount = 0;
-        let summerSum = 0, summerCount = 0;
-
-        meter.history.forEach(h => {
-            const month = h.date.getMonth();
-            if (month >= 9 || month <= 2) { 
-                winterSum += h.value;
-                winterCount++;
-            } else {
-                summerSum += h.value;
-                summerCount++;
-            }
-        });
-
-        const winterAvg = winterCount > 0 ? winterSum / winterCount : 0;
-        const summerAvg = summerCount > 0 ? summerSum / summerCount : 0;
-
-        if (summerAvg > 0 && (winterAvg / summerAvg) > 1.7) {
-            return "🔥 Värmepanna";
+        
+        // 4. TILLFÄLLIG TOPP som återgått = STÖRNING (fjärrvärme, pump, trafik)
+        if (m.hasPeakThatReturned && m.latestValue < 50) {
+            return { type: "DISTURBANCE", label: "⚡ STÖRNING", desc: "Tillfällig topp som återgått till normal nivå", priority: 5, action: "Ingen åtgärd" };
         }
-
-        if (meter.history.length >= 2) {
-            const vals = meter.history.map(h => h.value);
-            const maxVal = Math.max(...vals);
-
-            if (maxVal > 80 && meter.latestValue < 40 && meter.percentChange < -30) {
-                return "✅ Lagat";
-            }
-
-            if (upsAndDowns > 2 && meter.latestValue < 50) {
-                return "⚡ Störning (Hoppar upp/ner)";
-            }
+        
+        // 5. KONSTANT HÖGT värde = AKTIVT LÄCKAGE (vår sida)
+        if (m.isStableHigh && m.latestValue > 80 && m.percentChange > -20) {
+            return { type: "LEAK_ACTIVE", label: "🚨 AKTIVT LÄCKAGE", desc: `Konstant högt flöde (${Math.round(m.latestValue)}), ingen säsongsvariation`, priority: 1, action: "Åk dit OMGÅENDE!" };
         }
-
-        if (meter.latestValue > 80 && Math.abs(meter.percentChange) < 30) {
-            return "🚨 Aktivt läckage";
+        
+        // 6. LAGAT LÄCKAGE - har gått ner signifikant
+        if (m.percentChange < -40 && m.latestValue < 50 && m.maxValue > 100) {
+            return { type: "REPAIRED", label: "✅ LAGAT LÄCKAGE", desc: `Minskning med ${Math.abs(Math.round(m.percentChange))}%`, priority: 4, action: "Bekräfta åtgärd" };
         }
-
-        if (meter.percentChange > 40) {
-            return "⚠️ Misstänkt";
+        
+        // 7. ÖKANDE trend - MISSTÄNKT
+        if (m.percentChange > 50 && m.latestValue > 50) {
+            return { type: "SUSPECT", label: "⚠️ MISSTÄNKT", desc: `Ökat med ${Math.round(m.percentChange)}% på ${m.daysOfHistory} dagar`, priority: 3, action: "Boka uppföljning" };
         }
-
-        return "Normal drift";
+        
+        // 8. SOMMARHÖGT värde (maj-sep) utan säsongsmönster = STÖRNING eller LÄCKAGE
+        const currentMonth = new Date().getMonth() + 1;
+        const isSummerNow = [5,6,7,8,9].includes(currentMonth);
+        if (isSummerNow && m.latestValue > 100 && m.summerAvg && m.summerAvg > 80) {
+            return { type: "SUSPECT", label: "⚠️ MISSTÄNKT (sommarhögt)", desc: `Högt värde på sommaren (${Math.round(m.latestValue)}) - kan vara kylsystem eller läckage`, priority: 3, action: "Fältkontroll rekommenderas" };
+        }
+        
+        // 9. Default: Normal
+        return { type: "NORMAL", label: "✅ Normal drift", desc: `Inga avvikelser detekterade`, priority: 8, action: "Övervaka rutin" };
     }
 
-    function updateTable() {
+    // --------------------------------------------------------------
+    // 3. RENDERERING
+    // --------------------------------------------------------------
+    function renderTable() {
         const areaFilter = document.getElementById('area-filter').value;
         const catFilter = document.getElementById('category-filter').value;
         const tbody = document.getElementById('table-body');
-        tbody.innerHTML = '';
-
-        let activeCount = 0, customerCount = 0, fixedCount = 0, totalCount = 0;
-        let metersArray = Object.values(meterDatabase);
-
-        if (metersArray.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #888; padding: 40px;">Klicka på knappen "Kör mönsteranalys" för att visa resultaten.</td></tr>`;
+        
+        let meters = Object.values(meterDatabase);
+        if (meters.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px;">Ingen data laddad. Kör analys först.</td></tr>';
+            updateStatsAndInsight([]);
             return;
         }
-
-        metersArray.sort((a, b) => b.percentChange - a.percentChange);
-
-        metersArray.forEach(meter => {
-            const userCat = userClassifications[meter.serial] || "Oklassificerad";
-            const isHidden = hiddenMeters.includes(meter.serial);
-            const isFavorite = favoriteMeters.includes(meter.serial);
-
-            if (userCat === "🚨 Aktivt läckage" || (userCat === "Oklassificerad" && meter.aiClassification.includes("🚨"))) activeCount++;
-            if (userCat === "📬 Kundläckage" || (userCat === "Oklassificerad" && meter.aiClassification.includes("📬"))) customerCount++;
-            if (userCat === "✅ Lagat" || (userCat === "Oklassificerad" && meter.aiClassification.includes("✅"))) fixedCount++;
-            totalCount++;
-
-            if (areaFilter !== 'ALL' && meter.area !== areaFilter) return;
-            
-            if (catFilter === 'HIDDEN') {
-                if (!isHidden) return;
-            } else if (catFilter === 'FAVORITE') {
-                if (!isFavorite) return;
-            } else {
-                if (isHidden) return; 
-                if (catFilter !== 'ALL') {
-                    if (catFilter === 'Oklassificerad' && userCat !== 'Oklassificerad') return;
-                    if (catFilter !== 'Oklassificerad' && userCat !== catFilter && !meter.aiClassification.startsWith(catFilter)) return;
-                }
+        
+        // Filter
+        meters = meters.filter(m => {
+            if (areaFilter !== 'ALL' && m.area !== areaFilter) return false;
+            if (catFilter === 'HIDDEN') return hiddenMeters.includes(m.serial);
+            if (catFilter === 'FAVORITE') return favoriteMeters.includes(m.serial);
+            if (catFilter !== 'ALL' && catFilter !== 'HIDDEN' && catFilter !== 'FAVORITE') {
+                if (hiddenMeters.includes(m.serial)) return false;
+                return m.classification.type === catFilter;
             }
-
-            let badgeClass = 'badge-secondary';
-            if (meter.aiClassification.includes('🚨')) badgeClass = 'badge-danger';
-            if (meter.aiClassification.includes('📬')) badgeClass = 'badge-warning';
-            if (meter.aiClassification.includes('✅')) badgeClass = 'badge-success';
-            if (meter.aiClassification.includes('⚠️')) badgeClass = 'badge-warning';
-            if (meter.aiClassification.includes('🔥')) badgeClass = 'badge-purple';
-            if (meter.aiClassification.includes('⚡')) badgeClass = 'badge-info';
-            if (meter.aiClassification.includes('🆕')) badgeClass = 'badge-light-orange';
-            if (meter.aiClassification.includes('🌱')) badgeClass = 'badge-light-blue';
-
-            const tr = document.createElement('tr');
-            if (isHidden) tr.className = 'hidden-row';
-
-            const historyText = meter.daysOfHistory === 0 ? "1 dag" : `${meter.daysOfHistory} dagar`;
-
-            tr.innerHTML = `
-                <td style="cursor:pointer;" onclick="toggleFavorite('${meter.serial}')">${isFavorite ? '⭐' : '☆'}</td>
-                <td>${meter.area}</td>
-                <td><strong>${meter.address}</strong></td>
-                <td><code>${meter.serial}</code></td>
-                <td><span class="badge ${badgeClass}">${meter.aiClassification}</span></td>
-                <td><span class="history-days">${historyText} (${meter.history.length} mätpunkter)</span></td>
-                <td style="color: ${meter.percentChange > 0 ? '#ff4a4a' : '#2ecc71'}; font-weight: bold;">
-                    ${meter.percentChange > 0 ? '+' : ''}${meter.percentChange.toFixed(1)}%
-                </td>
-                <td><strong>${meter.latestValue}</strong></td>
-                <td><span class="badge ${userCat !== 'Oklassificerad' ? 'badge-info' : 'badge-secondary'}">${userCat}</span></td>
+            if (catFilter === 'ALL' && hiddenMeters.includes(m.serial)) return false;
+            return true;
+        });
+        
+        // Sortera efter prioritet
+        meters.sort((a,b) => (a.classification.priority || 99) - (b.classification.priority || 99));
+        
+        tbody.innerHTML = '';
+        for (let m of meters) {
+            const isHidden = hiddenMeters.includes(m.serial);
+            const isFavorite = favoriteMeters.includes(m.serial);
+            const userCat = userCategories[m.serial];
+            const displayCat = userCat || m.classification.label;
+            
+            let badgeClass = 'badge';
+            if (m.classification.type === 'LEAK_ACTIVE') badgeClass += ' badge-active';
+            else if (m.classification.type === 'LEAK_CUSTOMER') badgeClass += ' badge-customer';
+            else if (m.classification.type === 'REPAIRED') badgeClass += ' badge-repaired';
+            else if (m.classification.type === 'SUSPECT') badgeClass += ' badge-suspect';
+            else if (m.classification.type === 'HEATPUMP') badgeClass += ' badge-heatpump';
+            else if (m.classification.type === 'DISTURBANCE') badgeClass += ' badge-disturbance';
+            
+            const trendClass = m.percentChange > 0 ? 'trend-up' : 'trend-down';
+            const trendSymbol = m.percentChange > 0 ? '▲' : '▼';
+            
+            const row = document.createElement('tr');
+            if (isHidden) row.className = 'hidden-row';
+            
+            row.innerHTML = `
+                <td style="cursor:pointer;" onclick="toggleFavorite('${m.serial}')">${isFavorite ? '⭐' : '☆'}</td>
+                <td>${m.area}</td>
+                <td><strong>${m.address.substring(0,45)}</strong></td>
+                <td><code>${m.serial.substring(0,12)}</code></td>
+                <td><span class="${badgeClass}">${m.classification.label}</span><br><small style="color:#666;">${m.classification.desc}</small></td>
+                <td class="${trendClass}">${trendSymbol} ${Math.abs(m.percentChange).toFixed(1)}% (${m.daysOfHistory}d)</td>
+                <td><strong>${m.latestValue}</strong></td>
+                <td>${m.maxValue}</td>
                 <td>
-                    <select class="action-select" onchange="classifyMeter('${meter.serial}', this.value)">
-                        <option value="">Välj åtgärd...</option>
-                        <option value="🚨 Aktivt läckage">🚨 Aktivt läckage</option>
-                        <option value="📬 Kundläckage">📬 Kundläckage</option>
-                        <option value="✅ Lagat">✅ Lagat</option>
-                        <option value="⚠️ Misstänkt">⚠️ Misstänkt</option>
-                        <option value="🔥 Värmepanna">🔥 Värmepanna</option>
-                        <option value="⚡ Störning">⚡ Störning</option>
-                        <option value="Oklassificerad">Nollställ</option>
-                        <option value="TOGGLE_HIDE">${isHidden ? 'Visa mätare' : 'Göm mätare'}</option>
+                    <select onchange="updateCategory('${m.serial}', this.value)" style="padding:4px; border-radius:12px;">
+                        <option value="">Välj...</option>
+                        <option value="🚨 AKTIVT LÄCKAGE" ${displayCat === '🚨 AKTIVT LÄCKAGE' ? 'selected' : ''}>🚨 AKTIVT LÄCKAGE</option>
+                        <option value="📬 KUNDLÄCKAGE" ${displayCat === '📬 KUNDLÄCKAGE' ? 'selected' : ''}>📬 KUNDLÄCKAGE</option>
+                        <option value="✅ LAGAT" ${displayCat === '✅ LAGAT' ? 'selected' : ''}>✅ LAGAT</option>
+                        <option value="⚠️ MISSTÄNKT" ${displayCat === '⚠️ MISSTÄNKT' ? 'selected' : ''}>⚠️ MISSTÄNKT</option>
+                        <option value="🔥 VÄRMEPANNA" ${displayCat === '🔥 VÄRMEPANNA' ? 'selected' : ''}>🔥 VÄRMEPANNA</option>
+                        <option value="⚡ STÖRNING" ${displayCat === '⚡ STÖRNING' ? 'selected' : ''}>⚡ STÖRNING</option>
+                        <option value="HIDDEN_TOGGLE">${isHidden ? '👁️ Visa' : '🙈 Göm'}</option>
                     </select>
                 </td>
+                <td><small>${m.classification.action}</small></td>
             `;
-            tbody.appendChild(tr);
-        });
-
-        document.getElementById('stat-active').textContent = activeCount;
-        document.getElementById('stat-customer').textContent = customerCount;
-        document.getElementById('stat-fixed').textContent = fixedCount;
-        document.getElementById('stat-total').textContent = totalCount;
-
-        if (tbody.children.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #888; padding: 40px;">Inga mätare matchar dina valda filter.</td></tr>`;
+            tbody.appendChild(row);
         }
+        
+        updateStatsAndInsight(meters);
     }
 
-    function classifyMeter(serial, value) {
-        if (!value) return;
+    function updateStatsAndInsight(meters) {
+        const active = meters.filter(m => m.classification.type === 'LEAK_ACTIVE' && !hiddenMeters.includes(m.serial)).length;
+        const customer = meters.filter(m => m.classification.type === 'LEAK_CUSTOMER' && !hiddenMeters.includes(m.serial)).length;
+        const repaired = meters.filter(m => m.classification.type === 'REPAIRED' && !hiddenMeters.includes(m.serial)).length;
+        const suspect = meters.filter(m => m.classification.type === 'SUSPECT' && !hiddenMeters.includes(m.serial)).length;
+        const heatpump = meters.filter(m => m.classification.type === 'HEATPUMP' && !hiddenMeters.includes(m.serial)).length;
+        const disturbance = meters.filter(m => m.classification.type === 'DISTURBANCE' && !hiddenMeters.includes(m.serial)).length;
+        
+        document.getElementById('stats-grid').innerHTML = `
+            <div class="stat-card" style="border-left-color:#c0392b;" onclick="setFilter('LEAK_ACTIVE')"><div>🚨 AKTIVA LÄCKAGE</div><div class="stat-num">${active}</div></div>
+            <div class="stat-card" style="border-left-color:#e67e22;" onclick="setFilter('LEAK_CUSTOMER')"><div>📬 KUNDLÄCKAGE</div><div class="stat-num">${customer}</div></div>
+            <div class="stat-card" style="border-left-color:#27ae60;" onclick="setFilter('REPAIRED')"><div>✅ LAGADE</div><div class="stat-num">${repaired}</div></div>
+            <div class="stat-card" style="border-left-color:#f39c12;" onclick="setFilter('SUSPECT')"><div>⚠️ MISSTÄNKTA</div><div class="stat-num">${suspect}</div></div>
+            <div class="stat-card" style="border-left-color:#e67e22;" onclick="setFilter('HEATPUMP')"><div>🔥 VÄRMEPANNOR</div><div class="stat-num">${heatpump}</div></div>
+            <div class="stat-card" style="border-left-color:#7f8c8d;" onclick="setFilter('DISTURBANCE')"><div>⚡ STÖRNINGAR</div><div class="stat-num">${disturbance}</div></div>
+        `;
+        
+        document.getElementById('insight-box').innerHTML = `
+            <strong>🧠 INLÄRD MÖNSTERANALYS:</strong><br>
+            • 🔥 <strong>Värmepannor</strong> identifieras genom att jämföra vinter-värden (höga) med sommar-värden (låga).<br>
+            • ⚡ <strong>Störningar</strong> (fjärrvärme, pumpar) känns igen på tillfälliga toppar som återgår eller "Ej fastställt" i Infokod.<br>
+            • 🚨 <strong>Aktivt läckage</strong> = konstant högt flöde (>80) utan säsongsvariation.<br>
+            • 📬 <strong>Kundleckage</strong> = LEAK i Infokod (efter mätaren).<br>
+            • ⚠️ <strong>Misstänkta</strong> = ökande trend eller sommarhöga värden som inte passar annat mönster.<br>
+            📊 <strong>Totalt analyserade mätare:</strong> ${Object.keys(meterDatabase).length}
+        `;
+    }
 
-        if (value === "TOGGLE_HIDE") {
+    function setFilter(type) {
+        document.getElementById('category-filter').value = type;
+        renderTable();
+    }
+
+    function updateCategory(serial, value) {
+        if (value === 'HIDDEN_TOGGLE') {
             const idx = hiddenMeters.indexOf(serial);
             if (idx > -1) hiddenMeters.splice(idx, 1);
             else hiddenMeters.push(serial);
-        } else {
-            userClassifications[serial] = value;
+            localStorage.setItem('lacksok_pro_hidden', JSON.stringify(hiddenMeters));
+        } else if (value) {
+            userCategories[serial] = value;
+            localStorage.setItem('lacksok_pro_cats', JSON.stringify(userCategories));
         }
-
-        saveToLocalStorage();
-        updateTable();
+        renderTable();
     }
 
     function toggleFavorite(serial) {
         const idx = favoriteMeters.indexOf(serial);
         if (idx > -1) favoriteMeters.splice(idx, 1);
         else favoriteMeters.push(serial);
-        
-        saveToLocalStorage();
-        updateTable();
+        localStorage.setItem('lacksok_pro_fav', JSON.stringify(favoriteMeters));
+        renderTable();
     }
+    
+    function exportReport() {
+        const meters = Object.values(meterDatabase);
+        const data = meters.map(m => ({
+            'Adress': m.address,
+            'Serienummer': m.serial,
+            'Område': m.area,
+            'Analys': m.classification.label,
+            'Detaljer': m.classification.desc,
+            'Förändring %': m.percentChange?.toFixed(1) || 0,
+            'Senaste värde': m.latestValue,
+            'Högsta värde': m.maxValue,
+            'Antal mätningar': m.history.length,
+            'Period (dagar)': m.daysOfHistory,
+            'Vinter-medel': m.winterAvg ? Math.round(m.winterAvg) : '-',
+            'Sommar-medel': m.summerAvg ? Math.round(m.summerAvg) : '-',
+            'Föreslagen åtgärd': m.classification.action,
+            'Infokoder': Array.from(m.infocodes).join(', ')
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Läcksök_Rapport");
+        XLSX.writeFile(wb, `lacksok_rapport_${new Date().toISOString().slice(0,19)}.xlsx`);
+    }
+    
+    window.updateCategory = updateCategory;
+    window.toggleFavorite = toggleFavorite;
+    window.setFilter = setFilter;
+    
+    renderTable();
 </script>
-
 </body>
 </html>

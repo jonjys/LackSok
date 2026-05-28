@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksökning & Mönsteranalys</title>
+    <title>Läcksök - Inlärd mönsteranalys</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.185/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -87,6 +87,10 @@
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #11998e, #38ef7d);
         }
 
         .filter-group {
@@ -199,15 +203,16 @@
 
 <div class="container">
     <header>
-        <h1>Karma</h1>
-        <p>Intelligent Läcksökning & Mönsteranalys för Vattenmätare</p>
+        <h1>Läcksök</h1>
+        <p>Intelligent mönsteranalys för vattenmätare</p>
     </header>
 
     <div class="controls">
         <div class="file-upload">
-            <label class="btn" for="excel-files">Släpp eller välj Excel-filer...</label>
+            <label class="btn" for="excel-files">Välj Excel-filer...</label>
             <input type="file" id="excel-files" multiple accept=".xlsx, .xls, .csv">
-            <span id="file-count" style="margin-left: 10px; font-size: 14px;">Inga filer valda</span>
+            <span id="file-count" style="margin-left: 10px; font-size: 14px; font-weight: bold;">Inga filer valda</span>
+            <button id="analyze-btn" class="btn btn-success" style="margin-left: 15px; display: none;">Kör mönsteranalys</button>
         </div>
 
         <div class="filter-group">
@@ -286,9 +291,10 @@
 
 <script>
     let meterDatabase = {};
-    let userClassifications = JSON.parse(localStorage.getItem('karma_classifications')) || {};
-    let hiddenMeters = JSON.parse(localStorage.getItem('karma_hidden')) || [];
-    let favoriteMeters = JSON.parse(localStorage.getItem('karma_favorites')) || [];
+    let selectedFiles = [];
+    let userClassifications = JSON.parse(localStorage.getItem('lacksok_classifications')) || {};
+    let hiddenMeters = JSON.parse(localStorage.getItem('lacksok_hidden')) || [];
+    let favoriteMeters = JSON.parse(localStorage.getItem('lacksok_favorites')) || [];
 
     const knownHeatpumps = [
         "alice tegnérs väg 23",
@@ -299,24 +305,33 @@
     ];
 
     document.getElementById('excel-files').addEventListener('change', handleFileSelect);
+    document.getElementById('analyze-btn').addEventListener('click', runAnalysis);
     document.getElementById('area-filter').addEventListener('change', updateTable);
     document.getElementById('category-filter').addEventListener('change', updateTable);
 
     function saveToLocalStorage() {
-        localStorage.setItem('karma_classifications', JSON.stringify(userClassifications));
-        localStorage.setItem('karma_hidden', JSON.stringify(hiddenMeters));
-        localStorage.setItem('karma_favorites', JSON.stringify(favoriteMeters));
+        localStorage.setItem('lacksok_classifications', JSON.stringify(userClassifications));
+        localStorage.setItem('lacksok_hidden', JSON.stringify(hiddenMeters));
+        localStorage.setItem('lacksok_favorites', JSON.stringify(favoriteMeters));
     }
 
     function handleFileSelect(event) {
-        const files = event.target.files;
-        document.getElementById('file-count').textContent = `${files.length} fil(er) vald(a)`;
-        
+        selectedFiles = event.target.files;
+        if (selectedFiles.length > 0) {
+            document.getElementById('file-count').textContent = `${selectedFiles.length} fil(er) vald(a)`;
+            document.getElementById('analyze-btn').style.display = 'inline-block';
+        } else {
+            document.getElementById('file-count').textContent = `Inga filer valda`;
+            document.getElementById('analyze-btn').style.display = 'none';
+        }
+    }
+
+    function runAnalysis() {
         meterDatabase = {};
         let filesProcessed = 0;
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
             const fileDate = extractDateFromFilename(file.name);
             const reader = new FileReader();
 
@@ -331,7 +346,7 @@
                     parseExcelData(jsonData, currentFileDate);
                     
                     filesProcessed++;
-                    if (filesProcessed === files.length) {
+                    if (filesProcessed === selectedFiles.length) {
                         calculateTrendsAndRender();
                     }
                 };
@@ -443,34 +458,27 @@
     function smartClassify(meter) {
         const addrLower = meter.address.toLowerCase();
         
-        // 1. Alltid högsta prioritet: Kända manuella adresser
         for (const hp of knownHeatpumps) {
             if (addrLower.includes(hp)) return "🔥 Värmepanna";
         }
 
-        // 2. Direkt Leak Detector-kodtrigg
         let hasLeakCode = false;
         meter.infocodes.forEach(code => {
             if (code.toUpperCase().includes('LEAK')) hasLeakCode = true;
         });
         if (hasLeakCode) return "📬 Kundläckage";
 
-        // 3. EXTREMA VÄRDEN (Fånga upp akuta läckor direkt, oavsett historikens längd)
         if (meter.latestValue >= 500) {
             return "🚨 Aktivt läckage (Skyhögt värde!)";
         }
 
-        // 4. HANTERING AV NYA MÄTARE (Kort historik under 90 dagar / ej två säsonger)
         if (meter.daysOfHistory < 90) {
-            // Om värdet redan är anmärkningsvärt högt (t.ex. över 150) så är det troligtvis fel eller direkt läcka
             if (meter.latestValue > 150) {
                 return "🆕 Ny (Kort historik) - Misstänkt Hög";
             }
-            // Om mätaren är ny men har normala/lägre värden (t.ex. runt 40) vet vi inget säkert än
             return "🌱 Ny (Kort historik) - Osäkert Mönster";
         }
 
-        // 5. JOJO-ANALYS (Upp och ner) för mätare med lång historik
         let upsAndDowns = 0;
         for (let i = 1; i < meter.history.length; i++) {
             const current = meter.history[i].value;
@@ -480,7 +488,6 @@
             }
         }
 
-        // 6. SÄSONGSANALYS (Kräver lång historik)
         let winterSum = 0, winterCount = 0;
         let summerSum = 0, summerCount = 0;
 
@@ -502,7 +509,6 @@
             return "🔥 Värmepanna";
         }
 
-        // 7. HISTORISKA TRENDER
         if (meter.history.length >= 2) {
             const vals = meter.history.map(h => h.value);
             const maxVal = Math.max(...vals);

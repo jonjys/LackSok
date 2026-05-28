@@ -64,8 +64,10 @@
         }
 
         .file-upload {
-            position: relative;
-            display: inline-block;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
         }
 
         .file-upload input[type="file"] {
@@ -75,7 +77,7 @@
         .btn {
             background: linear-gradient(45deg, var(--primary), var(--secondary));
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
             border: none;
@@ -210,9 +212,9 @@
     <div class="controls">
         <div class="file-upload">
             <label class="btn" for="excel-files">Välj Excel-filer...</label>
-            <input type="file" id="excel-files" multiple accept=".xlsx, .xls, .csv">
-            <span id="file-count" style="margin-left: 10px; font-size: 14px; font-weight: bold;">Inga filer valda</span>
-            <button id="analyze-btn" class="btn btn-success" style="margin-left: 15px; display: none;">Kör mönsteranalys</button>
+            <input type="file" id="excel-files" multiple>
+            <span id="file-count" style="font-size: 14px; font-weight: bold;">Inga filer valda</span>
+            <button id="analyze-btn" class="btn btn-success" style="display: none;">Kör mönsteranalys</button>
         </div>
 
         <div class="filter-group">
@@ -291,7 +293,7 @@
 
 <script>
     let meterDatabase = {};
-    let selectedFiles = [];
+    let fileObjects = [];
     let userClassifications = JSON.parse(localStorage.getItem('lacksok_classifications')) || {};
     let hiddenMeters = JSON.parse(localStorage.getItem('lacksok_hidden')) || [];
     let favoriteMeters = JSON.parse(localStorage.getItem('lacksok_favorites')) || [];
@@ -316,9 +318,11 @@
     }
 
     function handleFileSelect(event) {
-        selectedFiles = event.target.files;
-        if (selectedFiles.length > 0) {
-            document.getElementById('file-count').textContent = `${selectedFiles.length} fil(er) vald(a)`;
+        // Spara filerna i en global variabel så vi kommer åt dem ordentligt vid knapptryck
+        fileObjects = Array.from(event.target.files);
+        
+        if (fileObjects.length > 0) {
+            document.getElementById('file-count').textContent = `${fileObjects.length} fil(er) vald(a)`;
             document.getElementById('analyze-btn').style.display = 'inline-block';
         } else {
             document.getElementById('file-count').textContent = `Inga filer valda`;
@@ -327,33 +331,36 @@
     }
 
     function runAnalysis() {
+        if (fileObjects.length === 0) return;
+
         meterDatabase = {};
         let filesProcessed = 0;
 
-        for (let i = 0; i < selectedFiles.length; i++) {
-            const file = selectedFiles[i];
+        fileObjects.forEach(file => {
             const fileDate = extractDateFromFilename(file.name);
             const reader = new FileReader();
 
-            reader.onload = (function(currentFileDate) {
-                return function(e) {
+            reader.onload = function(e) {
+                try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
 
-                    parseExcelData(jsonData, currentFileDate);
-                    
-                    filesProcessed++;
-                    if (filesProcessed === selectedFiles.length) {
-                        calculateTrendsAndRender();
-                    }
-                };
-            })(fileDate);
+                    parseExcelData(jsonData, fileDate);
+                } catch (err) {
+                    console.error("Fel vid inläsning av fil: " + file.name, err);
+                }
+                
+                filesProcessed++;
+                if (filesProcessed === fileObjects.length) {
+                    calculateTrendsAndRender();
+                }
+            };
             
             reader.readAsArrayBuffer(file);
-        }
+        });
     }
 
     function extractDateFromFilename(filename) {
@@ -366,24 +373,34 @@
     function parseExcelData(rows, fileDate) {
         if (rows.length < 2) return;
 
-        let addressIdx = 0;
-        let serialIdx = 1;
-        let valueIdx = 4; 
+        let addressIdx = -1;
+        let serialIdx = -1;
+        let valueIdx = -1; 
         let infoIdx = -1;
 
-        const headerRow = rows[0];
+        // Smart headersökning i filerna
+        const headerRow = rows.find(r => r && r.length > 0);
+        if (!headerRow) return;
+
         for (let i = 0; i < headerRow.length; i++) {
             if (!headerRow[i]) continue;
-            const h = headerRow[i].toString().toLowerCase();
-            if (h.includes('adress')) addressIdx = i;
-            if (h.includes('serie') || h.includes('mätarnummer')) serialIdx = i;
-            if (h.includes('värde') || h.includes('sensate') || h.includes('senaste')) valueIdx = i;
-            if (h.includes('info') || h.includes('kod')) infoIdx = i;
+            const h = headerRow[i].toString().toLowerCase().trim();
+            if (h === 'adress') addressIdx = i;
+            if (h === 'serienummer' || h.includes('mätarnummer') || h === 'serie') serialIdx = i;
+            if (h.includes('värde') || h.includes('senaste värde') || h.includes('flöde')) valueIdx = i;
+            if (h.includes('info') || h.includes('kod') || h.includes('infokod')) infoIdx = i;
         }
 
-        for (let i = 1; i < rows.length; i++) {
+        // Fallbacks om exakta matchningar saknas
+        if (addressIdx === -1) addressIdx = 1; 
+        if (serialIdx === -1) serialIdx = 2;   
+        if (valueIdx === -1) valueIdx = 4;    
+
+        const startRow = rows.indexOf(headerRow) + 1;
+
+        for (let i = startRow; i < rows.length; i++) {
             const row = rows[i];
-            if (!row[addressIdx] || !row[serialIdx]) continue;
+            if (!row || !row[addressIdx] || !row[serialIdx]) continue;
 
             const address = row[addressIdx].toString().trim();
             const serial = row[serialIdx].toString().trim();
@@ -541,6 +558,11 @@
 
         let activeCount = 0, customerCount = 0, fixedCount = 0, totalCount = 0;
         let metersArray = Object.values(meterDatabase);
+
+        if (metersArray.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #888; padding: 40px;">Klicka på knappen "Kör mönsteranalys" för att visa resultaten.</td></tr>`;
+            return;
+        }
 
         metersArray.sort((a, b) => b.percentChange - a.percentChange);
 

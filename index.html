@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök Pro - Inlärd Mönsteranalys & Gatu-klustring</title>
+    <title>Karma - Avancerad Läcksök & Mönsteranalys</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -152,15 +152,15 @@
 <body>
 <div class="app-container">
     <div class="header">
-        <h1>🔍 Läcksök Pro</h1>
-        <p>Avancerad Mönsteranalys • Gatu-klustring (Brandpost-detektering) • Varianskontroll för Bakgrundsläckor</p>
+        <h1>🔍 Karma - Läcksök Pro</h1>
+        <p>Avancerad Mönsteranalys • Gatu-klustring • Integrerad Varianskontroll</p>
     </div>
     
     <div class="main-card">
         <div class="upload-section">
             <div class="upload-area">
                 <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
-                <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
+                <input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv" style="display:none">
                 <button id="analyzeBtn" class="btn btn-success">🔬 KÖR ULTIMAT ANALYS</button>
                 <button id="clearBtn" class="btn btn-outline">🗑️ Rensa allt</button>
             </div>
@@ -187,7 +187,7 @@
                 <button class="category-btn all active" data-category="all">📋 Alla mätare</button>
                 <button class="category-btn extreme" data-category="extreme">🔴 EXTREM ÖKNING</button>
                 <button class="category-btn active_leak" data-category="active_leak">🚨 AKTIVT LÄCKAGE</button>
-                <button class="category-btn customer" data-category="customer">📬 KUNDLÄCKAGE (LEAK)</button>
+                <button class="category-btn customer" data-category="customer">📬 KUNDLÄCKAGE</button>
                 <button class="category-btn repaired" data-category="repaired">✅ LAGAT</button>
                 <button class="category-btn suspicious" data-category="suspicious">⚠️ MISSTÄNKT</button>
                 <button class="category-btn heatpump" data-category="heatpump">🔥 VÄRMEPANNA</button>
@@ -239,9 +239,9 @@
 <div class="info-footer">
     💡 <strong>MÖNSTERLOGIK & METODIK:</strong><br>
     • 🔴 <strong>EXTREM ÖKNING:</strong> Ökningar över 200% flaggas direkt överst för att snabbt fånga plötsliga, akuta flödesförändringar.<br>
-    • 🔗 <strong>GATU-KLUSTER (Sandavägen-effekten):</strong> Identifierar om flera mätare på exakt samma gata höjs under samma period. Förhindrar falska enskilda larm vid t.ex. spolning eller tillfälligt byggvatten via brandpost.<br>
-    • 🚨 <strong>AKTIVT LÄCKAGE (Varianskontroll):</strong> Upptäcker dolda bakgrundsläckor. Om mätaren ligger stabilt högt dygnet runt utan minsta variation eller dipp mot nollan flaggas den direkt, även om den ligger under larmgränsen.<br>
-    • 🔥 <strong>SÄSONGSBETONADE VÄRMEPANNOR:</strong> Tränad med historisk data (t.ex. Alice Tegnérs väg, Bergmovägen m.fl.) som automatiskt känner igen höga vinterflöden och låga sommarflöden utan falsklarm.
+    • 🔗 <strong>GATU-KLUSTER:</strong> Identifierar om flera mätare på exakt samma gata höjs under samma period. Förhindrar falska enskilda larm vid t.ex. spolning eller tillfälligt byggvatten via brandpost.<br>
+    • 🚨 <strong>AKTIVT LÄCKAGE (Varianskontroll):</strong> Upptäcker dolda bakgrundsläckor. Om mätaren ligger stabilt högt dygnet runt utan minsta variation eller dipp mot nollan flaggas den direkt.<br>
+    • 🔥 <strong>SÄSONGSBETONADE VÄRMEPANNOR:</strong> Tränad med historisk data som automatiskt känner igen höga vinterflöden och låga sommarflöden utan falsklarm.
 </div>
 
 <script>
@@ -251,6 +251,7 @@
     let ignoredIds = new Set();
     let interestingIds = new Set();
     let userCategories = new Map();
+    let currentResults = [];
     
     let currentCategoryFilter = "all";
     let currentAreaFilter = "all";
@@ -346,43 +347,50 @@
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
                     
-                    if (!rows || rows.length < 2) { resolve([]); return; }
+                    if (!rows || rows.length === 0) { resolve([]); return; }
                     
-                    let startRow = -1;
-                    for (let i = 0; i < Math.min(20, rows.length); i++) {
+                    let startRow = 0;
+                    let addrIdx = -1, serialIdx = -1, valIdx = -1, infoIdx = -1;
+                    
+                    // Super-tolerat skanning efter rätt kolumner
+                    for (let i = 0; i < Math.min(25, rows.length); i++) {
                         const row = rows[i];
                         if (!row) continue;
-                        const c0 = String(row[0] || "").toLowerCase();
-                        const c1 = String(row[1] || "").toLowerCase();
-                        if (c0.includes('adress') || c1.includes('adress') || c0.includes('mätare')) {
+                        
+                        for (let j = 0; j < row.length; j++) {
+                            const valStr = String(row[j] || "").toLowerCase().trim();
+                            if (valStr === 'adress' || valStr === 'address') addrIdx = j;
+                            if (valStr.includes('serienummer') || valStr.includes('mätarnummer') || valStr === 'serienr' || valStr === 'mätare') serialIdx = j;
+                            if (valStr.includes('senaste värde') || valStr === 'värde' || valStr.includes('flöde') || valStr.includes('avläsning') || valStr === 'senaste') {
+                                if (valIdx === -1 || valStr.includes('senaste värde')) valIdx = j; 
+                            }
+                            if (valStr.includes('info') || valStr.includes('kod') || valStr.includes('anmärkning')) infoIdx = j;
+                        }
+                        if (addrIdx !== -1 || serialIdx !== -1) {
                             startRow = i;
                             break;
                         }
                     }
-                    if (startRow === -1) startRow = 0;
                     
-                    let addrIdx = 0, serialIdx = 1, valIdx = 4, infoIdx = 9;
-                    const headerRow = rows[startRow] || [];
-                    for(let i=0; i<headerRow.length; i++) {
-                        const h = String(headerRow[i]).toLowerCase();
-                        if (h === 'adress') addrIdx = i;
-                        if (h === 'serienummer' || h === 'mätarnummer') serialIdx = i;
-                        if (h.includes('värde') || h.includes('flöde') || h === 'senaste värde') valIdx = i;
-                        if (h.includes('info') || h.includes('kod')) infoIdx = i;
-                    }
+                    // Fallback om rubrikrad inte hittades klockrent
+                    if (addrIdx === -1) addrIdx = 1;
+                    if (serialIdx === -1) serialIdx = 2;
+                    if (valIdx === -1) valIdx = 4;
+                    if (infoIdx === -1) infoIdx = 9;
                     
                     const meters = [];
                     for (let r = startRow + 1; r < rows.length; r++) {
                         const row = rows[r];
-                        if (!row || (!row[addrIdx] && !row[serialIdx])) continue;
+                        if (!row) continue;
                         
                         let adress = row[addrIdx] ? String(row[addrIdx]).trim().toUpperCase() : "";
                         let serienummer = row[serialIdx] ? String(row[serialIdx]).trim() : "";
                         let val = row[valIdx];
-                        let infokod = row[infoIdx] ? String(row[infoIdx]).trim().toUpperCase() : "";
+                        let infokod = infoIdx !== -1 && row[infoIdx] ? String(row[infoIdx]).trim().toUpperCase() : "";
                         
-                        if (adress === "FALSKT" || adress === "FALSE" || adress === "") {
-                            if (serienummer) adress = "SERIENR: " + serienummer;
+                        if (!adress && !serienummer) continue;
+                        if (adress === "FALSE" || adress === "FALSKT") {
+                            if (serienummer) adress = "MÄTARE NR: " + serienummer;
                             else continue;
                         }
                         
@@ -498,7 +506,7 @@
 
     async function runAnalysis() {
         if (uploadedFiles.length < 2) {
-            alert("Ladda upp minst 2 mätarfiler med olika datum för att utföra trendanalys!");
+            alert("Vänligen ladda upp minst 2 mätarfiler med olika datum (eller datum i filnamnet) för att utföra trendanalys!");
             return;
         }
         
@@ -663,8 +671,8 @@
         `;
         
         document.getElementById('insightBox').innerHTML = `
-            <strong>🧠 INTELLIGENT INTEGRERAD ANALYSISMOTOR:</strong><br>
-            Hittade 🔴 <strong>${stats.extreme}</strong> extrema flödeslyft, 🚨 <strong>${stats.active_leak}</strong> dolda/aktiva läckor via variansanalys och 🔥 <strong>${stats.heatpump}</strong> mätare med bekräftat säsongsmönster.<br>
+            <strong>🧠 INTELLIGENT INTEGRERAD ANALYSISMOTOR (KARMA):</strong><br>
+            Hittade 🔴 <strong>${stats.extreme}</strong> extrema flödeslyft, 🚨 <strong>${stats.active_leak}</strong> dolda/aktiva läckor och 🔥 <strong>${stats.heatpump}</strong> mätare med bekräftat säsongsmönster.<br>
             📍 <strong>Aktuellt urval:</strong> Visar <strong>${filtered.length}</strong> mätare filtrerade på <em>${currentAreaFilter === 'all' ? 'alla områden' : currentAreaFilter}</em>.
         `;
         
@@ -744,7 +752,7 @@
 
     async function handleFileSelection(files) {
         for (let file of files) {
-            if (file.name.match(/\.(xlsx|xls)$/i)) {
+            if (file.name.match(/\.(xlsx|xls|csv)$/i)) {
                 const date = extractDateFromFilename(file.name);
                 const meters = await parseExcelFile(file);
                 uploadedFiles.push({ fileName: file.name, date: date, meters: meters });
@@ -796,8 +804,8 @@
         
         const ws = XLSX.utils.json_to_sheet(dataRows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Mönsteranalys_Läcksök");
-        XLSX.writeFile(wb, `lacksok_pro_rapport_${new Date().toISOString().slice(0,10)}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Mönsteranalys_Karma");
+        XLSX.writeFile(wb, `karma_analysrapport_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
     document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();

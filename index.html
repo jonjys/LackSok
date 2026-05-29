@@ -1,686 +1,842 @@
+// index.html
 <!DOCTYPE html>
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Läcksök Pro - Mönsteranalys med sortering</title>
+    <title>Läcksök Pro - Inlärd Mönsteranalys & Gatu-klustring</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
-            --primary: #2b5876;
-            --secondary: #4e4376;
-            --bg: #f5f7fa;
+            --primary: #1a5f7a;
+            --secondary: #0f3b4f;
+            --accent: #2c7da0;
+            --bg: #0f2027;
             --card-bg: #ffffff;
+            
+            /* Category Colors */
+            --clr-extreme: #990000;
+            --bg-extreme: #ffbbbb;
+            --clr-active: #c0392b;
+            --bg-active: #fee2e2;
+            --clr-customer: #8e44ad;
+            --bg-customer: #f3e5f5;
+            --clr-repaired: #1e8449;
+            --bg-repaired: #a9dfbf;
+            --clr-suspicious: #f39c12;
+            --bg-suspicious: #fff3e0;
+            --clr-heatpump: #e67e22;
+            --bg-heatpump: #fdebd0;
+            --clr-disturbance: #7f8c8d;
+            --bg-disturbance: #eceff1;
+            --clr-industry: #1f618d;
+            --bg-industry: #d4e6f1;
+            --clr-normal: #2b5876;
+            --bg-normal: #e8f4f8;
         }
-        * { box-sizing: border-box; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-            margin: 0;
-            padding: 20px;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg) 0%, #203a43 50%, #2c5364 100%);
             min-height: 100vh;
+            padding: 20px;
+            color: #333;
         }
-        .container { max-width: 1500px; margin: 0 auto; }
+        .app-container { max-width: 1650px; margin: 0 auto; }
         
-        header {
-            text-align: center;
-            margin-bottom: 25px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            padding: 25px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        header h1 { margin: 0; font-size: 2.2rem; letter-spacing: 1px; }
-        header p { margin: 8px 0 0; opacity: 0.9; font-size: 0.9rem; }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { font-size: 2.6rem; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #a8d8ea 100%); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 1px; }
+        .header p { color: rgba(255,255,255,0.75); font-size: 1rem; margin-top: 5px; }
         
-        .controls {
-            background: white;
-            padding: 18px 22px;
-            border-radius: 16px;
-            margin-bottom: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-        .btn {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            padding: 10px 22px;
-            border-radius: 40px;
-            cursor: pointer;
-            border: none;
-            font-weight: 600;
-            font-size: 13px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
-        .btn-success { background: linear-gradient(135deg, #11998e, #38ef7d); }
-        .btn-sm { padding: 6px 14px; font-size: 12px; }
-        select, input { padding: 10px 14px; border-radius: 40px; border: 1px solid #ddd; font-size: 13px; background: white; }
+        .main-card { background: rgba(255,255,255,0.99); border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden; }
         
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .stat-card {
-            background: white;
-            padding: 12px 8px;
-            border-radius: 14px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            border-left: 4px solid var(--primary);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(0,0,0,0.1); }
-        .stat-num { font-size: 1.8rem; font-weight: 800; }
-        .stat-label { font-size: 10px; color: #666; margin-top: 4px; }
+        .upload-section { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 24px 32px; border-bottom: 1px solid rgba(0,0,0,0.08); }
+        .upload-area { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 15px; }
         
-        .insight-box {
-            background: #e8f4f8;
-            padding: 12px 18px;
-            border-radius: 14px;
-            margin-bottom: 18px;
-            font-size: 12px;
-            border-left: 4px solid var(--primary);
-        }
+        .btn { padding: 10px 24px; border: none; border-radius: 60px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; user-select: none; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; }
+        .btn-success { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+        .btn-outline { background: white; border: 2px solid var(--accent); color: var(--accent); }
+        .btn-sm { padding: 6px 14px; font-size: 11px; border-radius: 40px; }
         
-        .sort-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-bottom: 15px;
-            padding: 8px 15px;
-            background: #f1f5f9;
-            border-radius: 50px;
-        }
+        .file-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        .file-chip { background: white; padding: 6px 14px; border-radius: 40px; font-size: 12px; border: 1px solid #ddd; cursor: pointer; transition: background 0.2s; }
+        .file-chip:hover { background: #fee2e2; border-color: #fca5a5; }
+        
+        .search-box { margin: 15px 0 0 0; }
+        .search-input { width: 100%; padding: 12px 20px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 60px; outline: none; transition: border-color 0.2s; }
+        .search-input:focus { border-color: var(--primary); }
+        
+        .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin: 15px 0; padding: 10px 20px; background: #eef2f6; border-radius: 50px; }
+        .filter-label { font-size: 12px; font-weight: 700; color: var(--primary); }
+        .filter-select { padding: 8px 16px; border-radius: 40px; border: 1px solid #cbd5e1; background: white; font-size: 12px; cursor: pointer; min-width: 150px; }
+        
+        .sort-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0; padding: 8px 15px; background: #f1f5f9; border-radius: 50px; }
         .sort-label { font-size: 12px; font-weight: 600; color: var(--primary); }
+        .sort-indicator { margin-left: auto; font-size: 11px; color: #64748b; font-weight: 500; }
         
-        .table-wrapper {
-            background: white;
-            border-radius: 16px;
-            overflow-x: auto;
-            max-height: 550px;
-            overflow-y: auto;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
-        th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #eef2f6; }
-        th { 
-            background: #f8fafc; 
-            position: sticky; 
-            top: 0; 
-            cursor: pointer;
-            user-select: none;
-            font-weight: 600;
-            z-index: 10;
-        }
+        .category-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 15px 0; }
+        .category-btn { padding: 8px 16px; border-radius: 40px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; background: #f1f5f9; color: #475569; }
+        .category-btn.all.active { background: var(--primary); color: white; }
+        .category-btn.extreme.active { background: var(--clr-extreme); color: white; }
+        .category-btn.active_leak.active { background: var(--clr-active); color: white; }
+        .category-btn.customer.active { background: var(--clr-customer); color: white; }
+        .category-btn.repaired.active { background: var(--clr-repaired); color: white; }
+        .category-btn.suspicious.active { background: var(--clr-suspicious); color: white; }
+        .category-btn.heatpump.active { background: var(--clr-heatpump); color: white; }
+        .category-btn.disturbance.active { background: var(--clr-disturbance); color: white; }
+        .category-btn.industry.active { background: var(--clr-industry); color: white; }
+        .category-btn.interesting.active { background: #2ecc71; color: white; }
+        .category-btn.ignored.active { background: #95a5a6; color: white; }
+        .category-btn.cluster.active { background: #000000; color: white; }
+        .category-btn.active { transform: scale(1.02); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .stat-card { background: white; border-radius: 14px; padding: 10px 8px; text-align: center; cursor: pointer; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary); transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 5px 12px rgba(0,0,0,0.08); }
+        .stat-card .num { font-size: 22px; font-weight: 800; }
+        .stat-card .label { font-size: 10px; color: #64748b; margin-top: 2px; font-weight: 600; }
+        
+        .results-section { padding: 20px 24px; background: white; }
+        .insight-box { background: #e8f4f8; padding: 12px 18px; border-radius: 14px; margin-bottom: 15px; font-size: 12px; border-left: 4px solid var(--primary); line-height: 1.5; }
+        
+        .table-wrapper { overflow-x: auto; border-radius: 16px; background: white; max-height: 550px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; }
+        th { background: #f8fafc; padding: 12px 8px; text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 10; cursor: pointer; user-select: none; border-bottom: 2px solid #e2e8f0; }
         th:hover { background: #e2e8f0; }
-        th .sort-icon { margin-left: 5px; font-size: 10px; opacity: 0.6; }
+        th .sort-icon { margin-left: 4px; font-size: 9px; opacity: 0.5; }
         th.active-sort .sort-icon { opacity: 1; color: var(--primary); }
+        td { padding: 10px 8px; border-bottom: 1px solid #eef2f6; vertical-align: middle; }
+        tr:hover { background: #f8fafc; }
         
-        .badge {
-            padding: 4px 10px;
-            border-radius: 30px;
-            font-size: 10px;
-            font-weight: 700;
-            display: inline-block;
-            white-space: nowrap;
-        }
-        .badge-leak-active { background: #ffdddd; color: #c0392b; }
-        .badge-leak-customer { background: #fff0e0; color: #e67e22; }
-        .badge-disturbance { background: #e8e8e8; color: #7f8c8d; }
-        .badge-heatpump { background: #fdebd0; color: #e67e22; }
-        .badge-industry { background: #d5f5e3; color: #1e8449; }
-        .badge-suspect { background: #fff3cd; color: #856404; }
-        .badge-extreme { background: #ffbbbb; color: #990000; font-weight: 800; }
-        .badge-normal { background: #e8f4f8; color: #2b5876; }
+        .row-extreme { background: var(--bg-extreme) !important; border-left: 4px solid var(--clr-extreme); }
+        .row-active_leak { background: var(--bg-active) !important; border-left: 4px solid var(--clr-active); }
+        .row-customer { background: var(--bg-customer) !important; border-left: 4px solid var(--clr-customer); }
+        .row-repaired { background: var(--bg-repaired) !important; border-left: 4px solid var(--clr-repaired); }
+        .row-suspicious { background: var(--bg-suspicious) !important; border-left: 4px solid var(--clr-suspicious); }
+        .row-heatpump { background: var(--bg-heatpump) !important; border-left: 4px solid var(--clr-heatpump); }
+        .row-disturbance { background: var(--bg-disturbance) !important; border-left: 4px solid var(--clr-disturbance); }
+        .row-industry { background: var(--bg-industry) !important; border-left: 4px solid var(--clr-industry); }
+        .row-normal { background: #ffffff; }
+        .row-ignored { opacity: 0.4; background: #f5f5f5 !important; text-decoration: line-through; }
+        .row-interesting { background: #e8f5e9 !important; border-left: 4px solid #2ecc71; }
         
-        .trend-up { color: #e74c3c; font-weight: 600; }
-        .trend-down { color: #27ae60; font-weight: 600; }
-        .hidden-row { opacity: 0.4; background: #f5f5f5; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 30px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+        .badge-extreme { background: var(--bg-extreme); color: var(--clr-extreme); }
+        .badge-active { background: var(--bg-active); color: var(--clr-active); }
+        .badge-customer { background: var(--bg-customer); color: var(--clr-customer); }
+        .badge-repaired { background: var(--bg-repaired); color: var(--clr-repaired); }
+        .badge-suspicious { background: var(--bg-suspicious); color: var(--clr-suspicious); }
+        .badge-heatpump { background: var(--bg-heatpump); color: var(--clr-heatpump); }
+        .badge-disturbance { background: var(--bg-disturbance); color: var(--clr-disturbance); }
+        .badge-industry { background: var(--bg-industry); color: var(--clr-industry); }
+        .badge-normal { background: var(--bg-normal); color: var(--clr-normal); }
+        .badge-cluster { background: #e0f7fa; color: #006064; border: 1px dashed #00b0ff; }
         
-        @media (max-width: 768px) {
-            body { padding: 12px; }
-            th, td { font-size: 11px; padding: 8px 4px; }
-            .btn { padding: 6px 12px; font-size: 11px; }
-        }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 20px; transition: background 0.2s; }
+        .action-btn:hover { background: rgba(0,0,0,0.05); }
+        
+        .category-select-compact { width: 48px; padding: 4px 2px; font-size: 13px; text-align: center; border-radius: 20px; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; font-weight: bold; }
+        .category-select-compact:hover { transform: scale(1.05); }
+        
+        .trend-up { color: #e74c3c; font-weight: 700; }
+        .trend-down { color: #27ae60; font-weight: 700; }
+        .cluster-banner { background: #fffde7; border: 1px solid #fff59d; padding: 4px 8px; border-radius: 6px; font-size: 11px; margin-top: 4px; display: inline-block; color: #f57f17; font-weight: 600; }
+        
+        .info-footer { background: #f1f5f9; padding: 14px 20px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #475569; line-height: 1.6; }
+        @media (max-width: 768px) { body { padding: 10px; } th, td { font-size: 10px; padding: 6px 4px; } .category-select-compact { width: 42px; font-size: 11px; } }
     </style>
 </head>
 <body>
-<div class="container">
-    <header>
+<div class="app-container">
+    <div class="header">
         <h1>🔍 Läcksök Pro</h1>
-        <p>EXTREM ÖKNING flaggas först • Sortera på förändring, senaste värde eller toppvärde</p>
-    </header>
-
-    <div class="controls">
-        <div style="display: flex; gap: 10px; align-items: center;">
-            <label class="btn" for="excel-files">📂 Välj Excel-filer</label>
-            <input type="file" id="excel-files" multiple accept=".xlsx,.xls" style="display:none">
-            <span id="file-count" style="font-size: 13px; background: #eef2f6; padding: 6px 14px; border-radius: 40px;">0 filer</span>
-            <button id="analyze-btn" class="btn btn-success" style="display:none;">🔬 KÖR ANALYS</button>
-            <button id="export-btn" class="btn">📎 Exportera</button>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <select id="area-filter">
-                <option value="ALL">🌍 Alla områden</option>
-                <option value="TUMBA">🏘️ Tumba</option>
-                <option value="UTTRAN">🌊 Uttran</option>
-                <option value="GRÖDINGE">🌳 Grödinge</option>
-                <option value="NORSBORG">🏠 Norsborg</option>
-                <option value="TULLINGE">🌲 Tullinge</option>
-            </select>
-            <select id="category-filter">
-                <option value="ALL">📋 Alla kategorier</option>
-                <option value="EXTREME">🔴 EXTREM ÖKNING</option>
-                <option value="SUSPECT">⚠️ MISSTÄNKT</option>
-                <option value="LEAK_ACTIVE">🚨 AKTIVT LÄCKAGE</option>
-                <option value="LEAK_CUSTOMER">📬 KUNDLÄCKAGE</option>
-                <option value="HEATPUMP">🔥 VÄRMEPUMP</option>
-                <option value="DISTURBANCE">⚡ STÖRNING</option>
-                <option value="FAVORITE">⭐ INTRESSANTA</option>
-            </select>
-        </div>
+        <p>Avancerad Mönsteranalys • Gatu-klustring (Brandpost-detektering) • Varianskontroll för Bakgrundsläckor</p>
     </div>
-
-    <div class="stats-grid" id="stats-grid"></div>
-    <div class="insight-box" id="insight-box"></div>
     
-    <div class="sort-row">
-        <span class="sort-label">📊 Sortera efter:</span>
-        <button id="sort-change" class="btn btn-sm">📈 Förändring % (högst)</button>
-        <button id="sort-latest" class="btn btn-sm">📊 Senaste värde (högst)</button>
-        <button id="sort-max" class="btn btn-sm">🔝 Toppvärde (högst)</button>
-        <span style="margin-left: auto; font-size: 11px; color: #666;" id="sort-indicator">⬇️ Klicka på kolumnrubrikerna ⬇️</span>
-    </div>
-
-    <div class="table-wrapper">
-        <table id="meters-table">
-            <thead>
-                <tr>
-                    <th style="width:35px">⭐</th>
-                    <th style="width:70px">Område</th>
-                    <th style="min-width:200px">Adress</th>
-                    <th style="width:100px">Serienr</th>
-                    <th style="min-width:170px">Analys</th>
-                    <th class="sortable" data-sort="change" style="width:100px">📈 Förändring <span class="sort-icon">↕️</span></th>
-                    <th class="sortable" data-sort="latest" style="width:80px">📊 Senaste <span class="sort-icon">↕️</span></th>
-                    <th class="sortable" data-sort="max" style="width:80px">🔝 Topp <span class="sort-icon">↕️</span></th>
-                    <th style="min-width:140px">Åtgärd</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                <tr><td colspan="9" style="text-align:center; padding:50px;">📁 Ladda upp Excel-filer → Klicka på "KÖR ANALYS"</td></tr>
-            </tbody>
-        </table>
+    <div class="main-card">
+        <div class="upload-section">
+            <div class="upload-area">
+                <button id="uploadBtn" class="btn btn-primary">📂 + Lägg till mätarfiler</button>
+                <input type="file" id="fileInput" multiple accept=".xlsx,.xls" style="display:none">
+                <button id="analyzeBtn" class="btn btn-success">🔬 KÖR ULTIMAT ANALYS</button>
+                <button id="clearBtn" class="btn btn-outline">🗑️ Rensa allt</button>
+            </div>
+            <div id="fileList" class="file-grid"></div>
+            
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Sök direkt på gata, adress, serienummer eller klusterområde...">
+            </div>
+            
+            <div class="filter-row">
+                <span class="filter-label">📍 Områdesfilter:</span>
+                <select id="areaFilter" class="filter-select">
+                    <option value="all">🌍 Alla områden</option>
+                    <option value="TUMBA">🏘️ Tumba</option>
+                    <option value="UTTRAN">🌊 Uttran</option>
+                    <option value="GRÖDINGE">🌳 Grödinge</option>
+                    <option value="NORSBORG">🏠 Norsborg</option>
+                    <option value="TULLINGE">🌲 Tullinge</option>
+                    <option value="ÖVRIGT">📍 Övrigt</option>
+                </select>
+            </div>
+            
+            <div class="category-tabs" id="categoryTabs">
+                <button class="category-btn all active" data-category="all">📋 Alla mätare</button>
+                <button class="category-btn extreme" data-category="extreme">🔴 EXTREM ÖKNING</button>
+                <button class="category-btn active_leak" data-category="active_leak">🚨 AKTIVT LÄCKAGE</button>
+                <button class="category-btn customer" data-category="customer">📬 KUNDLÄCKAGE (LEAK)</button>
+                <button class="category-btn repaired" data-category="repaired">✅ LAGAT</button>
+                <button class="category-btn suspicious" data-category="suspicious">⚠️ MISSTÄNKT</button>
+                <button class="category-btn heatpump" data-category="heatpump">🔥 VÄRMEPANNA</button>
+                <button class="category-btn disturbance" data-category="disturbance">⚡ STÖRNING</button>
+                <button class="category-btn industry" data-category="industry">🏭 INDUSTRI</button>
+                <button class="category-btn cluster" data-category="cluster">🔗 GATU-KLUSTER</button>
+                <button class="category-btn interesting" data-category="interesting">⭐ INTRESSANTA</button>
+                <button class="category-btn ignored" data-category="ignored">🚫 IGNORERADE</button>
+            </div>
+        </div>
+        
+        <div id="results" class="results-section" style="display:none">
+            <div class="insight-box" id="insightBox"></div>
+            <div class="stats-grid" id="statsGrid"></div>
+            
+            <div class="sort-row">
+                <span class="sort-label">📊 Sortera datatabell efter:</span>
+                <button id="sort-change" class="btn btn-outline btn-sm">📈 Förändring % (Högst)</button>
+                <button id="sort-latest" class="btn btn-outline btn-sm">📊 Senaste värde (Högst)</button>
+                <button id="sort-max" class="btn btn-outline btn-sm">🔝 Toppvärde (Högst)</button>
+                <span class="sort-indicator" id="sortIndicator">📌 Sorterar efter: Förändring % (Högst först)</span>
+            </div>
+            
+            <div class="table-wrapper">
+                <table id="metersTable">
+                    <thead>
+                        <tr>
+                            <th style="width:40px">⭐</th>
+                            <th style="width:40px">👁️</th>
+                            <th style="width:55px">Typ</th>
+                            <th>Adress</th>
+                            <th style="width:110px">Serienummer</th>
+                            <th style="width:110px">Område</th>
+                            <th class="sortable" data-sort="latest" style="width:110px">📊 Värden (F → S)<span class="sort-icon">↕️</span></th>
+                            <th class="sortable" data-sort="change" style="width:120px">📈 Förändring<span class="sort-icon">↕️</span></th>
+                            <th class="sortable" data-sort="max" style="width:90px">🔝 Topp<span class="sort-icon">↕️</span></th>
+                            <th>Automatisk Mönsteranalys & Rekommenderad Åtgärd</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            
+            <button id="exportBtn" class="btn btn-primary" style="margin-top:20px; width:100%; justify-content: center;">📎 Exportera Komplett Analysrapport (Excel)</button>
+        </div>
     </div>
 </div>
 
+<div class="info-footer">
+    💡 <strong>MÖNSTERLOGIK & METODIK:</strong><br>
+    • 🔴 <strong>EXTREM ÖKNING:</strong> Ökningar över 200% flaggas direkt överst för att snabbt fånga plötsliga, akuta flödesförändringar.<br>
+    • 🔗 <strong>GATU-KLUSTER (Sandavägen-effekten):</strong> Identifierar om flera mätare på exakt samma gata höjs under samma period. Förhindrar falska enskilda larm vid t.ex. spolning eller tillfälligt byggvatten via brandpost.<br>
+    • 🚨 <strong>AKTIVT LÄCKAGE (Varianskontroll):</strong> Upptäcker dolda bakgrundsläckor. Om mätaren ligger stabilt högt dygnet runt utan minsta variation eller dipp mot nollan flaggas den direkt, även om den ligger under larmgränsen.<br>
+    • 🔥 <strong>SÄSONGSBETONADE VÄRMEPANNOR:</strong> Tränad med historisk data (t.ex. Alice Tegnérs väg, Bergmovägen m.fl.) som automatiskt känner igen höga vinterflöden och låga sommarflöden utan falsklarm.
+</div>
+
 <script>
-    // ============================================================
-    // DATA OCH LAGRING
-    // ============================================================
+    let uploadedFiles = [];
     let meterDatabase = {};
-    let fileObjects = [];
-    let favoriteMeters = JSON.parse(localStorage.getItem('lacksok_fav_v2')) || [];
-    let currentSort = { column: 'change', direction: 'desc' };
-    let currentCategoryFilter = 'ALL';
-    let currentAreaFilter = 'ALL';
-
-    // ============================================================
-    // DOM-ELEMENT OCH EVENT
-    // ============================================================
-    document.getElementById('excel-files').addEventListener('change', (e) => {
-        fileObjects = Array.from(e.target.files);
-        document.getElementById('file-count').textContent = `${fileObjects.length} fil(er)`;
-        document.getElementById('analyze-btn').style.display = fileObjects.length > 0 ? 'inline-block' : 'none';
-    });
-    document.getElementById('analyze-btn').addEventListener('click', runAnalysis);
-    document.getElementById('export-btn').addEventListener('click', exportReport);
-    document.getElementById('area-filter').addEventListener('change', (e) => { currentAreaFilter = e.target.value; renderTable(); });
-    document.getElementById('category-filter').addEventListener('change', (e) => { currentCategoryFilter = e.target.value; renderTable(); });
+    let streetClusters = {};
+    let ignoredIds = new Set();
+    let interestingIds = new Set();
+    let userCategories = new Map();
     
-    document.getElementById('sort-change').addEventListener('click', () => { setSort('change', 'desc'); renderTable(); });
-    document.getElementById('sort-latest').addEventListener('click', () => { setSort('latest', 'desc'); renderTable(); });
-    document.getElementById('sort-max').addEventListener('click', () => { setSort('max', 'desc'); renderTable(); });
+    let currentCategoryFilter = "all";
+    let currentAreaFilter = "all";
+    let currentSort = { column: 'change', direction: 'desc' };
 
-    function setSort(column, direction) {
-        currentSort = { column, direction };
-        // Uppdatera UI på kolumnrubriker
-        document.querySelectorAll('.sortable').forEach(th => {
-            const sortType = th.getAttribute('data-sort');
-            th.classList.remove('active-sort');
-            if (sortType === column) {
-                th.classList.add('active-sort');
-                const icon = th.querySelector('.sort-icon');
-                if (icon) icon.textContent = direction === 'desc' ? '⬇️' : '⬆️';
-            } else {
-                const icon = th.querySelector('.sort-icon');
-                if (icon) icon.textContent = '↕️';
-            }
-        });
-        const indicator = document.getElementById('sort-indicator');
-        if (indicator) {
-            const dirText = direction === 'desc' ? 'högst → lägst' : 'lägst → högst';
-            const colText = { change: 'Förändring %', latest: 'Senaste värde', max: 'Toppvärde' }[column];
-            indicator.textContent = `📌 Sorterar: ${colText} (${dirText})`;
-        }
-        renderTable();
+    const categories = {
+        extreme: { label: "🔴 EXTREM ÖKNING", symbol: "🔴", priority: 1, action: "PRIORITERAS - Kraftig flödesökning detekterad!", color: "#990000", bg: "#ffbbbb" },
+        active_leak: { label: "🚨 AKTIVT LÄCKAGE", symbol: "🚨", priority: 2, action: "Åk dit OMGÅENDE! Kontrollera mätarbrunn/servisledningsventil. 🚗💨", color: "#c0392b", bg: "#fee2e2" },
+        customer: { label: "📬 KUNDLÄCKAGE (LEAK)", symbol: "📬", priority: 3, action: "Konstant flöde efter mätaren. Lapp i lådan till kunden.", color: "#8e44ad", bg: "#f3e5f5" },
+        repaired: { label: "✅ LAGAT LÄCKAGE", symbol: "✅", priority: 4, action: "Flödet har återgått till det normala. Läckan åtgärdad!", color: "#1e8449", bg: "#a9dfbf" },
+        suspicious: { label: "⚠️ MISSTÄNKT", symbol: "⚠️", priority: 5, action: "Ökande trend eller avvikande flöde. Kolla upp vid tillfälle.", color: "#f39c12", bg: "#fff3e0" },
+        heatpump: { label: "🔥 VÄRMEPANNA", symbol: "🔥", priority: 6, action: "Normalt säseasonmönster (vinterhögt/sommarlågt). Ingen åtgärd.", color: "#e67e22", bg: "#fdebd0" },
+        disturbance: { label: "⚡ STÖRNING", symbol: "⚡", priority: 7, action: "Tillfällig flödestopp som gått ner. Fjärrvärmebyte/spolning.", color: "#7f8c8d", bg: "#eceff1" },
+        industry: { label: "🏭 INDUSTRI/PROCESS", symbol: "🏭", priority: 8, action: "Konstant högt processflöde i industriområde (t.ex. Tullinge). Enligt avtal.", color: "#1f618d", bg: "#d4e6f1" },
+        normal: { label: "✅ Normal drift", symbol: "✅", priority: 9, action: "Inga avvikelser upptäckta.", color: "#2b5876", bg: "#e8f4f8" },
+        single: { label: "📌 EN MÄTNING", symbol: "📌", priority: 10, action: "Ladda upp filer från fler datum för komplett trendanalys.", color: "#95a5a6", bg: "#f5f5f5" }
+    };
+
+    const knownHeatpumps = new Set([
+        "ALICE TEGNÉRS VÄG 23 TULLINGE 14638", "ALICE TEGNÉRS VÄG 23", "BERGMOVÄGEN 1", "BERTHELIUSVÄGEN 20",
+        "BJÖRKVÄGEN 12", "ENGWALLS VÄG 12", "FISKARBACKEN 3 NORSBORG 14590", "FISKARBACKEN 3",
+        "ENGWALLS VÄG 15", "KLÄTTRARSTIGEN 3 TULLINGE 14634", "KLÄTTRARSTIGEN 3",
+        "KLÄTTRARSTIGEN 5 TULLINGE 14634", "KLÄTTRARSTIGEN 5", "KLÄTTRARSTIGEN 7 TULLINGE 14634", "KLÄTTRARSTIGEN 7"
+    ]);
+
+    function loadSavedData() {
+        const savedIgnored = localStorage.getItem('lacksok_pro_ignored');
+        if (savedIgnored) ignoredIds = new Set(JSON.parse(savedIgnored));
+        const savedInteresting = localStorage.getItem('lacksok_pro_interesting');
+        if (savedInteresting) interestingIds = new Set(JSON.parse(savedInteresting));
+        const savedCategories = localStorage.getItem('lacksok_pro_user_categories');
+        if (savedCategories) userCategories = new Map(JSON.parse(savedCategories));
     }
 
-    // ============================================================
-    // FILHANTERING OCH PARSING
-    // ============================================================
+    function saveIgnored() { localStorage.setItem('lacksok_pro_ignored', JSON.stringify([...ignoredIds])); }
+    function saveInteresting() { localStorage.setItem('lacksok_pro_interesting', JSON.stringify([...interestingIds])); }
+    function saveCategories() { localStorage.setItem('lacksok_pro_user_categories', JSON.stringify([...userCategories])); }
+
+    function toggleIgnore(id) {
+        if (ignoredIds.has(id)) ignoredIds.delete(id);
+        else { ignoredIds.add(id); interestingIds.delete(id); }
+        saveIgnored(); saveInteresting(); displayResults();
+    }
+
+    function toggleInteresting(id) {
+        if (interestingIds.has(id)) interestingIds.delete(id);
+        else { interestingIds.add(id); ignoredIds.has(id) && ignoredIds.delete(id); }
+        saveInteresting(); saveIgnored(); displayResults();
+    }
+
+    function changeCategory(id, cat) {
+        userCategories.set(id, cat);
+        saveCategories(); displayResults();
+    }
+
     function extractDateFromFilename(filename) {
-        const match = filename.match(/(\d{4}-\d{2}-\d{2})/);
-        return match ? new Date(match[1]) : new Date();
+        const match = filename.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2})-(\d{2})/);
+        if (match) return new Date(`${match[1]}T${match[2]}:${match[3]}:00`);
+        const match2 = filename.match(/(\d{4}-\d{2}-\d{2})/);
+        return match2 ? new Date(match2[1]) : new Date();
+    }
+
+    function formatShortDate(date) {
+        if (!date || isNaN(date)) return "okänt";
+        return `${date.getMonth()+1}/${date.getDate()}`;
+    }
+
+    function extractArea(adress) {
+        if (!adress) return "ÖVRIGT";
+        const a = adress.toUpperCase();
+        if (a.includes("TUMBA")) return "TUMBA";
+        if (a.includes("UTTRAN")) return "UTTRAN";
+        if (a.includes("GRÖDINGE")) return "GRÖDINGE";
+        if (a.includes("NORSBORG")) return "NORSBORG";
+        if (a.includes("TULLINGE")) return "TULLINGE";
+        return "ÖVRIGT";
+    }
+
+    function extractStreetName(adress) {
+        if (!adress) return "";
+        let cleaned = adress.toUpperCase().split(/TUMBA|UTTRAN|GRÖDINGE|NORSBORG|TULLINGE/)[0].trim();
+        cleaned = cleaned.replace(/\d+/g, '').trim();
+        return cleaned;
+    }
+
+    async function parseExcelFile(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+                    
+                    if (!rows || rows.length < 2) { resolve([]); return; }
+                    
+                    let startRow = -1;
+                    for (let i = 0; i < Math.min(20, rows.length); i++) {
+                        const row = rows[i];
+                        if (!row) continue;
+                        const c0 = String(row[0] || "").toLowerCase();
+                        const c1 = String(row[1] || "").toLowerCase();
+                        if (c0.includes('adress') || c1.includes('adress') || c0.includes('mätare')) {
+                            startRow = i;
+                            break;
+                        }
+                    }
+                    if (startRow === -1) startRow = 0;
+                    
+                    let addrIdx = 0, serialIdx = 1, valIdx = 4, infoIdx = 9;
+                    const headerRow = rows[startRow] || [];
+                    for(let i=0; i<headerRow.length; i++) {
+                        const h = String(headerRow[i]).toLowerCase();
+                        if (h === 'adress') addrIdx = i;
+                        if (h === 'serienummer' || h === 'mätarnummer') serialIdx = i;
+                        if (h.includes('värde') || h.includes('flöde') || h === 'senaste värde') valIdx = i;
+                        if (h.includes('info') || h.includes('kod')) infoIdx = i;
+                    }
+                    
+                    const meters = [];
+                    for (let r = startRow + 1; r < rows.length; r++) {
+                        const row = rows[r];
+                        if (!row || (!row[addrIdx] && !row[serialIdx])) continue;
+                        
+                        let adress = row[addrIdx] ? String(row[addrIdx]).trim().toUpperCase() : "";
+                        let serienummer = row[serialIdx] ? String(row[serialIdx]).trim() : "";
+                        let val = row[valIdx];
+                        let infokod = row[infoIdx] ? String(row[infoIdx]).trim().toUpperCase() : "";
+                        
+                        if (adress === "FALSKT" || adress === "FALSE" || adress === "") {
+                            if (serienummer) adress = "SERIENR: " + serienummer;
+                            else continue;
+                        }
+                        
+                        if (typeof val === 'string') val = parseFloat(val.replace(',', '.').trim());
+                        else val = parseFloat(val);
+                        
+                        if (isNaN(val)) continue;
+                        
+                        meters.push({
+                            id: serienummer || adress,
+                            adress: adress,
+                            serienummer: serienummer,
+                            value: val,
+                            infokod: infokod,
+                            area: extractArea(adress),
+                            street: extractStreetName(adress)
+                        });
+                    }
+                    resolve(meters);
+                } catch (err) { resolve([]); }
+            };
+            reader.onerror = () => resolve([]);
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function calcChange(oldVal, newVal) {
+        if (oldVal === undefined || oldVal === null || isNaN(oldVal)) return 0;
+        if (oldVal === 0) return newVal > 0 ? 200 : 0;
+        return ((newVal - oldVal) / oldVal) * 100;
+    }
+
+    function calculateStreetClusters() {
+        streetClusters = {};
+        for (let id in meterDatabase) {
+            const m = meterDatabase[id];
+            if (m.history.length < 2 || !m.street) continue;
+            
+            const first = m.history[0].value;
+            const last = m.history[m.history.length - 1].value;
+            const change = calcChange(first, last);
+            
+            if (!streetClusters[m.street]) {
+                streetClusters[m.street] = { totalMeters: 0, increasingMeters: 0, datesAffected: new Set() };
+            }
+            
+            streetClusters[m.street].totalMeters++;
+            if (change > 40 && last > 30) {
+                streetClusters[m.street].increasingMeters++;
+                m.history.forEach(h => streetClusters[m.street].datesAffected.add(h.dateStr));
+            }
+        }
+    }
+
+    function smartClassify(m) {
+        if (m.history.length < 2) return "single";
+        
+        const values = m.history.map(h => h.value);
+        const firstVal = values[0];
+        const lastVal = values[values.length - 1];
+        const maxVal = Math.max(...values);
+        const minVal = Math.min(...values);
+        const totalChange = calcChange(firstVal, lastVal);
+        
+        for (let known of knownHeatpumps) {
+            if (m.adress.includes(known)) return "heatpump";
+        }
+        
+        if (m.infokod && m.infokod.includes("LEAK")) return "customer";
+        if (totalChange > 200 && lastVal > 40) return "extreme";
+        
+        if (m.street && streetClusters[m.street]) {
+            const cluster = streetClusters[m.street];
+            if (cluster.increasingMeters >= 2 && (cluster.increasingMeters / cluster.totalMeters) >= 0.35) {
+                if (totalChange > 40 && lastVal > 30) {
+                    return "disturbance";
+                }
+            }
+        }
+        
+        const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
+        const maxDivergence = (maxVal - minVal) / (avgValue || 1);
+        if (lastVal > 35 && maxDivergence < 0.25 && totalChange > -15) {
+            return "active_leak";
+        }
+        
+        let winterValues = [], summerValues = [];
+        for (let h of m.history) {
+            const month = h.date.getMonth() + 1;
+            if ([10, 11, 12, 1, 2, 3].includes(month)) winterValues.push(h.value);
+            if ([5, 6, 7, 8, 9].includes(month)) summerValues.push(h.value);
+        }
+        if (winterValues.length >= 1 && summerValues.length >= 1) {
+            const winAvg = winterValues.reduce((a,b)=>a+b,0) / winterValues.length;
+            const sumAvg = summerValues.reduce((a,b)=>a+b,0) / summerValues.length;
+            if (winAvg > sumAvg * 1.6 && winAvg > 35) return "heatpump";
+        }
+        
+        if (m.area === "TULLINGE" && lastVal > 90 && maxDivergence < 0.3) {
+            return "industry";
+        }
+        
+        if (lastVal > 75 && totalChange >= -20) return "active_leak";
+        
+        const hadHighFlw = values.slice(0, -1).some(v => v > 70);
+        if (hadHighFlw && lastVal < 35 && totalChange < -40) return "repaired";
+        
+        if (totalChange > 35 && lastVal > 25) return "suspicious";
+        if (maxVal > 70 && lastVal < 30) return "disturbance";
+        
+        return "normal";
     }
 
     async function runAnalysis() {
-        if (fileObjects.length === 0) return;
-        meterDatabase = {};
-        
-        for (let file of fileObjects) {
-            const fileDate = extractDateFromFilename(file.name);
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            parseExcelData(rows, fileDate);
-        }
-        
-        calculateAllTrends();
-        setSort('change', 'desc');
-        renderTable();
-    }
-
-    function parseExcelData(rows, fileDate) {
-        if (rows.length < 2) return;
-        
-        // Hitta headers
-        let addrIdx = -1, serialIdx = -1, valueIdx = -1, infoIdx = -1;
-        const headerRow = rows[0] || [];
-        
-        for (let i = 0; i < headerRow.length; i++) {
-            const h = String(headerRow[i] || "").toLowerCase();
-            if (h === 'adress') addrIdx = i;
-            if (h === 'serienummer') serialIdx = i;
-            if (h.includes('värde') || h.includes('flöde') || h === 'senaste värde') valueIdx = i;
-            if (h.includes('info') || h.includes('kod')) infoIdx = i;
-        }
-        
-        // Fallbacks
-        if (addrIdx === -1) addrIdx = 1;
-        if (serialIdx === -1) serialIdx = 2;
-        if (valueIdx === -1) valueIdx = 4;
-        
-        const dateStr = fileDate.toISOString().split('T')[0];
-        
-        for (let i = 1; i < rows.length; i++) {
-            const row = rows[i];
-            if (!row || !row[addrIdx]) continue;
-            
-            const address = String(row[addrIdx]).trim();
-            const serial = row[serialIdx] ? String(row[serialIdx]).trim() : address;
-            const value = parseFloat(row[valueIdx]);
-            const infocode = (infoIdx !== -1 && row[infoIdx]) ? String(row[infoIdx]).trim() : "";
-            
-            if (isNaN(value)) continue;
-            
-            if (!meterDatabase[serial]) {
-                meterDatabase[serial] = {
-                    serial: serial,
-                    address: address,
-                    area: extractArea(address),
-                    history: [],
-                    infocodes: new Set(),
-                    latestValue: value,
-                    latestDate: fileDate
-                };
-            }
-            
-            // Undvik dubletter samma datum
-            const exists = meterDatabase[serial].history.find(h => h.date.toISOString().split('T')[0] === dateStr);
-            if (!exists) {
-                meterDatabase[serial].history.push({ date: fileDate, value: value });
-            }
-            
-            if (infocode) meterDatabase[serial].infocodes.add(infocode);
-            
-            // Uppdatera senaste värde om detta datum är nyare
-            if (fileDate > meterDatabase[serial].latestDate) {
-                meterDatabase[serial].latestValue = value;
-                meterDatabase[serial].latestDate = fileDate;
-            }
-        }
-    }
-
-    function extractArea(address) {
-        const a = address.toUpperCase();
-        if (a.includes('TUMBA')) return 'TUMBA';
-        if (a.includes('UTTRAN')) return 'UTTRAN';
-        if (a.includes('GRÖDINGE')) return 'GRÖDINGE';
-        if (a.includes('NORSBORG')) return 'NORSBORG';
-        if (a.includes('TULLINGE')) return 'TULLINGE';
-        return 'ÖVRIGT';
-    }
-
-    // ============================================================
-    // BERÄKNING AV TRENDER
-    // ============================================================
-    function calculateAllTrends() {
-        for (let id in meterDatabase) {
-            const m = meterDatabase[id];
-            m.history.sort((a,b) => a.date - b.date);
-            if (m.history.length === 0) continue;
-            
-            const first = m.history[0];
-            const last = m.history[m.history.length - 1];
-            m.firstValue = first.value;
-            m.latestValue = last.value;
-            m.daysOfHistory = Math.ceil((last.date - first.date) / (1000 * 60 * 60 * 24)) || 1;
-            
-            // Procentuell förändring
-            if (m.firstValue === 0) {
-                m.percentChange = m.latestValue > 0 ? 999 : 0;
-            } else {
-                m.percentChange = ((m.latestValue - m.firstValue) / m.firstValue) * 100;
-            }
-            
-            // Maxvärde
-            m.maxValue = Math.max(...m.history.map(h => h.value));
-            
-            // Säsongsmedel (vinter: nov-mar, sommar: maj-sep)
-            let winterValues = [], summerValues = [];
-            for (let h of m.history) {
-                const month = h.date.getMonth() + 1;
-                if ([11, 12, 1, 2, 3].includes(month)) winterValues.push(h.value);
-                if ([5, 6, 7, 8, 9].includes(month)) summerValues.push(h.value);
-            }
-            m.winterAvg = winterValues.length ? winterValues.reduce((a,b)=>a+b,0) / winterValues.length : null;
-            m.summerAvg = summerValues.length ? summerValues.reduce((a,b)=>a+b,0) / summerValues.length : null;
-            
-            // Stabilitet (senaste 3 mätningarna)
-            const recent = m.history.slice(-3).map(h => h.value);
-            const avgRecent = recent.reduce((a,b)=>a+b,0) / recent.length;
-            m.isStableHigh = avgRecent > 80 && recent.every(v => Math.abs(v - avgRecent) < avgRecent * 0.3);
-            
-            // Kolla infokod för "Ej fastställt" / "Annat brus"
-            m.hasUncertaintyCode = false;
-            for (let code of m.infocodes) {
-                if (code.includes("Ej fastställt") || code.includes("Annat brus")) {
-                    m.hasUncertaintyCode = true;
-                }
-            }
-            
-            m.classification = smartClassify(m);
-        }
-    }
-
-    // ============================================================
-    // 🔑 KÄRNAN: SMART KLASSIFICERING (EXTREM ÖKNING FÖRST!)
-    // ============================================================
-    function smartClassify(m) {
-        // 1. LEAK i infokod = Kundleckage
-        for (let code of m.infocodes) {
-            if (code.toUpperCase().includes('LEAK')) {
-                return { type: "LEAK_CUSTOMER", label: "📬 KUNDLÄCKAGE", desc: "LEAK i systemet - efter mätaren", action: "Informera kunden" };
-            }
-        }
-        
-        // 2. 🔴 EXTREM ÖKNING (över 200%) - HÖGSTA PRIORITET!
-        if (m.percentChange > 200) {
-            return { type: "EXTREME", label: "🔴 EXTREM ÖKNING", desc: `Ökat med ${Math.round(m.percentChange)}% på ${m.daysOfHistory} dagar!`, action: "PRIORITERAS - kolla omgående!" };
-        }
-        
-        // 3. Stor ökning (50-200%) - MISSTÄNKT
-        if (m.percentChange > 50 && m.latestValue > 30) {
-            return { type: "SUSPECT", label: "⚠️ MISSTÄNKT (ökande)", desc: `Ökat med ${Math.round(m.percentChange)}% på ${m.daysOfHistory} dagar`, action: "Boka uppföljning" };
-        }
-        
-        // 4. "Ej fastställt" + högt konstant = FJÄRRVÄRMESTÖRNING
-        if (m.hasUncertaintyCode && m.isStableHigh && m.latestValue > 80) {
-            return { type: "DISTURBANCE", label: "🏭 FJÄRRVÄRMESTÖRNING", desc: "Infokod: Ej fastställt + konstant högt flöde", action: "Ingen åtgärd - övervaka" };
-        }
-        
-        // 5. Tillfällig topp som återgått = STÖRNING
-        let hasPeak = false;
-        for (let i = 1; i < m.history.length - 1; i++) {
-            const prev = m.history[i-1].value, curr = m.history[i].value, next = m.history[i+1].value;
-            if (curr > prev * 1.8 && curr > next * 1.5 && curr > 80) hasPeak = true;
-        }
-        if (hasPeak && m.latestValue < 50) {
-            return { type: "DISTURBANCE", label: "⚡ STÖRNING (tillfällig)", desc: "Topp som återgått till normal nivå", action: "Ingen åtgärd" };
-        }
-        
-        // 6. VÄRMEPUMP - säsongsjämförelse
-        if (m.winterAvg !== null && m.summerAvg !== null && m.winterAvg > 0 && m.summerAvg > 0) {
-            const ratio = m.winterAvg / m.summerAvg;
-            // Säsongsbetonad värmepump (högre på vintern)
-            if (ratio > 1.5 && m.winterAvg > 40) {
-                return { type: "HEATPUMP", label: "🔥 VÄRMEPUMP (säsong)", desc: `Vinter ${Math.round(m.winterAvg)} / Sommar ${Math.round(m.summerAvg)}`, action: "Normalt säsongsmönster" };
-            }
-            // Konstant värmepump (året runt)
-            if (ratio > 0.7 && ratio < 1.4 && m.isStableHigh) {
-                return { type: "HEATPUMP", label: "🔥 VÄRMEPUMP (konstant)", desc: "Konstant flöde året runt", action: "Normalt för värmepump" };
-            }
-        }
-        
-        // 7. Industriområde (Tullinge) - högt konstant flöde
-        if (m.area === "TULLINGE" && m.latestValue > 100 && m.isStableHigh) {
-            return { type: "INDUSTRY", label: "🏭 INDUSTRI/PROCES", desc: "Högt konstant flöde i industriområde", action: "Kontrollera med kunden" };
-        }
-        
-        // 8. Aktivt läckage (vår sida) - konstant högt utan förklaring
-        if (m.isStableHigh && m.latestValue > 80 && m.percentChange > -20) {
-            return { type: "LEAK_ACTIVE", label: "🚨 AKTIVT LÄCKAGE", desc: `Konstant högt flöde (${Math.round(m.latestValue)})`, action: "Åk dit OMGÅENDE!" };
-        }
-        
-        // 9. Sommarhögt (maj-sep) utan förklaring
-        const currentMonth = new Date().getMonth() + 1;
-        if ([5,6,7,8,9].includes(currentMonth) && m.latestValue > 100 && m.percentChange < 50) {
-            return { type: "SUSPECT", label: "⚠️ MISSTÄNKT (sommarhögt)", desc: `Högt värde på sommaren (${Math.round(m.latestValue)})`, action: "Fältkontroll rekommenderas" };
-        }
-        
-        // 10. Måttlig ökning (20-50%)
-        if (m.percentChange > 20 && m.latestValue > 40) {
-            return { type: "SUSPECT", label: "⚠️ MISSTÄNKT (måttlig ökning)", desc: `Ökat med ${Math.round(m.percentChange)}%`, action: "Övervaka trenden" };
-        }
-        
-        // 11. Normal drift
-        return { type: "NORMAL", label: "✅ Normal drift", desc: "Inga avvikelser detekterade", action: "Övervaka rutin" };
-    }
-
-    // ============================================================
-    // SORTERING OCH RENDERERING
-    // ============================================================
-    function sortMeters(meters) {
-        const { column, direction } = currentSort;
-        const dir = direction === 'desc' ? -1 : 1;
-        
-        meters.sort((a, b) => {
-            let valA, valB;
-            switch(column) {
-                case 'change':
-                    valA = a.percentChange || 0;
-                    valB = b.percentChange || 0;
-                    break;
-                case 'latest':
-                    valA = a.latestValue || 0;
-                    valB = b.latestValue || 0;
-                    break;
-                case 'max':
-                    valA = a.maxValue || 0;
-                    valB = b.maxValue || 0;
-                    break;
-                default:
-                    valA = a.percentChange || 0;
-                    valB = b.percentChange || 0;
-            }
-            return dir * (valA - valB);
-        });
-        return meters;
-    }
-
-    function renderTable() {
-        let meters = Object.values(meterDatabase);
-        
-        if (meters.length === 0) {
-            document.getElementById('table-body').innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px;">📁 Ingen data laddad. Kör analys först.</td></tr>';
-            updateStatsAndInsight([]);
+        if (uploadedFiles.length < 2) {
+            alert("Ladda upp minst 2 mätarfiler med olika datum för att utföra trendanalys!");
             return;
         }
         
-        // Filtrera på område
-        if (currentAreaFilter !== 'ALL') {
-            meters = meters.filter(m => m.area === currentAreaFilter);
+        uploadedFiles.sort((a,b) => a.date - b.date);
+        meterDatabase = {};
+        
+        for (let fileData of uploadedFiles) {
+            for (let meter of fileData.meters) {
+                if (!meterDatabase[meter.id]) {
+                    meterDatabase[meter.id] = {
+                        id: meter.id,
+                        adress: meter.adress,
+                        serienummer: meter.serienummer,
+                        area: meter.area,
+                        street: meter.street,
+                        infokod: meter.infokod,
+                        history: []
+                    };
+                }
+                
+                const dateStr = formatShortDate(fileData.date);
+                if (!meterDatabase[meter.id].history.some(h => h.dateStr === dateStr)) {
+                    meterDatabase[meter.id].history.push({
+                        date: fileData.date,
+                        dateStr: dateStr,
+                        value: meter.value
+                    });
+                }
+                if (meter.infokod) meterDatabase[meter.id].infokod = meter.infokod;
+            }
         }
         
-        // Filtrera på kategori
-        if (currentCategoryFilter === 'FAVORITE') {
-            meters = meters.filter(m => favoriteMeters.includes(m.serial));
-        } else if (currentCategoryFilter !== 'ALL') {
-            meters = meters.filter(m => m.classification.type === currentCategoryFilter);
-        }
+        calculateStreetClusters();
         
-        // Sortera
-        meters = sortMeters(meters);
-        
-        const tbody = document.getElementById('table-body');
-        tbody.innerHTML = '';
-        
-        for (let m of meters) {
-            const isFavorite = favoriteMeters.includes(m.serial);
-            let badgeClass = 'badge';
-            if (m.classification.type === 'LEAK_ACTIVE') badgeClass += ' badge-leak-active';
-            else if (m.classification.type === 'LEAK_CUSTOMER') badgeClass += ' badge-leak-customer';
-            else if (m.classification.type === 'DISTURBANCE') badgeClass += ' badge-disturbance';
-            else if (m.classification.type === 'HEATPUMP') badgeClass += ' badge-heatpump';
-            else if (m.classification.type === 'INDUSTRY') badgeClass += ' badge-industry';
-            else if (m.classification.type === 'EXTREME') badgeClass += ' badge-extreme';
-            else if (m.classification.type === 'SUSPECT') badgeClass += ' badge-suspect';
-            else badgeClass += ' badge-normal';
+        currentResults = [];
+        for (let id in meterDatabase) {
+            const m = meterDatabase[id];
+            m.history.sort((a,b) => a.date - b.date);
             
-            const trendClass = m.percentChange > 0 ? 'trend-up' : 'trend-down';
-            const changeSymbol = m.percentChange > 0 ? '▲' : '▼';
-            const changeDisplay = `${changeSymbol} ${Math.abs(m.percentChange).toFixed(1)}%`;
+            const first = m.history[0];
+            const last = m.history[m.history.length - 1];
+            const totalChange = calcChange(first.value, last.value);
+            const maxValue = Math.max(...m.history.map(h => h.value));
             
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td style="cursor:pointer; text-align:center; font-size:16px;" onclick="toggleFavorite('${m.serial}')">${isFavorite ? '⭐' : '☆'}</td>
-                <td>${m.area}</td>
-                <td><strong title="${m.address}">${m.address.length > 40 ? m.address.substring(0,37)+'...' : m.address}</strong><br><small style="color:#888;">${m.daysOfHistory} dagar (${m.history.length} mätn)</small></td>
-                <td><code style="font-size:11px;">${m.serial.substring(0,12)}</code></td>
-                <td><span class="${badgeClass}">${m.classification.label}</span><br><small>${m.classification.desc}</small></td>
-                <td class="${trendClass}" style="font-weight:700;">${changeDisplay}</td>
-                <td style="font-weight:700; ${m.latestValue > 100 ? 'color:#c0392b;' : ''}">${m.latestValue}</td>
-                <td style="color:#666;">${m.maxValue}</td>
-                <td><small>${m.classification.action}</small></td>
-            `;
-            tbody.appendChild(row);
+            let finalCategory = userCategories.get(m.id);
+            if (!finalCategory) finalCategory = smartClassify(m);
+            
+            let analysisText = categories[finalCategory]?.action || "";
+            if (finalCategory === "disturbance" && m.street && streetClusters[m.street]?.increasingMeters >= 2) {
+                analysisText = `⚡ GATU-KLUSTER AKTIVT: Flera mätare på ${m.street} har ökat samtidigt. Sannolikt tillfälligt uttag från Brandpost eller spolningsarbete!`;
+            }
+            
+            currentResults.push({
+                id: m.id,
+                adress: m.adress,
+                serienummer: m.serienummer,
+                area: m.area,
+                street: m.street,
+                firstValue: first.value,
+                lastValue: last.value,
+                firstDate: first.dateStr,
+                lastDate: last.dateStr,
+                changePercent: totalChange,
+                maxValue: maxValue,
+                category: finalCategory,
+                analysisText: analysisText,
+                infokod: m.infokod,
+                measurementCount: m.history.length,
+                historyStr: m.history.map(h => `${h.dateStr}:${h.value}`).join(' → ')
+            });
         }
         
-        if (tbody.children.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px;">🔍 Inga mätare matchar filtren.</td></tr>';
-        }
-        
-        updateStatsAndInsight(meters);
+        setSortOrder('change', 'desc');
     }
 
-    function updateStatsAndInsight(meters) {
-        const extreme = meters.filter(m => m.classification.type === 'EXTREME').length;
-        const suspect = meters.filter(m => m.classification.type === 'SUSPECT').length;
-        const active = meters.filter(m => m.classification.type === 'LEAK_ACTIVE').length;
-        const customer = meters.filter(m => m.classification.type === 'LEAK_CUSTOMER').length;
-        const disturbance = meters.filter(m => m.classification.type === 'DISTURBANCE').length;
-        const heatpump = meters.filter(m => m.classification.type === 'HEATPUMP').length;
-        const total = Object.keys(meterDatabase).length;
+    function setSortOrder(column, direction) {
+        currentSort = { column, direction };
         
-        document.getElementById('stats-grid').innerHTML = `
-            <div class="stat-card" style="border-left-color:#990000;" onclick="setFilter('EXTREME')"><div class="stat-num">${extreme}</div><div class="stat-label">🔴 EXTREM ÖKNING</div></div>
-            <div class="stat-card" style="border-left-color:#856404;" onclick="setFilter('SUSPECT')"><div class="stat-num">${suspect}</div><div class="stat-label">⚠️ MISSTÄNKTA</div></div>
-            <div class="stat-card" style="border-left-color:#c0392b;" onclick="setFilter('LEAK_ACTIVE')"><div class="stat-num">${active}</div><div class="stat-label">🚨 AKTIVA LÄCKAGE</div></div>
-            <div class="stat-card" style="border-left-color:#e67e22;" onclick="setFilter('LEAK_CUSTOMER')"><div class="stat-num">${customer}</div><div class="stat-label">📬 KUNDLÄCKAGE</div></div>
-            <div class="stat-card" style="border-left-color:#e67e22;" onclick="setFilter('HEATPUMP')"><div class="stat-num">${heatpump}</div><div class="stat-label">🔥 VÄRMEPUMP</div></div>
-            <div class="stat-card" style="border-left-color:#7f8c8d;" onclick="setFilter('DISTURBANCE')"><div class="stat-num">${disturbance}</div><div class="stat-label">⚡ STÖRNING</div></div>
-        `;
-        
-        const sortText = { change: 'Förändring %', latest: 'Senaste värde', max: 'Toppvärde' }[currentSort.column] || 'Förändring %';
-        const dirText = currentSort.direction === 'desc' ? 'högst först' : 'lägst först';
-        
-        document.getElementById('insight-box').innerHTML = `
-            <strong>🧠 INLÄRD MÖNSTERANALYS:</strong> 🔴 ${extreme} EXTREMA ökningar | ⚠️ ${suspect} misstänkta | 🚨 ${active} aktiva läckage | 🔥 ${heatpump} värmepumpar<br>
-            📊 <strong>Sorterar just nu:</strong> ${sortText} (${dirText}) | Klicka på kolumnrubrikerna för att ändra!<br>
-            💡 <strong>Trädgårdsvägen 27 (▲ 1016.7%)</strong> visas nu som 🔴 EXTREM ÖKNING!<br>
-            📈 <strong>Totalt analyserat:</strong> ${total} unika mätare
-        `;
-    }
-    
-    function setFilter(type) {
-        document.getElementById('category-filter').value = type;
-        currentCategoryFilter = type;
-        renderTable();
-    }
-    
-    function toggleFavorite(serial) {
-        const idx = favoriteMeters.indexOf(serial);
-        if (idx > -1) favoriteMeters.splice(idx, 1);
-        else favoriteMeters.push(serial);
-        localStorage.setItem('lacksok_fav_v2', JSON.stringify(favoriteMeters));
-        renderTable();
-    }
-    
-    function exportReport() {
-        const meters = Object.values(meterDatabase);
-        const data = meters.map(m => ({
-            'Adress': m.address,
-            'Serienummer': m.serial,
-            'Område': m.area,
-            'Analys': m.classification.label,
-            'Detaljer': m.classification.desc,
-            'Förändring %': m.percentChange?.toFixed(1) || 0,
-            'Senaste värde': m.latestValue,
-            'Högsta värde': m.maxValue,
-            'Antal mätningar': m.history.length,
-            'Period (dagar)': m.daysOfHistory,
-            'Vinter-medel': m.winterAvg ? Math.round(m.winterAvg) : '-',
-            'Sommar-medel': m.summerAvg ? Math.round(m.summerAvg) : '-',
-            'Åtgärd': m.classification.action,
-            'Infokoder': Array.from(m.infocodes).join(', ')
-        }));
-        
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Läcksök_Rapport");
-        XLSX.writeFile(wb, `lacksok_rapport_${new Date().toISOString().slice(0,19)}.xlsx`);
-    }
-    
-    // Globala funktioner för onclick
-    window.setFilter = setFilter;
-    window.toggleFavorite = toggleFavorite;
-    
-    // Klick på kolumnrubriker
-    document.querySelectorAll('.sortable').forEach(th => {
-        th.addEventListener('click', () => {
-            const sortType = th.getAttribute('data-sort');
-            if (sortType) {
-                const newDirection = (currentSort.column === sortType && currentSort.direction === 'desc') ? 'asc' : 'desc';
-                setSort(sortType, newDirection);
-                renderTable();
+        document.querySelectorAll('.sortable').forEach(th => {
+            if(th.dataset.sort === column) {
+                th.classList.add('active-sort');
+                th.querySelector('.sort-icon').textContent = direction === 'desc' ? '⬇️' : '⬆️';
+            } else {
+                th.classList.remove('active-sort');
+                th.querySelector('.sort-icon').textContent = '↕️';
             }
         });
-    });
+        
+        const colLabels = { change: 'Förändring %', latest: 'Senaste mätvärde', max: 'Högsta toppvärde' };
+        document.getElementById('sortIndicator').textContent = `📌 Sorterar efter: ${colLabels[column]} (${direction === 'desc' ? 'Högst först' : 'Lägst först'})`;
+        
+        sortData();
+        displayResults();
+    }
+
+    function sortData() {
+        const { column, direction } = currentSort;
+        const multiplier = direction === 'desc' ? -1 : 1;
+        
+        currentResults.sort((a, b) => {
+            let valA = 0, valB = 0;
+            if (column === 'change') { valA = a.changePercent; valB = b.changePercent; }
+            else if (column === 'latest') { valA = a.lastValue; valB = b.lastValue; }
+            else if (column === 'max') { valA = a.maxValue; valB = b.maxValue; }
+            
+            return (valA - valB) * multiplier;
+        });
+    }
+
+    function displayResults() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+        let filtered = [...currentResults];
+        
+        if (currentAreaFilter !== 'all') {
+            filtered = filtered.filter(r => r.area === currentAreaFilter);
+        }
+        
+        if (currentCategoryFilter === 'ignored') {
+            filtered = filtered.filter(r => ignoredIds.has(r.id));
+        } else {
+            filtered = filtered.filter(r => !ignoredIds.has(r.id));
+            if (currentCategoryFilter === 'interesting') {
+                filtered = filtered.filter(r => interestingIds.has(r.id));
+            } else if (currentCategoryFilter === 'cluster') {
+                filtered = filtered.filter(r => r.street && streetClusters[r.street]?.increasingMeters >= 2);
+            } else if (currentCategoryFilter !== 'all') {
+                filtered = filtered.filter(r => r.category === currentCategoryFilter);
+            }
+        }
+        
+        if (searchTerm) {
+            filtered = filtered.filter(r => 
+                r.adress.toLowerCase().includes(searchTerm) || 
+                r.serienummer.toLowerCase().includes(searchTerm) ||
+                (r.street && r.street.toLowerCase().includes(searchTerm))
+            );
+        }
+        
+        const stats = {
+            total: currentResults.length,
+            extreme: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'extreme').length,
+            active_leak: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'active_leak').length,
+            customer: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'customer').length,
+            repaired: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'repaired').length,
+            suspicious: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'suspicious').length,
+            heatpump: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'heatpump').length,
+            disturbance: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'disturbance').length,
+            industry: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'industry').length,
+            cluster: Object.values(streetClusters).filter(c => c.increasingMeters >= 2).length,
+            interesting: interestingIds.size
+        };
+        
+        document.getElementById('statsGrid').innerHTML = `
+            <div class="stat-card" onclick="setCategoryTab('all')"><div class="num" style="color:var(--primary);">${stats.total}</div><div class="label">📊 TOTALT UNIKA</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-extreme);" onclick="setCategoryTab('extreme')"><div class="num" style="color:var(--clr-extreme);">${stats.extreme}</div><div class="label">🔴 EXTREM ÖKNING</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-active);" onclick="setCategoryTab('active_leak')"><div class="num" style="color:var(--clr-active);">${stats.active_leak}</div><div class="label">🚨 AKTIVA LÄCKOR</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-customer);" onclick="setCategoryTab('customer')"><div class="num" style="color:var(--clr-customer);">${stats.customer}</div><div class="label">📬 KUNDLÄCKAGE</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-repaired);" onclick="setCategoryTab('repaired')"><div class="num" style="color:var(--clr-repaired);">${stats.repaired}</div><div class="label">✅ LAGADE</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-suspicious);" onclick="setCategoryTab('suspicious')"><div class="num" style="color:var(--clr-suspicious);">${stats.suspicious}</div><div class="label">⚠️ MISSTÄNKTA</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-heatpump);" onclick="setCategoryTab('heatpump')"><div class="num" style="color:var(--clr-heatpump);">${stats.heatpump}</div><div class="label">🔥 VÄRMEPANNOR</div></div>
+            <div class="stat-card" style="border-left-color:#006064;" onclick="setCategoryTab('cluster')"><div class="num" style="color:#006064;">${stats.cluster}</div><div class="label">🔗 AKTIVA GATOR</div></div>
+        `;
+        
+        document.getElementById('insightBox').innerHTML = `
+            <strong>🧠 INTELLIGENT INTEGRERAD ANALYSISMOTOR:</strong><br>
+            Hittade 🔴 <strong>${stats.extreme}</strong> extrema flödeslyft, 🚨 <strong>${stats.active_leak}</strong> dolda/aktiva läckor via variansanalys och 🔥 <strong>${stats.heatpump}</strong> mätare med bekräftat säsongsmönster.<br>
+            📍 <strong>Aktuellt urval:</strong> Visar <strong>${filtered.length}</strong> mätare filtrerade på <em>${currentAreaFilter === 'all' ? 'alla områden' : currentAreaFilter}</em>.
+        `;
+        
+        const tbody = document.getElementById('tableBody');
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:40px; font-weight:600; color:#64748b;">🔍 Inga mätare hittades som matchar dina filter- eller sökinställningar.</td></tr>`;
+            document.getElementById('results').style.display = 'block';
+            return;
+        }
+        
+        let html = '';
+        for (let r of filtered) {
+            const isIgnored = ignoredIds.has(r.id);
+            const isInteresting = interestingIds.has(r.id);
+            
+            const rowClass = isIgnored ? 'row-ignored' : (isInteresting ? 'row-interesting' : `row-${r.category}`);
+            const catInfo = categories[r.category] || categories.normal;
+            
+            const changeSign = r.changePercent > 0 ? '▲' : (r.changePercent < 0 ? '▼' : '→');
+            const changeClass = r.changePercent > 0 ? 'trend-up' : (r.changePercent < 0 ? 'trend-down' : '');
+            const changeDisplay = r.measurementCount >= 2 ? `<span class="${changeClass}">${changeSign} ${Math.abs(r.changePercent).toFixed(1)}%</span>` : '<span style="color:#888;">—</span>';
+            
+            const rowBgColor = getCategoryColor(r.category);
+            
+            let clusterBadge = '';
+            if (r.street && streetClusters[r.street]?.increasingMeters >= 2) {
+                clusterBadge = `<br><span class="cluster-banner">🔗 Brandpost/Gatuarbete detekterat (${streetClusters[r.street].increasingMeters} st hus höjda)</span>`;
+            }
+            
+            html += `<tr class="${rowClass}">
+                <td style="text-align:center;"><button class="action-btn" onclick="toggleInteresting('${r.id}')">${isInteresting ? '⭐' : '☆'}</button></td>
+                <td style="text-align:center;"><button class="action-btn" onclick="toggleIgnore('${r.id}')">${isIgnored ? '✅' : '👁️'}</button></td>
+                <td style="text-align:center;">
+                    <select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)" style="background:${rowBgColor};">
+                        <option value="extreme" ${r.category === 'extreme' ? 'selected' : ''}>🔴</option>
+                        <option value="active_leak" ${r.category === 'active_leak' ? 'selected' : ''}>🚨</option>
+                        <option value="customer" ${r.category === 'customer' ? 'selected' : ''}>📬</option>
+                        <option value="repaired" ${r.category === 'repaired' ? 'selected' : ''}>✅</option>
+                        <option value="suspicious" ${r.category === 'suspicious' ? 'selected' : ''}>⚠️</option>
+                        <option value="heatpump" ${r.category === 'heatpump' ? 'selected' : ''}>🔥</option>
+                        <option value="disturbance" ${r.category === 'disturbance' ? 'selected' : ''}>⚡</option>
+                        <option value="industry" ${r.category === 'industry' ? 'selected' : ''}>🏭</option>
+                        <option value="normal" ${r.category === 'normal' ? 'selected' : ''}>✔</option>
+                    </select>
+                </td>
+                <td><strong title="${r.adress}">${r.adress.length > 40 ? r.adress.substring(0,37) + '...' : r.adress}</strong>${clusterBadge}</td>
+                <td><code style="font-size:11px; font-weight:600;">${r.serienummer || 'Saknas'}</code></td>
+                <td><span style="font-weight:600; font-size:11px;">${r.area}</span></td>
+                <td style="font-weight:700;">${r.firstValue} → ${r.lastValue}<br><small style="color:#64748b; font-weight:normal;">(${r.measurementCount} mätningar)</small></td>
+                <td style="font-weight:700;">${changeDisplay}</td>
+                <td style="color:#475569; font-weight:600;">${r.maxValue}</td>
+                <td>
+                    <span class="badge" style="background:${catInfo.bg}; color:${catInfo.color}; margin-bottom:3px;">${catInfo.label}</span><br>
+                    <small style="color:#1e293b; font-weight:500;">${r.analysisText}</small><br>
+                    <small style="color:#64748b;">📅 Historik: ${r.historyStr}</small>
+                </td>
+            </tr>`;
+        }
+        
+        tbody.innerHTML = html;
+        document.getElementById('results').style.display = 'block';
+    }
+
+    function getCategoryColor(cat) {
+        const colors = { extreme: "#ffbbbb", active_leak: "#fee2e2", customer: "#f3e5f5", repaired: "#a9dfbf", suspicious: "#fff3e0", heatpump: "#fdebd0", disturbance: "#eceff1", industry: "#d4e6f1", normal: "#ffffff" };
+        return colors[cat] || "#ffffff";
+    }
+
+    function setCategoryTab(category) {
+        currentCategoryFilter = category;
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            if (btn.dataset.category === category) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+        displayResults();
+    }
+
+    async function handleFileSelection(files) {
+        for (let file of files) {
+            if (file.name.match(/\.(xlsx|xls)$/i)) {
+                const date = extractDateFromFilename(file.name);
+                const meters = await parseExcelFile(file);
+                uploadedFiles.push({ fileName: file.name, date: date, meters: meters });
+            }
+        }
+        renderFileChips();
+        if (uploadedFiles.length >= 2) runAnalysis();
+    }
+
+    function renderFileChips() {
+        const container = document.getElementById('fileList');
+        if (uploadedFiles.length === 0) {
+            container.innerHTML = '<p style="color:#64748b; font-size:13px; font-style:italic;">📌 Inga inlästa Excel-filer ännu. Lägg till filer för att starta.</p>';
+            return;
+        }
+        let html = '';
+        uploadedFiles.forEach((f, index) => {
+            html += `<div class="file-chip" onclick="removeUploadedFile(${index})" title="Klicka för att ta bort">📅 ${formatShortDate(f.date)} (${f.meters.length} st rader) ✖</div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    window.removeUploadedFile = function(index) {
+        uploadedFiles.splice(index, 1);
+        renderFileChips();
+        if (uploadedFiles.length >= 2) runAnalysis();
+        else document.getElementById('results').style.display = 'none';
+    };
+
+    function exportReportToExcel() {
+        if (currentResults.length === 0) return alert("Det finns ingen data att exportera just nu.");
+        
+        const dataRows = currentResults.map(r => ({
+            'Adress': r.adress,
+            'Serienummer': r.serienummer,
+            'Område': r.area,
+            'Gatunamn': r.street,
+            'Antal Mätningar': r.measurementCount,
+            'Första Värde': r.firstValue,
+            'Senaste Värde': r.lastValue,
+            'Total Förändring %': r.changePercent !== null ? r.changePercent.toFixed(1) : '0',
+            'Toppvärde': r.maxValue,
+            'Mätperiod': `${r.firstDate} till ${r.lastDate}`,
+            'Analyskategori': categories[r.category]?.label || 'Normal',
+            'Rekommenderad Åtgärd': r.analysisText,
+            'Systemkod': r.infokod || '',
+            'Historisk Flödeskedja': r.historyStr
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(dataRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Mönsteranalys_Läcksök");
+        XLSX.writeFile(wb, `lacksok_pro_rapport_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
+    document.getElementById('fileInput').onchange = (e) => handleFileSelection(Array.from(e.target.files));
+    document.getElementById('analyzeBtn').onclick = () => runAnalysis();
     
-    // Init
-    renderTable();
+    document.getElementById('clearBtn').onclick = () => {
+        uploadedFiles = []; currentResults = []; ignoredIds.clear(); interestingIds.clear(); userCategories.clear();
+        saveIgnored(); saveInteresting(); saveCategories();
+        renderFileChips();
+        document.getElementById('results').style.display = 'none';
+        document.getElementById('searchInput').value = '';
+        document.getElementById('areaFilter').value = 'all';
+        currentAreaFilter = 'all';
+        currentCategoryFilter = 'all';
+    };
+    
+    document.getElementById('exportBtn').onclick = exportReportToExcel;
+    document.getElementById('searchInput').oninput = () => displayResults();
+    document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
+    
+    document.getElementById('sort-change').onclick = () => setSortOrder('change', 'desc');
+    document.getElementById('sort-latest').onclick = () => setSortOrder('latest', 'desc');
+    document.getElementById('sort-max').onclick = () => setSortOrder('max', 'desc');
+    
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.sort;
+            const dir = (currentSort.column === col && currentSort.direction === 'desc') ? 'asc' : 'desc';
+            setSortOrder(col, dir);
+        });
+    });
+
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.onclick = () => setCategoryTab(btn.dataset.category);
+    });
+
+    loadSavedData();
+    renderFileChips();
 </script>
 </body>
 </html>

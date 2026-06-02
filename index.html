@@ -263,10 +263,10 @@
         customer: { label: "📬 KUNDLÄCKAGE (LEAK)", symbol: "📬", priority: 3, action: "Konstant flöde efter mätaren. Lapp i lådan till kunden.", color: "#8e44ad", bg: "#f3e5f5" },
         repaired: { label: "✅ LAGAT LÄCKAGE", symbol: "✅", priority: 4, action: "Flödet har återgått till det normala. Läckan åtgärdad!", color: "#1e8449", bg: "#a9dfbf" },
         suspicious: { label: "⚠️ MISSTÄNKT", symbol: "⚠️", priority: 5, action: "Ökande trend eller avvikande flöde. Kolla upp vid tillfälle.", color: "#f39c12", bg: "#fff3e0" },
-        heatpump: { label: "🔥 VÄRMEPANNA", symbol: "🔥", priority: 6, action: "Normalt säseasonmönster (vinterhögt/sommarlågt). Ingen åtgärd.", color: "#e67e22", bg: "#fdebd0" },
+        heatpump: { label: "🔥 VÄRMEPANNA", symbol: "🔥", priority: 6, action: "Normalt säsongsmönster (vinterhögt/sommarlågt). Ingen åtgärd.", color: "#e67e22", bg: "#fdebd0" },
         disturbance: { label: "⚡ STÖRNING", symbol: "⚡", priority: 7, action: "Tillfällig flödestopp som gått ner. Fjärrvärmebyte/spolning.", color: "#7f8c8d", bg: "#eceff1" },
         industry: { label: "🏭 INDUSTRI/PROCESS", symbol: "🏭", priority: 8, action: "Konstant högt processflöde i industriområde (t.ex. Tullinge). Enligt avtal.", color: "#1f618d", bg: "#d4e6f1" },
-        normal: { label: "✅ Normal drift", symbol: "✅", priority: 9, action: "Inga avvikelser upptäckta.", color: "#2b5876", bg: "#e8f4f8" },
+        normal: { label: "✅ Normal drift", symbol: "✅", priority: 9, action: "Inga avvicher upptäckta.", color: "#2b5876", bg: "#e8f4f8" },
         single: { label: "📌 EN MÄTNING", symbol: "📌", priority: 10, action: "Ladda upp filer från fler datum för komplett trendanalys.", color: "#95a5a6", bg: "#f5f5f5" }
     };
 
@@ -298,12 +298,16 @@
 
     function toggleInteresting(id) {
         if (interestingIds.has(id)) interestingIds.delete(id);
-        else { interestingIds.add(id); ignoredIds.has(id) && ignoredIds.delete(id); }
+        else { interestingIds.add(id); if (ignoredIds.has(id)) ignoredIds.delete(id); }
         saveInteresting(); saveIgnored(); displayResults();
     }
 
     function changeCategory(id, cat) {
-        userCategories.set(id, cat);
+        if (cat === "") {
+            userCategories.delete(id);
+        } else {
+            userCategories.set(id, cat);
+        }
         saveCategories(); displayResults();
     }
 
@@ -352,7 +356,6 @@
                     let startRow = 0;
                     let addrIdx = -1, serialIdx = -1, valIdx = -1, infoIdx = -1;
                     
-                    // Super-tolerat skanning efter rätt kolumner
                     for (let i = 0; i < Math.min(25, rows.length); i++) {
                         const row = rows[i];
                         if (!row) continue;
@@ -372,7 +375,6 @@
                         }
                     }
                     
-                    // Fallback om rubrikrad inte hittades klockrent
                     if (addrIdx === -1) addrIdx = 1;
                     if (serialIdx === -1) serialIdx = 2;
                     if (valIdx === -1) valIdx = 4;
@@ -554,297 +556,261 @@
             let finalCategory = userCategories.get(m.id);
             if (!finalCategory) finalCategory = smartClassify(m);
             
-            let analysisText = categories[finalCategory]?.action || "";
-            if (finalCategory === "disturbance" && m.street && streetClusters[m.street]?.increasingMeters >= 2) {
-                analysisText = `⚡ GATU-KLUSTER AKTIVT: Flera mätare på ${m.street} har ökat samtidigt. Sannolikt tillfälligt uttag från Brandpost eller spolningsarbete!`;
-            }
-            
             currentResults.push({
                 id: m.id,
                 adress: m.adress,
                 serienummer: m.serienummer,
                 area: m.area,
                 street: m.street,
+                history: m.history,
                 firstValue: first.value,
-                lastValue: last.value,
-                firstDate: first.dateStr,
-                lastDate: last.dateStr,
-                changePercent: totalChange,
-                maxValue: maxValue,
+                latestValue: last.value,
+                change: totalChange,
+                max: maxValue,
                 category: finalCategory,
-                analysisText: analysisText,
-                infokod: m.infokod,
-                measurementCount: m.history.length,
-                historyStr: m.history.map(h => `${h.dateStr}:${h.value}`).join(' → ')
+                isCluster: streetClusters[m.street] && streetClusters[m.street].increasingMeters >= 2 && (streetClusters[m.street].increasingMeters / streetClusters[m.street].totalMeters) >= 0.35
             });
         }
         
-        setSortOrder('change', 'desc');
-    }
-
-    function setSortOrder(column, direction) {
-        currentSort = { column, direction };
-        
-        document.querySelectorAll('.sortable').forEach(th => {
-            if(th.dataset.sort === column) {
-                th.classList.add('active-sort');
-                th.querySelector('.sort-icon').textContent = direction === 'desc' ? '⬇️' : '⬆️';
-            } else {
-                th.classList.remove('active-sort');
-                th.querySelector('.sort-icon').textContent = '↕️';
-            }
-        });
-        
-        const colLabels = { change: 'Förändring %', latest: 'Senaste mätvärde', max: 'Högsta toppvärde' };
-        document.getElementById('sortIndicator').textContent = `📌 Sorterar efter: ${colLabels[column]} (${direction === 'desc' ? 'Högst först' : 'Lägst först'})`;
-        
-        sortData();
+        document.getElementById('results').style.display = 'block';
         displayResults();
     }
 
-    function sortData() {
-        const { column, direction } = currentSort;
-        const multiplier = direction === 'desc' ? -1 : 1;
-        
-        currentResults.sort((a, b) => {
-            let valA = 0, valB = 0;
-            if (column === 'change') { valA = a.changePercent; valB = b.changePercent; }
-            else if (column === 'latest') { valA = a.lastValue; valB = b.lastValue; }
-            else if (column === 'max') { valA = a.maxValue; valB = b.maxValue; }
-            
-            return (valA - valB) * multiplier;
+    function handleFiles(files) {
+        let loadedCount = 0;
+        for (let file of files) {
+            const date = extractDateFromFilename(file.name);
+            parseExcelFile(file).then(meters => {
+                if (meters.length > 0) {
+                    uploadedFiles.push({
+                        name: file.name,
+                        date: date,
+                        meters: meters
+                    });
+                }
+                loadedCount++;
+                if (loadedCount === files.length) {
+                    updateFileList();
+                }
+            });
+        }
+    }
+
+    function updateFileList() {
+        const grid = document.getElementById('fileList');
+        grid.innerHTML = '';
+        uploadedFiles.forEach((f, idx) => {
+            const chip = document.createElement('div');
+            chip.className = 'file-chip';
+            chip.innerHTML = `📄 ${f.name} (${formatShortDate(f.date)}) ❌`;
+            chip.onclick = () => {
+                uploadedFiles.splice(idx, 1);
+                updateFileList();
+            };
+            grid.appendChild(chip);
         });
     }
 
     function displayResults() {
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-        let filtered = [...currentResults];
-        
-        if (currentAreaFilter !== 'all') {
-            filtered = filtered.filter(r => r.area === currentAreaFilter);
-        }
-        
-        if (currentCategoryFilter === 'ignored') {
-            filtered = filtered.filter(r => ignoredIds.has(r.id));
-        } else {
-            filtered = filtered.filter(r => !ignoredIds.has(r.id));
-            if (currentCategoryFilter === 'interesting') {
-                filtered = filtered.filter(r => interestingIds.has(r.id));
-            } else if (currentCategoryFilter === 'cluster') {
-                filtered = filtered.filter(r => r.street && streetClusters[r.street]?.increasingMeters >= 2);
-            } else if (currentCategoryFilter !== 'all') {
-                filtered = filtered.filter(r => r.category === currentCategoryFilter);
-            }
-        }
-        
-        if (searchTerm) {
-            filtered = filtered.filter(r => 
-                r.adress.toLowerCase().includes(searchTerm) || 
-                r.serienummer.toLowerCase().includes(searchTerm) ||
-                (r.street && r.street.toLowerCase().includes(searchTerm))
-            );
-        }
-        
-        const stats = {
-            total: currentResults.length,
-            extreme: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'extreme').length,
-            active_leak: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'active_leak').length,
-            customer: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'customer').length,
-            repaired: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'repaired').length,
-            suspicious: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'suspicious').length,
-            heatpump: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'heatpump').length,
-            disturbance: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'disturbance').length,
-            industry: currentResults.filter(r => !ignoredIds.has(r.id) && r.category === 'industry').length,
-            cluster: Object.values(streetClusters).filter(c => c.increasingMeters >= 2).length,
-            interesting: interestingIds.size
-        };
-        
-        document.getElementById('statsGrid').innerHTML = `
-            <div class="stat-card" onclick="setCategoryTab('all')"><div class="num" style="color:var(--primary);">${stats.total}</div><div class="label">📊 TOTALT UNIKA</div></div>
-            <div class="stat-card" style="border-left-color:var(--clr-extreme);" onclick="setCategoryTab('extreme')"><div class="num" style="color:var(--clr-extreme);">${stats.extreme}</div><div class="label">🔴 EXTREM ÖKNING</div></div>
-            <div class="stat-card" style="border-left-color:var(--clr-active);" onclick="setCategoryTab('active_leak')"><div class="num" style="color:var(--clr-active);">${stats.active_leak}</div><div class="label">🚨 AKTIVA LÄCKOR</div></div>
-            <div class="stat-card" style="border-left-color:var(--clr-customer);" onclick="setCategoryTab('customer')"><div class="num" style="color:var(--clr-customer);">${stats.customer}</div><div class="label">📬 KUNDLÄCKAGE</div></div>
-            <div class="stat-card" style="border-left-color:var(--clr-repaired);" onclick="setCategoryTab('repaired')"><div class="num" style="color:var(--clr-repaired);">${stats.repaired}</div><div class="label">✅ LAGADE</div></div>
-            <div class="stat-card" style="border-left-color:var(--clr-suspicious);" onclick="setCategoryTab('suspicious')"><div class="num" style="color:var(--clr-suspicious);">${stats.suspicious}</div><div class="label">⚠️ MISSTÄNKTA</div></div>
-            <div class="stat-card" style="border-left-color:var(--clr-heatpump);" onclick="setCategoryTab('heatpump')"><div class="num" style="color:var(--clr-heatpump);">${stats.heatpump}</div><div class="label">🔥 VÄRMEPANNOR</div></div>
-            <div class="stat-card" style="border-left-color:#006064;" onclick="setCategoryTab('cluster')"><div class="num" style="color:#006064;">${stats.cluster}</div><div class="label">🔗 AKTIVA GATOR</div></div>
-        `;
-        
-        document.getElementById('insightBox').innerHTML = `
-            <strong>🧠 INTELLIGENT INTEGRERAD ANALYSISMOTOR (KARMA):</strong><br>
-            Hittade 🔴 <strong>${stats.extreme}</strong> extrema flödeslyft, 🚨 <strong>${stats.active_leak}</strong> dolda/aktiva läckor och 🔥 <strong>${stats.heatpump}</strong> mätare med bekräftat säsongsmönster.<br>
-            📍 <strong>Aktuellt urval:</strong> Visar <strong>${filtered.length}</strong> mätare filtrerade på <em>${currentAreaFilter === 'all' ? 'alla områden' : currentAreaFilter}</em>.
-        `;
-        
+        const query = document.getElementById('searchInput').value.toLowerCase().trim();
         const tbody = document.getElementById('tableBody');
-        if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:40px; font-weight:600; color:#64748b;">🔍 Inga mätare hittades som matchar dina filter- eller sökinställningar.</td></tr>`;
-            document.getElementById('results').style.display = 'block';
-            return;
-        }
+        tbody.innerHTML = '';
         
-        let html = '';
-        for (let r of filtered) {
-            const isIgnored = ignoredIds.has(r.id);
-            const isInteresting = interestingIds.has(r.id);
+        // Sortering
+        currentResults.sort((a, b) => {
+            let valA = a[currentSort.column];
+            let valB = b[currentSort.column];
+            if (currentSort.direction === 'desc') return valB - valA;
+            return valA - valB;
+        });
+
+        let filtered = currentResults.filter(r => {
+            if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return false;
             
-            const rowClass = isIgnored ? 'row-ignored' : (isInteresting ? 'row-interesting' : `row-${r.category}`);
-            const catInfo = categories[r.category] || categories.normal;
+            if (currentCategoryFilter === 'ignored') return ignoredIds.has(r.id);
+            if (ignoredIds.has(r.id)) return false; 
             
-            const changeSign = r.changePercent > 0 ? '▲' : (r.changePercent < 0 ? '▼' : '→');
-            const changeClass = r.changePercent > 0 ? 'trend-up' : (r.changePercent < 0 ? 'trend-down' : '');
-            const changeDisplay = r.measurementCount >= 2 ? `<span class="${changeClass}">${changeSign} ${Math.abs(r.changePercent).toFixed(1)}%</span>` : '<span style="color:#888;">—</span>';
+            if (currentCategoryFilter === 'interesting') return interestingIds.has(r.id);
+            if (currentCategoryFilter === 'cluster') return r.isCluster;
+            if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return false;
             
-            const rowBgColor = getCategoryColor(r.category);
-            
-            let clusterBadge = '';
-            if (r.street && streetClusters[r.street]?.increasingMeters >= 2) {
-                clusterBadge = `<br><span class="cluster-banner">🔗 Brandpost/Gatuarbete detekterat (${streetClusters[r.street].increasingMeters} st hus höjda)</span>`;
+            if (query) {
+                return r.adress.toLowerCase().includes(query) || 
+                       r.serienummer.includes(query) || 
+                       r.street.toLowerCase().includes(query);
             }
-            
-            html += `<tr class="${rowClass}">
-                <td style="text-align:center;"><button class="action-btn" onclick="toggleInteresting('${r.id}')">${isInteresting ? '⭐' : '☆'}</button></td>
-                <td style="text-align:center;"><button class="action-btn" onclick="toggleIgnore('${r.id}')">${isIgnored ? '✅' : '👁️'}</button></td>
-                <td style="text-align:center;">
-                    <select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)" style="background:${rowBgColor};">
-                        <option value="extreme" ${r.category === 'extreme' ? 'selected' : ''}>🔴</option>
-                        <option value="active_leak" ${r.category === 'active_leak' ? 'selected' : ''}>🚨</option>
-                        <option value="customer" ${r.category === 'customer' ? 'selected' : ''}>📬</option>
-                        <option value="repaired" ${r.category === 'repaired' ? 'selected' : ''}>✅</option>
-                        <option value="suspicious" ${r.category === 'suspicious' ? 'selected' : ''}>⚠️</option>
-                        <option value="heatpump" ${r.category === 'heatpump' ? 'selected' : ''}>🔥</option>
-                        <option value="disturbance" ${r.category === 'disturbance' ? 'selected' : ''}>⚡</option>
-                        <option value="industry" ${r.category === 'industry' ? 'selected' : ''}>🏭</option>
-                        <option value="normal" ${r.category === 'normal' ? 'selected' : ''}>✔</option>
+            return true;
+        });
+
+        // Uppdatera statskort och insiktsruta
+        updateStatsAndInsights(filtered);
+
+        filtered.forEach(r => {
+            const tr = document.createElement('tr');
+            let rowClass = `row-${r.category}`;
+            if (ignoredIds.has(r.id)) rowClass = 'row-ignored';
+            else if (interestingIds.has(r.id)) rowClass = 'row-interesting';
+            tr.className = rowClass;
+
+            const catInfo = categories[r.category] || categories.normal;
+            const historyStr = r.history.map(h => `${h.dateStr}: <strong>${h.value}</strong>`).join(' → ');
+            const changeSign = r.change > 0 ? '+' : '';
+            const changeClass = r.change > 0 ? 'trend-up' : (r.change < 0 ? 'trend-down' : '');
+
+            let catOptions = '';
+            for (let c in categories) {
+                catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol}</option>`;
+            }
+
+            tr.innerHTML = `
+                <td><button class="action-btn" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
+                <td><button class="action-btn" onclick="toggleIgnore('${r.id}')">${ignoredIds.has(r.id) ? '👁️‍🗨️' : '👁️'}</button></td>
+                <td>
+                    <select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">
+                        ${catOptions}
                     </select>
                 </td>
-                <td><strong title="${r.adress}">${r.adress.length > 40 ? r.adress.substring(0,37) + '...' : r.adress}</strong>${clusterBadge}</td>
-                <td><code style="font-size:11px; font-weight:600;">${r.serienummer || 'Saknas'}</code></td>
-                <td><span style="font-weight:600; font-size:11px;">${r.area}</span></td>
-                <td style="font-weight:700;">${r.firstValue} → ${r.lastValue}<br><small style="color:#64748b; font-weight:normal;">(${r.measurementCount} mätningar)</small></td>
-                <td style="font-weight:700;">${changeDisplay}</td>
-                <td style="color:#475569; font-weight:600;">${r.maxValue}</td>
                 <td>
-                    <span class="badge" style="background:${catInfo.bg}; color:${catInfo.color}; margin-bottom:3px;">${catInfo.label}</span><br>
-                    <small style="color:#1e293b; font-weight:500;">${r.analysisText}</small><br>
-                    <small style="color:#64748b;">📅 Historik: ${r.historyStr}</small>
+                    <strong>${r.adress}</strong>
+                    ${r.isCluster ? `<br><span class="cluster-banner">🔗 Gatu-kluster (${streetClusters[r.street].increasingMeters}/${streetClusters[r.street].totalMeters} mätare höjda)</span>` : ''}
                 </td>
-            </tr>`;
+                <td><code>${r.serienummer}</code></td>
+                <td><span class="badge badge-normal">${r.area}</span></td>
+                <td><div style="font-size:11px">${historyStr}</div></td>
+                <td><span class="${changeClass}">${changeSign}${r.change.toFixed(1)}%</span></td>
+                <td><strong>${r.max}</strong></td>
+                <td><span class="badge" style="background:${catInfo.bg}; color:${catInfo.color}">${catInfo.label}</span> — <span style="font-size:11px; font-weight:500;">${catInfo.action}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updateStatsAndInsights(filtered) {
+        // Räkna statistik
+        let counts = { total: filtered.length, extreme: 0, active_leak: 0, customer: 0, repaired: 0, cluster: 0 };
+        filtered.forEach(r => {
+            if (r.category === 'extreme') counts.extreme++;
+            if (r.category === 'active_leak') counts.active_leak++;
+            if (r.category === 'customer') counts.customer++;
+            if (r.category === 'repaired') counts.repaired++;
+            if (r.isCluster) counts.cluster++;
+        });
+
+        const statsGrid = document.getElementById('statsGrid');
+        statsGrid.innerHTML = `
+            <div class="stat-card" onclick="setCategoryFilter('all')"><div class="num">${counts.total}</div><div class="label">VISADE MÄTARE</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-extreme)" onclick="setCategoryFilter('extreme')"><div class="num">${counts.extreme}</div><div class="label">EXTREM ÖKNING</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-active)" onclick="setCategoryFilter('active_leak')"><div class="num">${counts.active_leak}</div><div class="label">AKTIVA LÄCKOR</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-customer)" onclick="setCategoryFilter('customer')"><div class="num">${counts.customer}</div><div class="label">KUNDLÄCKAGE</div></div>
+            <div class="stat-card" style="border-left-color:var(--clr-repaired)" onclick="setCategoryFilter('repaired')"><div class="num">${counts.repaired}</div><div class="label">LAGADE</div></div>
+            <div class="stat-card" style="border-left-color:#000" onclick="setCategoryFilter('cluster')"><div class="num">${counts.cluster}</div><div class="label">GATU-KLUSTER</div></div>
+        `;
+
+        // Insiktsmeddelande
+        const insight = document.getElementById('insightBox');
+        if (counts.extreme > 0 || counts.active_leak > 0) {
+            insight.innerHTML = `⚠️ <strong>Systeminsikt:</strong> Karma har identifierat <strong>${counts.extreme} kritiska flödesökningar</strong> och <strong>${counts.active_leak} konstanta bakgrundsläckor</strong> i valt område. Prioritera de röda och orangea raderna överst i listan.`;
+            insight.style.backgroundColor = '#fdf2f2';
+            insight.style.borderColor = 'var(--clr-active)';
+        } else {
+            insight.innerHTML = `💡 <strong>Systeminsikt:</strong> Inga akuta, extrema flödesexplosioner detekterade för tillfället. Fortsätt bevaka misstänkta mätare och dolda gatu-kluster.`;
+            insight.style.backgroundColor = '#e8f4f8';
+            insight.style.borderColor = 'var(--primary)';
         }
-        
-        tbody.innerHTML = html;
-        document.getElementById('results').style.display = 'block';
     }
 
-    function getCategoryColor(cat) {
-        const colors = { extreme: "#ffbbbb", active_leak: "#fee2e2", customer: "#f3e5f5", repaired: "#a9dfbf", suspicious: "#fff3e0", heatpump: "#fdebd0", disturbance: "#eceff1", industry: "#d4e6f1", normal: "#ffffff" };
-        return colors[cat] || "#ffffff";
-    }
-
-    function setCategoryTab(category) {
-        currentCategoryFilter = category;
+    function setCategoryFilter(cat) {
+        currentCategoryFilter = cat;
         document.querySelectorAll('.category-btn').forEach(btn => {
-            if (btn.dataset.category === category) btn.classList.add('active');
-            else btn.classList.remove('active');
+            btn.classList.toggle('active', btn.dataset.category === cat);
         });
         displayResults();
     }
 
-    async function handleFileSelection(files) {
-        for (let file of files) {
-            if (file.name.match(/\.(xlsx|xls|csv)$/i)) {
-                const date = extractDateFromFilename(file.name);
-                const meters = await parseExcelFile(file);
-                uploadedFiles.push({ fileName: file.name, date: date, meters: meters });
-            }
-        }
-        renderFileChips();
-        if (uploadedFiles.length >= 2) runAnalysis();
+    function setAreaFilter() {
+        currentAreaFilter = document.getElementById('areaFilter').value;
+        displayResults();
     }
 
-    function renderFileChips() {
-        const container = document.getElementById('fileList');
-        if (uploadedFiles.length === 0) {
-            container.innerHTML = '<p style="color:#64748b; font-size:13px; font-style:italic;">📌 Inga inlästa Excel-filer ännu. Lägg till filer för att starta.</p>';
-            return;
+    function setSort(col) {
+        if (currentSort.column === col) {
+            currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
+        } else {
+            currentSort.column = col;
+            currentSort.direction = 'desc';
         }
-        let html = '';
-        uploadedFiles.forEach((f, index) => {
-            html += `<div class="file-chip" onclick="removeUploadedFile(${index})" title="Klicka för att ta bort">📅 ${formatShortDate(f.date)} (${f.meters.length} st rader) ✖</div>`;
+        
+        const labels = { change: 'Förändring %', latestValue: 'Senaste värde', max: 'Toppvärde' };
+        const dirStr = currentSort.direction === 'desc' ? '(Högst först)' : '(Lägst först)';
+        document.getElementById('sortIndicator').innerText = `📌 Sorterar efter: ${labels[col]} ${dirStr}`;
+        
+        displayResults();
+    }
+
+    function exportReport() {
+        if (currentResults.length === 0) return;
+        
+        const exportData = currentResults.map(r => {
+            const catInfo = categories[r.category] || categories.normal;
+            return {
+                'Mätare ID': r.id,
+                'Adress': r.adress,
+                'Serienummer': r.serienummer,
+                'Område': r.area,
+                'Gata': r.street,
+                'Första värde': r.firstValue,
+                'Senaste värde': r.latestValue,
+                'Förändring %': r.change.toFixed(2),
+                'Toppvärde': r.max,
+                'Klassificering': catInfo.label,
+                'Rekommenderad åtgärd': catInfo.action,
+                'Gatu-kluster': r.isCluster ? 'JA' : 'NEJ',
+                'Intressant': interestingIds.has(r.id) ? 'JA' : 'NEJ',
+                'Ignorerad': ignoredIds.has(r.id) ? 'JA' : 'NEJ'
+            };
         });
-        container.innerHTML = html;
-    }
 
-    window.removeUploadedFile = function(index) {
-        uploadedFiles.splice(index, 1);
-        renderFileChips();
-        if (uploadedFiles.length >= 2) runAnalysis();
-        else document.getElementById('results').style.display = 'none';
-    };
-
-    function exportReportToExcel() {
-        if (currentResults.length === 0) return alert("Det finns ingen data att exportera just nu.");
-        
-        const dataRows = currentResults.map(r => ({
-            'Adress': r.adress,
-            'Serienummer': r.serienummer,
-            'Område': r.area,
-            'Gatunamn': r.street,
-            'Antal Mätningar': r.measurementCount,
-            'Första Värde': r.firstValue,
-            'Senaste Värde': r.lastValue,
-            'Total Förändring %': r.changePercent !== null ? r.changePercent.toFixed(1) : '0',
-            'Toppvärde': r.maxValue,
-            'Mätperiod': `${r.firstDate} till ${r.lastDate}`,
-            'Analyskategori': categories[r.category]?.label || 'Normal',
-            'Rekommenderad Åtgärd': r.analysisText,
-            'Systemkod': r.infokod || '',
-            'Historisk Flödeskedja': r.historyStr
-        }));
-        
-        const ws = XLSX.utils.json_to_sheet(dataRows);
+        const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Mönsteranalys_Karma");
-        XLSX.writeFile(wb, `karma_analysrapport_${new Date().toISOString().slice(0,10)}.xlsx`);
+        XLSX.book_append_sheet(wb, ws, "Karma_Läcksökrapport");
+        XLSX.writeFile(wb, `karma_lacksokrapport_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
+    // Event listeners
     document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
-    document.getElementById('fileInput').onchange = (e) => handleFileSelection(Array.from(e.target.files));
+    document.getElementById('fileInput').onchange = (e) => handleFiles(Array.from(e.target.files));
     document.getElementById('analyzeBtn').onclick = () => runAnalysis();
-    
     document.getElementById('clearBtn').onclick = () => {
         uploadedFiles = []; currentResults = []; ignoredIds.clear(); interestingIds.clear(); userCategories.clear();
         saveIgnored(); saveInteresting(); saveCategories();
-        renderFileChips();
+        updateFileList();
         document.getElementById('results').style.display = 'none';
         document.getElementById('searchInput').value = '';
         document.getElementById('areaFilter').value = 'all';
         currentAreaFilter = 'all';
-        currentCategoryFilter = 'all';
+        setCategoryFilter('all');
     };
     
-    document.getElementById('exportBtn').onclick = exportReportToExcel;
+    document.getElementById('exportBtn').onclick = exportReport;
     document.getElementById('searchInput').oninput = () => displayResults();
-    document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
+    document.getElementById('areaFilter').onchange = () => setAreaFilter();
     
-    document.getElementById('sort-change').onclick = () => setSortOrder('change', 'desc');
-    document.getElementById('sort-latest').onclick = () => setSortOrder('latest', 'desc');
-    document.getElementById('sort-max').onclick = () => setSortOrder('max', 'desc');
+    document.getElementById('sort-change').onclick = () => setSort('change');
+    document.getElementById('sort-latest').onclick = () => setSort('latestValue');
+    document.getElementById('sort-max').onclick = () => setSort('max');
     
-    document.querySelectorAll('.sortable').forEach(th => {
-        th.addEventListener('click', () => {
-            const col = th.dataset.sort;
-            const dir = (currentSort.column === col && currentSort.direction === 'desc') ? 'asc' : 'desc';
-            setSortOrder(col, dir);
-        });
-    });
-
     document.querySelectorAll('.category-btn').forEach(btn => {
-        btn.onclick = () => setCategoryTab(btn.dataset.category);
+        btn.onclick = () => setCategoryFilter(btn.dataset.category);
     });
-
+    
+    window.toggleIgnore = toggleIgnore;
+    window.toggleInteresting = toggleInteresting;
+    window.changeCategory = changeCategory;
+    window.setCategoryFilter = setCategoryFilter;
+    
+    // Initiering vid start
     loadSavedData();
-    renderFileChips();
+    updateFileList();
 </script>
 </body>
 </html>

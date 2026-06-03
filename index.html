@@ -1,5 +1,3 @@
-// lacksok-pro.html
-
 <!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -37,9 +35,7 @@
             font-size: 28px;
             font-weight: 700;
             margin-bottom: 4px;
-        }
-
-        .subtitle {
+        }        .subtitle {
             color: var(--text-muted);
             font-size: 14px;
             margin-bottom: 24px;
@@ -226,6 +222,7 @@
             border-radius: 8px;
             padding: 16px;
             border: 1px solid var(--border-color);
+            overflow-x: auto;
         }
 
         .sort-indicator {
@@ -278,9 +275,9 @@
 
         .cluster-banner {
             display: inline-block;
-            background: rgba(0,0,0,0.4);
-            border: 1px solid #444;
-            color: #00fa9a;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--clr-extreme);
+            color: #ff8888;
             font-size: 11px;
             padding: 2px 6px;
             border-radius: 4px;
@@ -320,6 +317,9 @@
             font-size: 16px;
             padding: 4px;
         }
+
+        .trend-up { color: #ef4444; font-weight: bold; }
+        .trend-down { color: #10b981; }
     </style>
 </head>
 <body>
@@ -352,7 +352,7 @@
 
         <div class="toolbar">
             <div>
-                <input type="text" id="searchInput" class="search-input" placeholder="Sök på adress, gata eller serienummer...">
+                <input type="text" id="searchInput" class="search-input" placeholder="Sök på adress, gata eller mätarnummer...">
                 <select id="areaFilter" class="filter-select">
                     <option value="all">Alla områden</option>
                 </select>
@@ -396,7 +396,7 @@
         let currentAreaFilter = 'all';
         let currentCategoryFilter = 'all';
 
-        // Kategorikonfigurationer matchat exakt efter dina nya val
+        // Matchar exakt dina nya knappar och val
         const categories = {
             extreme: { label: 'Extrem ökning', bg: '#ef4444', color: '#fff', symbol: '🔴', action: 'Akut Burst – åk ut direkt' },
             misstankt: { label: 'Misstänkt', bg: '#f97316', color: '#fff', symbol: '🟠', action: 'Förhöjt brus, bevaka utveckling' },
@@ -406,7 +406,6 @@
             normal: { label: 'Normal drift', bg: '#333', color: '#bbb', symbol: '⚪', action: 'Ingen åtgärd' }
         };
 
-        // Extrakterar datum ur Kamstrups standardfilnamn
         function extractDateFromFilename(filename) {
             const reg = /(\d{4})[-_](\d{2})[-_](\d{2})/;
             const match = filename.match(reg);
@@ -420,12 +419,53 @@
             return date.toISOString().slice(0, 10);
         }
 
-        // Simulerad excel-parser för att koden ska köra utan att krascha vid test
+        function cleanStreetName(address) {
+            if (!address) return 'Okänd gata';
+            // Plockar bort nummer och postnummer för att gruppera på gatunamn
+            let clean = address.split(/\d+/)[0].trim();
+            return clean.toUpperCase();
+        }
+
+        // RIKTIG Excel-läsare som tolkar Kamstrups exporterade kolumner
         function parseExcelFile(file) {
-            return new Promise((resolve) => {
-                // Den här biten mappar du mot ditt faktiska excel-kodningsbibliotek (t.ex XLSX.read)
-                // Retunerar en array med mätarobjekt
-                resolve([]);
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                        
+                        let meters = [];
+                        jsonData.forEach(row => {
+                            // Kamstrup-kolumner kan variera i gemener/versaler, vi mappar de vanligaste
+                            let id = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'];
+                            let address = row['Adress'] || row['Plats'] || row['address'];
+                            let value = parseFloat(row['Senaste värde'] || row['Senaste avläsning'] || row['Brus'] || row['value'] || 0);
+                            let infokod = row['Infokod'] || row['Aktiva händelser'] || row['Felkod'] || '';
+                            let area = row['Område'] || row['Ort'] || 'Tullinge';
+
+                            if (id) {
+                                meters.push({
+                                    id: id.toString().trim(),
+                                    adress: address ? address.toString().trim() : 'Saknar adress',
+                                    serienummer: id.toString().trim(),
+                                    value: isNaN(value) ? 0 : value,
+                                    infokod: infokod.toString(),
+                                    area: area.toString().trim(),
+                                    street: cleanStreetName(address)
+                                });
+                            }
+                        });
+                        resolve(meters);
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = () => reject(reader.error);
+                reader.readAsArrayBuffer(file);
             });
         }
 
@@ -440,7 +480,7 @@
             const maxVal = Math.max(...values);
             const minVal = Math.min(...values);
             
-            if (latest >= 50 && first <= 15 && (latest - first) >= 30) {
+            if (latest >= 50 && first <= 15 && (latest - first) >= 25) {
                 return 'extreme';
             }
             if (meter.infokod && meter.infokod.toLowerCase().includes('leak')) {
@@ -465,11 +505,12 @@
             currentResults = [];
             streetClusters = {};
             let metersMap = new Map();
+            let areasSet = new Set();
 
-            // Samla in historik från alla uppladdade filer
             uploadedFiles.forEach(file => {
                 const dateStr = formatShortDate(file.date);
                 file.meters.forEach(m => {
+                    areasSet.add(m.area);
                     if (!metersMap.has(m.id)) {
                         metersMap.set(m.id, {
                             id: m.id,
@@ -489,7 +530,15 @@
                 });
             });
 
-            // Gatu-klusterberäkning
+            // Uppdatera områdesväljaren dynamiskt
+            const areaDropdown = document.getElementById('areaFilter');
+            areaDropdown.innerHTML = '<option value="all">Alla områden</option>';
+            areasSet.forEach(a => {
+                areaDropdown.innerHTML += `<option value="${a}">${a}</option>`;
+            });
+            areaDropdown.value = currentAreaFilter;
+
+            // Beräkna gatu-kluster
             metersMap.forEach(m => {
                 if (m.history.length < 2) return;
                 const first = m.history[0];
@@ -548,12 +597,22 @@
             for (let file of files) {
                 const date = extractDateFromFilename(file.name);
                 
-                // Mappa detta mot din fil-läsare
                 parseExcelFile(file).then(meters => {
+                    if (meters.length > 0) {
+                        uploadedFiles.push({
+                            name: file.name,
+                            date: date,
+                            meters: meters
+                        });
+                    }
                     loadedCount++;
                     if (loadedCount === files.length) {
                         updateFileList();
                     }
+                }).catch(err => {
+                    console.error("Fel vid filläsning:", err);
+                    loadedCount++;
+                    if (loadedCount === files.length) updateFileList();
                 });
             }
         }
@@ -570,7 +629,7 @@
             uploadedFiles.forEach((f, idx) => {
                 const chip = document.createElement('div');
                 chip.className = 'file-chip-compact';
-                chip.innerHTML = `<span>📄 ${f.name.substring(0, 20)}...</span> <strong class="remove-file-x">×</strong>`;
+                chip.innerHTML = `<span>📄 ${f.name.substring(0, 18)}...</span> <strong class="remove-file-x">×</strong>`;
                 chip.querySelector('.remove-file-x').onclick = (e) => {
                     e.stopPropagation();
                     uploadedFiles.splice(idx, 1);
@@ -634,7 +693,7 @@
                     </td>
                     <td>
                         <div class="table-adress-text">${r.adress}</div>
-                        ${r.isCluster ? `<span class="cluster-banner">🔗 Gatu-kluster</span>` : ''}
+                        ${r.isCluster ? `<span class="cluster-banner">🔗 Gatu-kluster (${streetClusters[r.street].increasingMeters} st)</span>` : ''}
                     </td>
                     <td><code>${r.serienummer}</code></td>
                     <td><span class="badge" style="background:#444;">${r.area}</span></td>
@@ -671,8 +730,10 @@
             const insight = document.getElementById('insightBox');
             if (counts.extreme > 0) {
                 insight.innerHTML = `⚠️ <strong>Systeminsikt:</strong> Läcksök Pro har upptäckt <strong>${counts.extreme} akuta flödesexplosioner</strong>. Prioritera att åka ut på dessa direkt.`;
+                insight.style.borderColor = "var(--clr-extreme)";
             } else {
                 insight.innerHTML = `💡 <strong>Systeminsikt:</strong> Inga nya dygnsavvikelser eller extrema burst-larm registrerade för stunden.`;
+                insight.style.borderColor = "var(--primary)";
             }
         }
 
@@ -683,7 +744,10 @@
 
         function changeCategory(id, newCat) {
             userCategories.set(id, newCat);
-            runAnalysis();
+            // Spara valet och uppdatera tabellen i realtid
+            let item = currentResults.find(r => r.id === id);
+            if(item) item.category = newCat;
+            displayResults();
         }
 
         function toggleInteresting(id) {
@@ -697,11 +761,30 @@
             displayResults();
         }
 
+        function setSort(col) {
+            if (currentSort.column === col) {
+                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentSort.column = col;
+                currentSort.direction = 'desc';
+            }
+            
+            const labels = { change: 'Förändring %', latestValue: 'Senaste värde', max: 'Toppvärde' };
+            const dirStr = currentSort.direction === 'desc' ? '(Högst först)' : '(Lägst först)';
+            document.getElementById('sortIndicator').innerText = `📌 Sorterar efter: ${labels[col]} ${dirStr}`;
+            displayResults();
+        }
+
         // Kopplingar till knappar och sökfält
         document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
+        document.getElementById('fileInput').onchange = (e) => handleFiles(Array.from(e.target.files));
         document.getElementById('analyzeBtn').onclick = () => runAnalysis();
         document.getElementById('searchInput').oninput = () => displayResults();
+        document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
         
+        document.getElementById('sort-change').onclick = () => setSort('change');
+        document.getElementById('sort-max').onclick = () => setSort('max');
+
         document.getElementById('clearBtn').onclick = () => {
             uploadedFiles = []; currentResults = []; ignoredIds.clear(); interestingIds.clear(); userCategories.clear();
             updateFileList();

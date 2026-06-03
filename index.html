@@ -6,13 +6,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Karma - Läcksök Pro v2.0</title>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <style>
-        /* --- DESIGN SYSTEM (KARMA COMPACT / SPOTIFY DARK THEME) --- */
         :root {
             --bg-main: #0a0a0c;
             --bg-card: #121216;
@@ -24,386 +23,79 @@
             --primary-hover: #1ed760;
             --border-color: #22222a;
             --focus-outline: #22c55e;
-            
-            /* Högkontrasts-statusar för läcksökning */
-            --clr-extreme: #dc2626;       
-            --clr-aktiv-lacka: #f87171;   
-            --clr-misstankt: #f97316;       
-            --clr-leak: #eab308;           
-            --clr-storing: #38bdf8;        
-            --clr-ny-matare: #c084fc;      
+            --clr-extreme: #dc2626;
+            --clr-aktiv-lacka: #f87171;
+            --clr-misstankt: #f97316;
+            --clr-leak: #eab308;
+            --clr-storing: #38bdf8;
+            --clr-ny-matare: #c084fc;
             --clr-lagad: #10b981;
             --clr-normal: #27272a;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            padding: 32px;
-            line-height: 1.5;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-main); color: var(--text-main); padding: 32px; line-height: 1.5; }
 
-        /* --- LAYOUT STRUCTURE --- */
-        .app-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 28px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 20px;
-        }
+        .app-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
+        .app-title-area h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #ffffff 0%, #a0a0ab 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .app-title-area .subtitle { color: var(--text-muted); font-size: 14px; margin-top: 4px; font-weight: 500; }
 
-        .app-title-area h1 {
-            font-size: 32px;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #ffffff 0%, #a0a0ab 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+        .upload-section { background-color: var(--bg-card); border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid var(--border-color); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 
-        .app-title-area .subtitle {
-            color: var(--text-muted);
-            font-size: 14px;
-            margin-top: 4px;
-            font-weight: 500;
-        }
+        button { background-color: var(--primary); color: #ffffff; border: none; padding: 12px 26px; font-size: 14px; font-weight: 700; border-radius: 50px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; user-select: none; transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease; }
+        button:hover { transform: scale(1.03); background-color: var(--primary-hover); }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.65; cursor: not-allowed; transform: none !important; background-color: #1a1a22; }
+        button.secondary { background-color: transparent; border: 1px solid var(--text-muted); color: var(--text-main); }
+        button.secondary:hover { background-color: rgba(255, 255, 255, 0.06); border-color: #ffffff; }
+        button.danger { background-color: #7f1d1d; border: 1px solid #b91c1c; }
+        button.danger:hover { background-color: #b91c1c; }
 
-        /* --- CONTROL BUTTONS & PANELS --- */
-        .upload-section {
-            background-color: var(--bg-card);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 32px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-        }
+        .accordion-trigger { background: #181822; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-top: 18px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: fit-content; gap: 12px; user-select: none; transition: background-color 0.2s; }
+        .accordion-trigger:hover { background: #222230; }
+        .file-grid-container { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+        .file-grid-container.open { max-height: 400px; overflow-y: auto; margin-top: 14px; }
+        .file-grid-compact { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: #09090d; border-radius: 8px; border: 1px solid var(--border-color); }
 
-        .btn-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            align-items: center;
-        }
+        .file-chip-compact { display: inline-flex; align-items: center; background: #161620; color: var(--text-main); font-size: 12px; font-weight: 500; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border-color); gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        .file-chip-compact .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+        .file-chip-compact .chip-date { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+        .remove-file-x { color: #ef4444; cursor: pointer; font-size: 16px; padding: 0 4px; font-weight: 800; }
+        .remove-file-x:hover { color: #f87171; }
+        .no-files-text { color: var(--text-muted); font-size: 13px; font-style: italic; }
 
-        button {
-            background-color: var(--primary);
-            color: #ffffff;
-            border: none;
-            padding: 12px 26px;
-            font-size: 14px;
-            font-weight: 700;
-            border-radius: 50px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            user-select: none;
-            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease;
-        }
-
-        button:hover {
-            transform: scale(1.03);
-            background-color: var(--primary-hover);
-        }
-
-        button:active {
-            transform: scale(0.98);
-        }
-
-        button.secondary {
-            background-color: transparent;
-            border: 1px solid var(--text-muted);
-            color: var(--text-main);
-        }
-
-        button.secondary:hover {
-            background-color: rgba(255, 255, 255, 0.06);
-            border-color: #ffffff;
-        }
-
-        button.danger {
-            background-color: #7f1d1d;
-            border: 1px solid #b91c1c;
-        }
-        button.danger:hover {
-            background-color: #b91c1c;
-        }
-
-        /* --- ACCORDIONS FOR COMPACT VIEW --- */
-        .accordion-trigger {
-            background: #181822;
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            margin-top: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: fit-content;
-            gap: 12px;
-            user-select: none;
-            transition: background-color 0.2s;
-        }
-
-        .accordion-trigger:hover { 
-            background: #222230; 
-        }
-
-        .file-grid-container {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .file-grid-container.open {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-top: 14px;
-        }
-
-        .file-grid-compact {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            padding: 16px;
-            background: #09090d;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .file-chip-compact {
-            display: inline-flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #161620;
-            color: var(--text-main);
-            font-size: 12px;
-            font-weight: 500;
-            padding: 8px 14px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            min-width: 260px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        }
-
-        .file-chip-compact span {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 200px;
-        }
-
-        .remove-file-x { 
-            color: #ef4444; 
-            cursor: pointer; 
-            font-size: 16px; 
-            margin-left: 10px;
-            padding: 0 4px;
-            font-weight: 800;
-        }
-        .remove-file-x:hover {
-            color: #f87171;
-            transform: scale(1.2);
-        }
-
-        .no-files-text {
-            color: var(--text-muted);
-            font-size: 13px;
-            font-style: italic;
-        }
-
-        /* --- METRICS / STATS CARDS --- */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        .stat-card {
-            background-color: var(--bg-card);
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            cursor: pointer;
-            user-select: none;
-            transition: background-color 0.2s, transform 0.15s, border-color 0.2s;
-            position: relative;
-        }
-
-        .stat-card:hover { 
-            background-color: var(--bg-card-hover); 
-            transform: translateY(-2px);
-        }
-        
-        .stat-card.active { 
-            border: 2px solid var(--primary); 
-            background-color: rgba(29, 185, 84, 0.04); 
-        }
-        
-        .stat-card .num { 
-            font-size: 32px; 
-            font-weight: 800; 
-            margin-bottom: 6px;
-            letter-spacing: -0.03em;
-        }
-        
-        .stat-card .label { 
-            font-size: 11px; 
-            color: var(--text-muted); 
-            text-transform: uppercase; 
-            font-weight: 700; 
-            letter-spacing: 0.05em;
-        }
-
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .stat-card { background-color: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; user-select: none; transition: background-color 0.2s, transform 0.15s, border-color 0.2s; }
+        .stat-card:hover { background-color: var(--bg-card-hover); transform: translateY(-2px); }
+        .stat-card.active { border: 2px solid var(--primary); background-color: rgba(29, 185, 84, 0.04); }
+        .stat-card .num { font-size: 32px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.03em; }
+        .stat-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
         .stat-card.color-total { border-left: 4px solid var(--text-main); }
         .stat-card.color-aktiv-lacka { border-left: 4px solid var(--clr-aktiv-lacka); }
         .stat-card.color-misstankt { border-left: 4px solid var(--clr-misstankt); }
         .stat-card.color-noise { border-left: 4px solid var(--clr-storing); }
 
-        /* --- LIVE COUNTER INSIGHT BOX --- */
-        .insight-box {
-            padding: 18px 22px;
-            border-radius: 10px;
-            font-size: 14px;
-            margin-bottom: 32px;
-            border-left: 4px solid var(--primary);
-            background-color: var(--bg-card);
-            line-height: 1.6;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
+        .insight-box { padding: 18px 22px; border-radius: 10px; font-size: 14px; margin-bottom: 32px; border-left: 4px solid var(--primary); background-color: var(--bg-card); line-height: 1.6; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 
-        /* --- FILTERS & TOOLBAR --- */
-        .toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+        .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: 100%; }
+        .search-input { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 12px 24px; border-radius: 50px; width: 320px; font-size: 14px; outline: none; transition: border-color 0.2s, background-color 0.2s; }
+        .search-input:focus { border-color: var(--focus-outline); background-color: var(--bg-card-hover); }
+        .filter-select { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 12px 24px; border-radius: 50px; font-size: 14px; outline: none; cursor: pointer; transition: border-color 0.2s; }
+        .filter-select:focus { border-color: var(--focus-outline); }
 
-        .toolbar-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            width: 100%;
-        }
+        .section-title { font-size: 18px; font-weight: 800; margin: 36px 0 16px 0; color: var(--text-main); display: flex; align-items: center; gap: 10px; letter-spacing: -0.01em; }
+        .results-container { background-color: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); overflow-x: auto; box-shadow: 0 6px 24px rgba(0,0,0,0.3); margin-bottom: 32px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; padding: 16px 12px; border-bottom: 2px solid var(--border-color); cursor: pointer; user-select: none; transition: color 0.2s, background-color 0.2s; }
+        th:hover { color: #ffffff; background-color: rgba(255,255,255,0.02); }
+        th.active-sort { color: var(--primary); }
+        td { padding: 16px 12px; border-bottom: 1px solid var(--border-color); font-size: 14px; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
 
-        .search-input {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            color: #ffffff;
-            padding: 12px 24px;
-            border-radius: 50px;
-            width: 320px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s, background-color 0.2s;
-        }
-
-        .search-input:focus {
-            border-color: var(--focus-outline);
-            background-color: var(--bg-card-hover);
-        }
-
-        .filter-select {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            color: #ffffff;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-size: 14px;
-            outline: none;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-
-        .filter-select:focus {
-            border-color: var(--focus-outline);
-        }
-
-        /* --- DATA TABLES (LEFT-SHIFTED WORKFLOW) --- */
-        .section-title {
-            font-size: 18px;
-            font-weight: 800;
-            margin: 36px 0 16px 0;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            letter-spacing: -0.01em;
-        }
-
-        .results-container {
-            background-color: var(--bg-card);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            overflow-x: auto;
-            box-shadow: 0 6px 24px rgba(0,0,0,0.3);
-            margin-bottom: 32px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        th {
-            color: var(--text-muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            padding: 16px 12px;
-            border-bottom: 2px solid var(--border-color);
-            cursor: pointer;
-            user-select: none;
-            transition: color 0.2s, background-color 0.2s;
-        }
-
-        th:hover {
-            color: #ffffff;
-            background-color: rgba(255,255,255,0.02);
-        }
-
-        th.active-sort {
-            color: var(--primary);
-        }
-
-        td {
-            padding: 16px 12px;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 14px;
-            vertical-align: middle;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        tr:hover td {
-            background-color: rgba(255, 255, 255, 0.02);
-        }
-
-        /* Vänsterkantsindikatorer baserat på skärpa */
         .row-extreme td:first-child { border-left: 4px solid var(--clr-extreme); }
         .row-aktiv_lacka td:first-child { border-left: 4px solid var(--clr-aktiv-lacka); }
         .row-ny_matare td:first-child { border-left: 4px solid var(--clr-ny-matare); }
@@ -413,145 +105,25 @@
         .row-lagad td:first-child { border-left: 4px solid var(--clr-lagad); }
         .row-normal td:first-child { border-left: 4px solid var(--clr-normal); }
 
-        .table-adress-container {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
+        .table-adress-container { display: flex; flex-direction: column; gap: 4px; }
+        .table-adress-text { font-weight: 700; font-size: 15px; color: #ffffff; }
+        .field-memo-tag { display: inline-block; background: #14141e; border: 1px solid #2e2e3e; color: #2dd4bf; font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 6px; margin-top: 6px; max-width: 480px; line-height: 1.4; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); }
 
-        .table-adress-text {
-            font-weight: 700;
-            font-size: 15px;
-            color: #ffffff;
-        }
+        .copy-btn { background: #1c1c24; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
+        .copy-btn:hover { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+        .badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; display: inline-block; }
+        .category-select-compact { background: #161620; color: #ffffff; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; font-size: 13px; font-weight: 600; outline: none; cursor: pointer; transition: border-color 0.2s; }
+        .category-select-compact:focus { border-color: var(--primary); }
+        .action-btn { background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 6px; user-select: none; transition: transform 0.1s ease; }
+        .action-btn:hover { transform: scale(1.2); }
+        .trend-up { color: #f87171; font-weight: 800; }
+        .trend-down { color: #34d399; font-weight: 600; }
 
-        /* Smarta interna fältnoteringar */
-        .field-memo-tag {
-            display: inline-block;
-            background: #14141e;
-            border: 1px solid #2e2e3e;
-            color: #2dd4bf;
-            font-size: 12px;
-            font-weight: 500;
-            padding: 6px 12px;
-            border-radius: 6px;
-            margin-top: 6px;
-            max-width: 480px;
-            line-height: 1.4;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
-        }
+        .noise-accordion-box { background: #0d0d11; border: 1px dashed #2e2e3e; border-radius: 12px; padding: 20px; margin-top: 36px; }
 
-        .copy-btn {
-            background: #1c1c24;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s ease;
-        }
-        
-        .copy-btn:hover {
-            background: var(--primary);
-            color: #ffffff;
-            border-color: var(--primary);
-        }
-
-        .badge {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            display: inline-block;
-        }
-
-        .category-select-compact {
-            background: #161620;
-            color: #ffffff;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 13px;
-            font-weight: 600;
-            outline: none;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-
-        .category-select-compact:focus {
-            border-color: var(--primary);
-        }
-
-        .action-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            padding: 6px;
-            user-select: none;
-            transition: transform 0.1s ease;
-        }
-        .action-btn:hover {
-            transform: scale(1.2);
-        }
-
-        .trend-up {
-            color: #f87171;
-            font-weight: 800;
-        }
-        .trend-down {
-            color: #34d399;
-            font-weight: 600;
-        }
-
-        /* --- COMPACT SUB-LIST FOR NOISE & PUMPS --- */
-        .noise-accordion-box {
-            background: #0d0d11;
-            border: 1px dashed #2e2e3e;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 36px;
-        }
-
-        /* --- TREND DIALOG PANEL (MODAL GRAPH) --- */
-        .graph-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .graph-modal-content {
-            background: #121218;
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            width: 100%;
-            max-width: 700px;
-            padding: 24px;
-            position: relative;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-        }
-        .close-modal-btn {
-            position: absolute;
-            top: 16px;
-            right: 20px;
-            font-size: 24px;
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-        }
+        .graph-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .graph-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 700px; padding: 24px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        .close-modal-btn { position: absolute; top: 16px; right: 20px; font-size: 24px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
         .close-modal-btn:hover { color: #fff; }
     </style>
 </head>
@@ -572,7 +144,6 @@
             <button id="clearBtn" class="secondary danger">🗑️ Nollställ</button>
             <input type="file" id="fileInput" multiple style="display: none;" accept=".xlsx, .xls, .csv, .pdf">
         </div>
-        
         <div class="accordion-trigger" id="accordionTrigger">
             <span>📂 Visa ackumulerade datafiler (<span id="fileCountText">0</span> st inlästa)</span> <span id="arrowIndicator">▸</span>
         </div>
@@ -584,9 +155,7 @@
     </div>
 
     <div id="results" style="display: none;">
-        
         <div class="stats-grid" id="statsGrid"></div>
-
         <div class="insight-box" id="insightBox"></div>
 
         <div class="toolbar">
@@ -628,7 +197,7 @@
 
         <div class="noise-accordion-box">
             <div class="accordion-trigger" id="noiseAccordionTrigger" style="margin-top:0; width:100%; background:transparent; border:none; padding:0;">
-                <span>⚙️ Gömda Störningar, Pumpar & Felkoder (<span id="noiseCountText">0</span> st identifierade objekt dolda här)</span> <span id="noiseArrowIndicator">▸</span>
+                <span>⚙️ Gömda — Störningar, LEAK-larm & Lagade Läckor (<span id="noiseCountText">0</span> st dolda)</span> <span id="noiseArrowIndicator">▸</span>
             </div>
             <div class="file-grid-container" id="noiseGridContainer">
                 <div class="results-container" style="background:#09090d; margin-top:16px; border-color:#222230; padding:12px;">
@@ -638,8 +207,8 @@
                                 <th style="width: 140px;">Flytta/Klassa</th>
                                 <th>Adress / Fastighet</th>
                                 <th>Mätarnummer</th>
-                                <th>Högsta Brus</th>
-                                <th>Automatisk Systemkommentar</th>
+                                <th>Högsta värde</th>
+                                <th>Systemkommentar</th>
                             </tr>
                         </thead>
                         <tbody id="noiseTableBody"></tbody>
@@ -647,7 +216,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <div class="graph-modal" id="graphModal">
@@ -661,19 +229,29 @@
     </div>
 
     <script>
-        // Global state management
+        // PDF.js worker — måste sättas innan getDocument() anropas
+        if (window['pdfjs-dist/build/pdf']) {
+            window['pdfjs-dist/build/pdf'].GlobalWorkerOptions.workerSrc =
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // ── Global state ──────────────────────────────────────────────────────────
         let uploadedFiles = [];
         let currentResults = [];
         let ignoredIds = new Set();
         let interestingIds = new Set();
         let userCategories = new Map();
         let activeChartInstance = null;
-
         let currentSort = { column: 'change', direction: 'desc' };
         let currentAreaFilter = 'all';
         let currentCategoryFilter = 'all';
 
-        // Omfattande lokalt kunskapsbibliotek för verifierade fältnoteringar
+        // Kategorier som sorteras till bottenpanelen (aldrig i huvudlistan)
+        const BOTTOM_PANEL_CATS = new Set(['storing', 'leak_code', 'lagad']);
+        // Kategorier som döljs helt från UI (normal bakgrund = ingen action krävs)
+        const HIDDEN_CATS = new Set(['normal']);
+
+        // ── Kunskapsbas ───────────────────────────────────────────────────────────
         const fieldKnowledgeBase = {
             "GRANBACKEN 2": { cat: "aktiv_lacka", memo: "🚨 FLÖDESEXPLOSION! Bruset sköt upp spikrakt till 73 dB i början av juni. Åk ut direkt!" },
             "HÖGBRINKSVÄGEN": { cat: "storing", memo: "🔊 Industri/Pumpstörning: Hoppar extremt mycket i brus (upp till 275 dB)." },
@@ -697,71 +275,72 @@
         };
 
         const categories = {
-            extreme: { label: 'Akut Huvudledning', bg: '#dc2626', color: '#fff', symbol: '🚨' },
-            aktiv_lacka: { label: 'Aktiv läcka (Servis)', bg: '#f87171', color: '#000', symbol: '🔴' },
-            misstankt: { label: 'Misstänkt / Läcklyssna', bg: '#f97316', color: '#fff', symbol: '🟠' },
-            ny_matare: { label: 'Säsongsanalys krävs', bg: '#c084fc', color: '#fff', symbol: '🟣' },
-            leak_code: { label: 'Efter mätare (LEAK)', bg: '#eab308', color: '#000', symbol: '🟡' },
-            storing: { label: 'Störning / Pump', bg: '#38bdf8', color: '#fff', symbol: '🔵' },
-            lagad: { label: 'Markerad lagad', bg: '#10b981', color: '#fff', symbol: '🟢' },
-            normal: { label: 'Normal bakgrund', bg: '#27272a', color: '#bbb', symbol: '⚪' }
+            extreme:     { label: 'Akut Huvudledning',          bg: '#dc2626', color: '#fff', symbol: '🚨' },
+            aktiv_lacka: { label: 'Aktiv läcka (Servis)',        bg: '#f87171', color: '#000', symbol: '🔴' },
+            misstankt:   { label: 'Misstänkt / Läcklyssna',     bg: '#f97316', color: '#fff', symbol: '🟠' },
+            ny_matare:   { label: 'Säsongsanalys krävs',         bg: '#c084fc', color: '#fff', symbol: '🟣' },
+            leak_code:   { label: 'Efter mätare (LEAK)',         bg: '#eab308', color: '#000', symbol: '🟡' },
+            storing:     { label: 'Störning / Pump',             bg: '#38bdf8', color: '#fff', symbol: '🔵' },
+            lagad:       { label: 'Markerad lagad',              bg: '#10b981', color: '#fff', symbol: '🟢' },
+            normal:      { label: 'Normal bakgrund',             bg: '#27272a', color: '#bbb', symbol: '⚪' }
         };
 
-        // DOM Elements
-        const accordionTrigger = document.getElementById('accordionTrigger');
-        const fileGridContainer = document.getElementById('fileGridContainer');
-        const arrowIndicator = document.getElementById('arrowIndicator');
-
+        // ── DOM-element ───────────────────────────────────────────────────────────
+        const accordionTrigger    = document.getElementById('accordionTrigger');
+        const fileGridContainer   = document.getElementById('fileGridContainer');
+        const arrowIndicator      = document.getElementById('arrowIndicator');
         const noiseAccordionTrigger = document.getElementById('noiseAccordionTrigger');
-        const noiseGridContainer = document.getElementById('noiseGridContainer');
+        const noiseGridContainer  = document.getElementById('noiseGridContainer');
         const noiseArrowIndicator = document.getElementById('noiseArrowIndicator');
 
-        // Accordion toggle logik
         accordionTrigger.onclick = () => {
             fileGridContainer.classList.toggle('open');
-            arrowIndicator.innerText = fileGridContainer.classList.contains('open') ? "▾" : "▸";
+            arrowIndicator.innerText = fileGridContainer.classList.contains('open') ? '▾' : '▸';
         };
-
         noiseAccordionTrigger.onclick = () => {
             noiseGridContainer.classList.toggle('open');
-            noiseArrowIndicator.innerText = noiseGridContainer.classList.contains('open') ? "▾" : "▸";
+            noiseArrowIndicator.innerText = noiseGridContainer.classList.contains('open') ? '▾' : '▸';
         };
 
-        // Extraherar datum ur filnamnet (t.ex. "export_2026-05-12.xlsx")
+        // ── Datumhjälpare ─────────────────────────────────────────────────────────
         function extractDateFromFilename(filename) {
-            const reg = /(\d{4})[-_](\d{2})[-_](\d{2})/;
-            const match = filename.match(reg);
-            return match ? new Date(match[1], match[2] - 1, match[3]) : new Date();
+            const m = filename.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
+            return m ? new Date(m[1], m[2] - 1, m[3]) : null;
         }
 
-        function formatShortDate(date) { 
-            return date.toISOString().slice(0, 10); 
+        function parseSwedishDate(day, monthStr, year) {
+            const map = { jan:0, feb:1, mar:2, apr:3, maj:4, jun:5, jul:6, aug:7, sep:8, okt:9, nov:10, dec:11 };
+            const m = map[monthStr.toLowerCase().slice(0, 3)];
+            return m !== undefined ? new Date(parseInt(year), m, parseInt(day)) : null;
         }
 
+        function formatShortDate(date) { return date.toISOString().slice(0, 10); }
+
+        // ── Adresshjälpare ────────────────────────────────────────────────────────
         function cleanStreetName(address) {
             if (!address) return 'OKÄND GATA';
             return address.split(/\d+/)[0].trim().toUpperCase();
         }
 
-        // Taggar geografiskt område baserat på tillgänglig strängdata
         function identifyArea(addressStr, rawArea) {
-            const text = (addressStr + " " + rawArea).toUpperCase();
-            if (text.includes("TULLINGE")) return "TULLINGE";
-            if (text.includes("TUMBA")) return "TUMBA";
-            if (text.includes("NORSBORG")) return "NORSBORG";
-            if (text.includes("FITTJA")) return "FITTJA";
-            if (text.includes("UTTRAN")) return "UTTRAN";
-            if (text.includes("GRÖDINGE")) return "GRÖDINGE";
-            return "ÖVRIGT";
+            const text = (addressStr + ' ' + rawArea).toUpperCase();
+            if (text.includes('TULLINGE'))  return 'TULLINGE';
+            if (text.includes('TUMBA'))     return 'TUMBA';
+            if (text.includes('NORSBORG'))  return 'NORSBORG';
+            if (text.includes('FITTJA'))    return 'FITTJA';
+            if (text.includes('UTTRAN'))    return 'UTTRAN';
+            if (text.includes('GRÖDINGE')) return 'GRÖDINGE';
+            return 'ÖVRIGT';
         }
 
-        // Rensar bort postnummer och ortsnamn för renare visning och string-matching
         function extractCleanAddressOnly(fullAddress) {
-            if (!fullAddress) return "";
-            return fullAddress.replace(/\b(TUMBA|TULLINGE|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\d{3}\s?\d{2})\b/gi, "").trim().replace(/\s+/g, " ").toUpperCase();
+            if (!fullAddress) return '';
+            return fullAddress
+                .replace(/\b(TUMBA|TULLINGE|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\d{3}\s?\d{2})\b/gi, '')
+                .trim().replace(/\s+/g, ' ').toUpperCase();
         }
 
-        // Parsar binär Excel-fil via XLSX sheet_to_json
+        // ── Excel-parser ──────────────────────────────────────────────────────────
         function parseExcelFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -770,16 +349,14 @@
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
                         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-                        let meters = [];
-
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                        const meters = [];
                         jsonData.forEach(row => {
-                            let id = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'] || row['Device ID'];
-                            let address = row['Adress'] || row['Plats'] || row['address'] || row['Mätarplats'];
-                            let value = parseFloat(row['Senaste värde'] || row['Senaste avläsning'] || row['Brus'] || row['value'] || row['Brusvärde (dB)'] || 0);
-                            let infokod = row['Infokod'] || row['Aktiva händelser'] || row['Felkod'] || row['Status'] || '';
-                            let rawArea = row['Område'] || row['Ort'] || '';
-
+                            const id      = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'] || row['Device ID'];
+                            const address = row['Adress'] || row['Plats'] || row['address'] || row['Mätarplats'];
+                            const value   = parseFloat(row['Senaste värde'] || row['Senaste avläsning'] || row['Brus'] || row['value'] || row['Brusvärde (dB)'] || 0);
+                            const infokod = row['Infokod'] || row['Aktiva händelser'] || row['Felkod'] || row['Status'] || '';
+                            const rawArea = row['Område'] || row['Ort'] || '';
                             if (id) {
                                 meters.push({
                                     id: id.toString().trim(),
@@ -799,22 +376,24 @@
             });
         }
 
-        // Parsar Kamstrup PDF-rapport (Filtrerade mätare) via PDF.js
-        function parsePDFFile(file) {
+        // ── PDF-parser (Kamstrup "Filtrerade mätare") ─────────────────────────────
+        function parsePDFFile(file, onProgress) {
             return new Promise(async (resolve, reject) => {
                 try {
                     const pdfjsLib = window['pdfjs-dist/build/pdf'];
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                     const meters = [];
+                    let reportDate = null;
 
                     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                        if (onProgress) onProgress(pageNum, pdf.numPages);
                         const page = await pdf.getPage(pageNum);
                         const textContent = await page.getTextContent();
 
                         const items = textContent.items
-                            .filter(item => item.str.trim().length > 0)
-                            .map(item => ({ str: item.str.trim(), x: item.transform[4], y: item.transform[5] }));
+                            .filter(i => i.str.trim().length > 0)
+                            .map(i => ({ str: i.str.trim(), x: i.transform[4], y: i.transform[5] }));
 
                         const rows = groupPDFRows(items, 4);
                         let pendingCity = null;
@@ -822,11 +401,17 @@
                         for (const row of rows) {
                             const joined = row.map(i => i.str).join(' ');
 
-                            // Skippa rubrik- och sidfotssrader
-                            if (row.some(i => i.str === 'Serienummer' || i.str === 'Adress')) { pendingCity = null; continue; }
-                            if (/Rapport utfärdad|Sida \d+|Filtrerade mätare|\bmätare\b|^Filtrera/i.test(joined)) { pendingCity = null; continue; }
+                            // Extrahera rapportdatum ur sidfot ("Rapport utfärdad den 22 maj 2026")
+                            if (!reportDate) {
+                                const dm = joined.match(/Rapport utfärdad den (\d{1,2})\s+(\w+)\s+(\d{4})/i);
+                                if (dm) reportDate = parseSwedishDate(dm[1], dm[2], dm[3]);
+                            }
 
-                            // Hitta serienumret — rent numerisk sträng 7–10 siffror
+                            // Skippa rubrik- och sidfotsrader
+                            if (row.some(i => i.str === 'Serienummer' || i.str === 'Adress')) { pendingCity = null; continue; }
+                            if (/Rapport utfärdad|Sida \d+|Filtrerade mätare|\bmätare\b/i.test(joined) && row.length <= 5) { pendingCity = null; continue; }
+
+                            // Serienummer = rent numerisk sträng 7–10 siffror
                             const snItem = row.find(i => /^\d{7,10}$/.test(i.str));
 
                             if (snItem) {
@@ -834,7 +419,7 @@
                                 if (meter) meters.push(meter);
                                 pendingCity = null;
                             } else {
-                                // Kan vara stadsnamnsrad vid 2-radsadresser (Kamstrup-format)
+                                // Möjlig stadsnamnsrad i 2-radsadressformat (Kamstrup-PDF)
                                 const hasCityOrPostal = /(TULLINGE|TUMBA|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\b\d{5}\b)/i.test(joined);
                                 const hasDate = /\d{4}-\d{2}-\d{2}/.test(joined);
                                 if (hasCityOrPostal && !hasDate && row.filter(i => i.str.length > 2).length <= 3) {
@@ -845,7 +430,7 @@
                             }
                         }
                     }
-                    resolve(meters);
+                    resolve({ meters, reportDate });
                 } catch (err) { reject(err); }
             });
         }
@@ -869,20 +454,20 @@
         }
 
         function buildMeterFromPDFRow(row, snItem, pendingCity) {
-            // Adress = allt till vänster om serienumret (x > 20 för att skippa flaggkolumn)
+            // Adress = textelement till vänster om SN med x > 20 (skippar flaggkolumn)
             const addrItems = row.filter(i => i.x < snItem.x - 5 && i.x > 20 && /[A-ZÅÄÖ\d]/i.test(i.str));
             let adress = addrItems.map(i => i.str).join(' ').trim();
             if (pendingCity) adress = adress ? adress + ' ' + pendingCity : pendingCity;
             if (!adress) return null;
 
-            // Allt till höger om serienumret: datum → värden → infokod
+            // Allt till höger om SN: datum → värden → infokod
             const afterSN = row.filter(i => i.x > snItem.x + 10).sort((a, b) => a.x - b.x);
             let senasteVarde = 0, infokod = '', dateFound = false, numCount = 0;
 
             for (const item of afterSN) {
                 const t = item.str;
                 if (/^\d{4}-\d{2}-\d{2}/.test(t)) { dateFound = true; continue; }
-                if (/^\d{1,2}:\d{2}$/.test(t)) continue; // Skippa klockslag HH:MM
+                if (/^\d{1,2}:\d{2}$/.test(t)) continue;
                 if (dateFound) {
                     if (/^\d+$/.test(t)) {
                         numCount++;
@@ -904,348 +489,330 @@
             };
         }
 
-       // Hitta smartClassify i din befintliga fil och ersätt den med detta:
+        // ── Analysmotor ───────────────────────────────────────────────────────────
+        function smartClassify(meter) {
+            const cleanAddr = extractCleanAddressOnly(meter.adress);
+            if (fieldKnowledgeBase[cleanAddr]) return fieldKnowledgeBase[cleanAddr].cat;
 
-function smartClassify(meter) {
-    const cleanAddr = extractCleanAddressOnly(meter.adress);
-    // Detta sparar dina 1200 rader i kunskapsbasen så att dina manuella val ligger kvar!
-    if (fieldKnowledgeBase[cleanAddr]) return fieldKnowledgeBase[cleanAddr].cat;
+            const info = (meter.infokod || '').toLowerCase();
 
-    if (!meter.history || meter.history.length < 5) return 'normal';
-    
-    const history = [...meter.history].sort((a,b) => a.date - b.date);
-    const totalReadings = history.length;
-    
-    const currentNoise = history[totalReadings - 1].value;
-    const maxHistorical = Math.max(...history.map(h => h.value));
+            // Kamstrup infokoder — hanteras alltid oavsett historik
+            if (info.includes('burst') || info.includes('rörbrott')) return 'extreme';
+            if (info.includes('dry'))                                  return 'normal';
+            if (info.includes('reverse'))                              return 'storing';
+            if (info.includes('leak') || info.includes('läckage'))    return 'leak_code';
 
-    // 1. FILTRERA BORT HISTORISKT LAGADE LÄCKOR (T.ex. Petunievägen/Gröndalsvägen)
-    const recentReadings = history.slice(-4);
-    const isConsistentlyQuietNow = recentReadings.every(h => h.value <= 22);
-    if (isConsistentlyQuietNow) {
-        if (maxHistorical >= 50) return 'lagad';
-        return 'normal'; 
-    }
+            const hist = meter.history;
 
-    // 2. DETEKTOR FÖR NYUPPKOMMEN, IHÅLLANDE ÖKNING (T.ex. Axels Väg 15)
-    const recentPeriod = history.slice(-3);   // Senaste mätningarna
-    const olderPeriod = history.slice(0, -3);   // Allt historiskt bakåt
+            // Enkelmätning (t.ex. ensam PDF) — klassificera på aktuellt värde
+            if (!hist || hist.length < 2) {
+                const v = hist?.length ? hist[hist.length - 1].value : 0;
+                if (v >= 50) return 'aktiv_lacka';
+                if (v >= 28) return 'aktiv_lacka';
+                if (v >= 18) return 'ny_matare';
+                return 'normal';
+            }
 
-    const isOlderPeriodQuiet = olderPeriod.every(h => h.value <= 12); // Varit tyst och stabil förut
-    const isRecentPeriodHigh = recentPeriod.every(h => h.value >= 18); // Har hoppat upp och stannat kvar
+            // Partial trend (2–4 filer): enkel tröskelanalys
+            if (hist.length < 5) {
+                const sorted = [...hist].sort((a, b) => a.date - b.date);
+                const current = sorted[sorted.length - 1].value;
+                if (current >= 28) return 'aktiv_lacka';
+                if (current >= 18) return 'ny_matare';
+                return 'normal';
+            }
 
-    if (isOlderPeriodQuiet && isRecentPeriodHigh) {
-        return 'misstankt'; // Flagga direkt som skarp misstänkt läcka!
-    }
+            // Full trendanalys (≥5 filer)
+            const history = [...hist].sort((a, b) => a.date - b.date);
+            const n = history.length;
+            const currentNoise  = history[n - 1].value;
+            const maxHistorical = Math.max(...history.map(h => h.value));
 
-    // 3. STANDARD FALLBACKS
-    if (meter.infokod && meter.infokod.toLowerCase().includes('leak')) return 'leak_code';
-    if (currentNoise >= 28) return 'aktiv_lacka';
-    if (currentNoise >= 16) return 'ny_matare'; // Sorteras till säsongsanalys om det är en mjuk ökning
-    
-    return 'normal';
-}
+            // 1. Reparationsdetektorn
+            const recentFour = history.slice(-4);
+            if (recentFour.every(h => h.value <= 22)) {
+                return maxHistorical >= 50 ? 'lagad' : 'normal';
+            }
 
-        // Sammanställer och analyserar tidsseriedatan kronologiskt
+            // 2. Ihållande stegringsdetektor (X=3)
+            const recentThree = history.slice(-3);
+            const olderPeriod  = history.slice(0, -3);
+            if (olderPeriod.every(h => h.value <= 12) && recentThree.every(h => h.value >= 18)) {
+                return 'misstankt';
+            }
+
+            // 3. Standard-fallbacks
+            if (currentNoise >= 28) return 'aktiv_lacka';
+            if (currentNoise >= 16) return 'ny_matare';
+            return 'normal';
+        }
+
+        // ── Analys-runner ─────────────────────────────────────────────────────────
         function runAnalysis() {
             if (uploadedFiles.length === 0) return;
-            
-            // Kronologisk sortering
             uploadedFiles.sort((a, b) => a.date - b.date);
             currentResults = [];
-            let metersMap = new Map();
+            const metersMap = new Map();
 
             uploadedFiles.forEach(file => {
                 const dateStr = formatShortDate(file.date);
                 file.meters.forEach(m => {
                     if (!metersMap.has(m.id)) {
-                        metersMap.set(m.id, { 
-                            id: m.id, 
-                            adress: m.adress, 
-                            serienummer: m.serienummer, 
-                            area: m.area, 
-                            street: m.street, 
-                            infokod: m.infokod, 
-                            history: [] 
-                        });
+                        metersMap.set(m.id, { id: m.id, adress: m.adress, serienummer: m.serienummer, area: m.area, street: m.street, infokod: m.infokod, history: [] });
                     }
-                    metersMap.get(m.id).history.push({ date: file.date, dateStr: dateStr, value: m.value });
+                    metersMap.get(m.id).history.push({ date: file.date, dateStr, value: m.value });
                 });
             });
 
-            for (let [id, m] of metersMap) {
+            for (const [, m] of metersMap) {
                 const first = m.history[0];
-                const last = m.history[m.history.length - 1];
-                let totalChange = first.value > 0 ? ((last.value / first.value) - 1) * 100 : last.value * 100;
-                const maxValue = Math.max(...m.history.map(h => h.value));
-                
-                let finalCategory = userCategories.get(m.id) || smartClassify(m);
-                const cleanAddr = extractCleanAddressOnly(m.adress);
+                const last  = m.history[m.history.length - 1];
+                const totalChange = first.value > 0 ? ((last.value / first.value) - 1) * 100 : last.value * 100;
+                const maxValue    = Math.max(...m.history.map(h => h.value));
+                const finalCategory = userCategories.get(m.id) || smartClassify(m);
+                const cleanAddr   = extractCleanAddressOnly(m.adress);
 
                 currentResults.push({
-                    id: m.id, 
-                    adress: m.adress, 
-                    serienummer: m.serienummer, 
-                    area: m.area, 
-                    street: m.street,
-                    history: m.history, 
-                    change: totalChange, 
-                    max: maxValue, 
-                    category: finalCategory,
-                    memo: fieldKnowledgeBase[cleanAddr] ? fieldKnowledgeBase[cleanAddr].memo : ""
+                    id: m.id, adress: m.adress, serienummer: m.serienummer,
+                    area: m.area, street: m.street, history: m.history,
+                    infokod: m.infokod,
+                    change: totalChange, max: maxValue, category: finalCategory,
+                    memo: fieldKnowledgeBase[cleanAddr]?.memo || ''
                 });
             }
             document.getElementById('results').style.display = 'block';
             displayResults();
         }
 
-        // Renderar datatabeller och skiftar fält till vänster för optimal skärmbredd
+        // ── Rendering ─────────────────────────────────────────────────────────────
+        function getBottomComment(r) {
+            if (r.category === 'lagad')     return `✅ Historiskt lagad — Max: <strong>${r.max} dB</strong>. Konsekvent tyst de senaste 4 mätningarna.`;
+            if (r.category === 'leak_code') return `🟡 LEAK-larm${r.infokod ? ` (${r.infokod})` : ''} — Troligtvis abonnentens sida.`;
+            if (r.category === 'storing')   return `🔵 Störning/pump — Fluktuerar för kraftigt för att klassas som aktiv läcka.`;
+            return '';
+        }
+
         function displayResults() {
-            const query = document.getElementById('searchInput').value.toLowerCase().trim();
-            const tbody = document.getElementById('tableBody');
+            const query     = document.getElementById('searchInput').value.toLowerCase().trim();
+            const tbody     = document.getElementById('tableBody');
             const noiseTbody = document.getElementById('noiseTableBody');
             tbody.innerHTML = '';
             noiseTbody.innerHTML = '';
-            
-            // Sorteringsmotor
+
             currentResults.sort((a, b) => {
-                let valA = a[currentSort.column]; 
-                let valB = b[currentSort.column];
-                if (typeof valA === 'string') {
-                    return currentSort.direction === 'desc' ? valB.localeCompare(valA) : valA.localeCompare(valB);
-                }
-                return currentSort.direction === 'desc' ? valB - valA : valA - valB;
+                const va = a[currentSort.column], vb = b[currentSort.column];
+                if (typeof va === 'string') return currentSort.direction === 'desc' ? vb.localeCompare(va) : va.localeCompare(vb);
+                return currentSort.direction === 'desc' ? vb - va : va - vb;
             });
 
-            let activeNoiseCount = 0;
+            let noiseCount = 0;
 
             currentResults.forEach(r => {
-                // Filtreringar
                 if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
                 if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
                 if (ignoredIds.has(r.id)) return;
+                if (HIDDEN_CATS.has(r.category)) return; // Normal bakgrund — dölj helt
 
                 let catOptions = '';
-                for (let c in categories) {
+                for (const c in categories) {
                     catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol} ${categories[c].label}</option>`;
                 }
 
-                // TABELL 2: Störningar & Externa Pumpar sorteras ut direkt till bottenpanelen
-                if (r.category === 'storing' || r.category === 'leak_code') {
-                    activeNoiseCount++;
-                    const noiseTr = document.createElement('tr');
-                    noiseTr.className = `row-${r.category}`;
-                    noiseTr.innerHTML = `
-                        <td>
-                            <select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">
-                                ${catOptions}
-                            </select>
-                        </td>
+                if (BOTTOM_PANEL_CATS.has(r.category)) {
+                    // ── Bottenpanel ──
+                    noiseCount++;
+                    const tr = document.createElement('tr');
+                    tr.className = `row-${r.category}`;
+                    tr.innerHTML = `
+                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
                         <td>
                             <div class="table-adress-text">${r.adress}</div>
                             ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
                         </td>
                         <td><code>${r.serienummer}</code></td>
                         <td><strong>${r.max} dB</strong></td>
-                        <td><span class="badge" style="background:${categories[r.category].bg}; color:${categories[r.category].color}">${categories[r.category].label}</span></td>
+                        <td>${getBottomComment(r)}</td>
                     `;
-                    noiseTbody.appendChild(noiseTr);
+                    noiseTbody.appendChild(tr);
                 } else {
-                    // TABELL 1: Skarpa listan (Vänsterskiftat fokus)
+                    // ── Huvudlistan ──
                     if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
-
                     const tr = document.createElement('tr');
                     tr.className = `row-${r.category}`;
-                    const changeSign = r.change > 0 ? '+' : '';
-                    let trendClass = r.change > 0 ? 'trend-up' : (r.change < 0 ? 'trend-down' : '');
-
+                    const sign = r.change > 0 ? '+' : '';
+                    const trendClass = r.change > 0 ? 'trend-up' : (r.change < 0 ? 'trend-down' : '');
                     tr.innerHTML = `
-                        <td style="text-align: center;"><button class="action-btn" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
-                        <td style="text-align: center;"><button class="action-btn" onclick="toggleIgnore('${r.id}')">👁️</button></td>
-                        <td>
-                            <select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">
-                                ${catOptions}
-                            </select>
-                        </td>
+                        <td style="text-align:center;"><button class="action-btn" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
+                        <td style="text-align:center;"><button class="action-btn" onclick="toggleIgnore('${r.id}')">👁️</button></td>
+                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
                         <td>
                             <div class="table-adress-container">
                                 <div class="table-adress-text">${r.adress}</div>
                             </div>
                             ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
                         </td>
-                        <td style="text-align: center;">
-                            <button class="copy-btn" onclick="copyToClipboard('${r.adress}', event)">📋 Kopiera</button>
-                        </td>
+                        <td style="text-align:center;"><button class="copy-btn" onclick="copyToClipboard('${r.adress}', event)">📋 Kopiera</button></td>
                         <td><code>${r.serienummer}</code></td>
                         <td><span class="badge" style="background:#1f1f2e; color:#fff;">${r.area}</span></td>
-                        <td><span class="${trendClass}">${changeSign}${r.change.toFixed(1)}%</span></td>
+                        <td><span class="${trendClass}">${sign}${r.change.toFixed(1)}%</span></td>
                         <td><strong>${r.max} dB</strong></td>
-                        <td style="text-align: center;">
-                            <button class="copy-btn" style="padding: 4px 8px;" onclick="openTrendGraph('${r.id}')">📈</button>
-                        </td>
+                        <td style="text-align:center;"><button class="copy-btn" style="padding:4px 8px;" onclick="openTrendGraph('${r.id}')">📈</button></td>
                     `;
                     tbody.appendChild(tr);
                 }
             });
 
-            document.getElementById('noiseCountText').innerText = activeNoiseCount;
+            document.getElementById('noiseCountText').innerText = noiseCount;
             updateStatsAndInsights();
         }
 
-        // Realtidsuppdatering för KPI och smarta fälttips
         function updateStatsAndInsights() {
-            let counts = { total: 0, extreme: 0, aktiv_lacka: 0, misstankt: 0, storing: 0, leak_code: 0 };
-            currentResults.forEach(r => {
-                if(counts[r.category] !== undefined) counts[r.category]++;
-                if(r.category !== 'storing' && r.category !== 'leak_code') counts.total++;
-            });
+            const counts = { extreme: 0, aktiv_lacka: 0, misstankt: 0, ny_matare: 0, storing: 0, leak_code: 0, lagad: 0, normal: 0 };
+            currentResults.forEach(r => { if (counts[r.category] !== undefined) counts[r.category]++; });
 
-            const statsGrid = document.getElementById('statsGrid');
-            statsGrid.innerHTML = `
+            const sharpCount = counts.extreme + counts.aktiv_lacka + counts.misstankt + counts.ny_matare;
+            const activeLeaks = counts.extreme + counts.aktiv_lacka;
+            const hiddenCount = counts.storing + counts.leak_code + counts.lagad;
+
+            document.getElementById('statsGrid').innerHTML = `
                 <div class="stat-card color-total ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="setCategoryFilter('all')">
-                    <div class="num">${counts.total}</div>
+                    <div class="num">${sharpCount}</div>
                     <div class="label">Skarpa mätare</div>
                 </div>
-                <div class="stat-card color-aktiv-lacka ${currentCategoryFilter === 'aktiv_lacka' ? 'active' : ''}" onclick="setCategoryFilter('aktiv_lacka')">
-                    <div class="num">${counts.aktiv_lacka}</div>
+                <div class="stat-card color-aktiv-lacka ${['extreme','aktiv_lacka'].includes(currentCategoryFilter) ? 'active' : ''}" onclick="setCategoryFilter('aktiv_lacka')">
+                    <div class="num" style="color:var(--clr-aktiv-lacka)">${activeLeaks}</div>
                     <div class="label">Aktiva Läckor</div>
                 </div>
                 <div class="stat-card color-misstankt ${currentCategoryFilter === 'misstankt' ? 'active' : ''}" onclick="setCategoryFilter('misstankt')">
-                    <div class="num">${counts.misstankt}</div>
+                    <div class="num" style="color:var(--clr-misstankt)">${counts.misstankt}</div>
                     <div class="label">🟠 Misstänkta</div>
                 </div>
                 <div class="stat-card color-noise">
-                    <div class="num">${counts.storing + counts.leak_code}</div>
+                    <div class="num" style="color:var(--clr-storing)">${hiddenCount}</div>
                     <div class="label">Dolda Pumpar / Larm</div>
                 </div>
             `;
 
             const insight = document.getElementById('insightBox');
-            if (counts.misstankt > 0) {
-                insight.innerHTML = `🟠 <strong>Karma fält-tips:</strong> Du har <strong>${counts.misstankt} st adresser</strong> markerade som <strong>Misstänkta / Läcklyssna</strong>. Prioritera dessa för fältkontroll och lyssning idag!`;
-                insight.style.borderColor = "var(--clr-misstankt)";
+            if (counts.extreme > 0) {
+                insight.innerHTML = `🚨 <strong>AKUT:</strong> ${counts.extreme} mätare klassad som <strong>Akut Huvudledning</strong> — åtgärd krävs omgående!`;
+                insight.style.borderColor = 'var(--clr-extreme)';
+            } else if (counts.misstankt > 0) {
+                insight.innerHTML = `🟠 <strong>Karma fält-tips:</strong> Du har <strong>${counts.misstankt} st adresser</strong> markerade som <strong>Misstänkta / Läcklyssna</strong>. Prioritera dessa för fältkontroll idag!`;
+                insight.style.borderColor = 'var(--clr-misstankt)';
             } else {
-                insight.innerHTML = `💡 <strong>Systemstatus:</strong> Distributionsnätet ser stabilt ut. Alla konstaterade pumpar, industriella störningskällor samt interna LEAK-larm efter mätare har filtrerats ut till kontrollpanelen i botten.`;
-                insight.style.borderColor = "var(--primary)";
+                insight.innerHTML = `💡 <strong>Systemstatus:</strong> Distributionsnätet ser stabilt ut. Alla pumpar, störningskällor och LEAK-larm har filtrerats till kontrollpanelen nedan.`;
+                insight.style.borderColor = 'var(--primary)';
             }
         }
 
-        function setCategoryFilter(cat) { 
-            currentCategoryFilter = cat; 
-            displayResults(); 
-        }
-        
-        function changeCategory(id, newCat) { 
-            userCategories.set(id, newCat); 
-            let item = currentResults.find(r => r.id === id); 
-            if(item) item.category = newCat; 
-            displayResults(); 
-        }
-        
-        function toggleInteresting(id) { 
-            if (interestingIds.has(id)) interestingIds.delete(id); 
-            else interestingIds.add(id); 
-            displayResults(); 
-        }
-        
-        function toggleIgnore(id) { 
-            ignoredIds.add(id); 
-            displayResults(); 
+        // ── Kategori / filter-actions ─────────────────────────────────────────────
+        function setCategoryFilter(cat) { currentCategoryFilter = cat; displayResults(); }
+        function changeCategory(id, newCat) { userCategories.set(id, newCat); const r = currentResults.find(r => r.id === id); if (r) r.category = newCat; displayResults(); }
+        function toggleInteresting(id) { interestingIds.has(id) ? interestingIds.delete(id) : interestingIds.add(id); displayResults(); }
+        function toggleIgnore(id) { ignoredIds.add(id); displayResults(); }
+
+        // ── Filinläsning ──────────────────────────────────────────────────────────
+        function setUploadState(busy, msg) {
+            const btn = document.getElementById('uploadBtn');
+            btn.disabled = busy;
+            btn.textContent = busy ? (msg || '⏳ Läser in...') : '📁 Välj Mätarfiler (Excel/CSV/PDF)';
         }
 
-        // Hanterar filinläsning i flera omgångar utan överskrivning (Excel + PDF)
         function handleFiles(files) {
             const allFiles = Array.from(files);
-            if (allFiles.length === 0) { document.getElementById('fileInput').value = ""; return; }
+            if (!allFiles.length) { document.getElementById('fileInput').value = ''; return; }
 
             let processed = 0;
             const total = allFiles.length;
+            const hasPDF = allFiles.some(f => f.name.toLowerCase().endsWith('.pdf'));
+            if (hasPDF) setUploadState(true, '⏳ Läser PDF...');
 
             function checkDone() {
                 processed++;
                 if (processed === total) {
+                    setUploadState(false);
                     updateFileList();
-                    document.getElementById('fileInput').value = "";
+                    document.getElementById('fileInput').value = '';
                 }
             }
 
-            for (const file of allFiles) {
-                const date = extractDateFromFilename(file.name);
+            allFiles.forEach(file => {
                 const isPDF = file.name.toLowerCase().endsWith('.pdf');
-                const parser = isPDF ? parsePDFFile(file) : parseExcelFile(file);
-
-                parser.then(meters => {
-                    if (meters.length > 0) {
-                        const exists = uploadedFiles.some(f => f.name === file.name);
-                        if (!exists) uploadedFiles.push({ name: file.name, date, meters });
-                    }
-                    checkDone();
-                }).catch(checkDone);
-            }
+                if (isPDF) {
+                    parsePDFFile(file, (page, total) => {
+                        setUploadState(true, `⏳ Läser PDF: sida ${page}/${total}...`);
+                    }).then(({ meters, reportDate }) => {
+                        const date = reportDate || extractDateFromFilename(file.name) || new Date();
+                        if (meters.length > 0 && !uploadedFiles.some(f => f.name === file.name)) {
+                            uploadedFiles.push({ name: file.name, date, meters });
+                        }
+                        checkDone();
+                    }).catch(checkDone);
+                } else {
+                    const date = extractDateFromFilename(file.name) || new Date();
+                    parseExcelFile(file).then(meters => {
+                        if (meters.length > 0 && !uploadedFiles.some(f => f.name === file.name)) {
+                            uploadedFiles.push({ name: file.name, date, meters });
+                        }
+                        checkDone();
+                    }).catch(checkDone);
+                }
+            });
         }
 
         function updateFileList() {
             document.getElementById('fileCountText').innerText = uploadedFiles.length;
-            const grid = document.getElementById('fileList'); 
+            const grid = document.getElementById('fileList');
             grid.innerHTML = '';
-            
-            if(uploadedFiles.length === 0) { 
-                grid.innerHTML = '<span class="no-files-text">Inga mätarfiler inlästa ännu. Tryck på knappen ovan för att lägga till i omgångar.</span>'; 
-                return; 
+            if (!uploadedFiles.length) {
+                grid.innerHTML = '<span class="no-files-text">Inga mätarfiler inlästa ännu. Tryck på knappen ovan för att lägga till i omgångar.</span>';
+                return;
             }
-            
             uploadedFiles.forEach((f, idx) => {
                 const chip = document.createElement('div');
                 chip.className = 'file-chip-compact';
-                chip.innerHTML = `<span>📄 ${f.name}</span> <strong class="remove-file-x">×</strong>`;
-                chip.querySelector('.remove-file-x').onclick = (e) => { 
-                    e.stopPropagation(); 
-                    uploadedFiles.splice(idx, 1); 
-                    updateFileList(); 
+                chip.innerHTML = `
+                    <span class="chip-name">📄 ${f.name}</span>
+                    <span class="chip-date">${formatShortDate(f.date)}</span>
+                    <strong class="remove-file-x">×</strong>
+                `;
+                chip.querySelector('.remove-file-x').onclick = e => {
+                    e.stopPropagation();
+                    uploadedFiles.splice(idx, 1);
+                    updateFileList();
                 };
                 grid.appendChild(chip);
             });
         }
 
+        // ── Urklipp ───────────────────────────────────────────────────────────────
         function copyToClipboard(fullAddress, event) {
-            const cleanText = extractCleanAddressOnly(fullAddress);
-            navigator.clipboard.writeText(cleanText).then(() => {
-                const btn = event.target; 
-                const orig = btn.innerText; 
-                btn.innerText = "Kopierad! ✔"; 
-                btn.style.background = "#1db954";
-                btn.style.color = "#fff";
-                setTimeout(() => { 
-                    btn.innerText = orig; 
-                    btn.style.background = "#1c1c24"; 
-                    btn.style.color = "var(--text-muted)";
-                }, 1200);
+            navigator.clipboard.writeText(extractCleanAddressOnly(fullAddress)).then(() => {
+                const btn = event.target;
+                const orig = btn.innerText;
+                btn.innerText = 'Kopierad! ✔';
+                btn.style.background = '#1db954';
+                btn.style.color = '#fff';
+                setTimeout(() => { btn.innerText = orig; btn.style.background = '#1c1c24'; btn.style.color = 'var(--text-muted)'; }, 1200);
             });
         }
 
-        // Öppnar den grafiska modalen med Chart.js trendlinje baserat på historiken
+        // ── Trendgraf ─────────────────────────────────────────────────────────────
         function openTrendGraph(id) {
             const meter = currentResults.find(r => r.id === id);
-            if (!meter || !meter.history || meter.history.length === 0) return;
-
+            if (!meter?.history?.length) return;
             document.getElementById('modalTitle').innerText = `Brustrend för ${extractCleanAddressOnly(meter.adress)} (${meter.serienummer})`;
             document.getElementById('graphModal').style.display = 'flex';
-
-            const labels = meter.history.map(h => h.dateStr);
-            const dataPoints = meter.history.map(h => h.value);
-
-            if (activeChartInstance) {
-                activeChartInstance.destroy();
-            }
-
+            if (activeChartInstance) activeChartInstance.destroy();
             const ctx = document.getElementById('trendChart').getContext('2d');
             activeChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: meter.history.map(h => h.dateStr),
                     datasets: [{
                         label: 'Brusnivå (dB)',
-                        data: dataPoints,
+                        data: meter.history.map(h => h.value),
                         borderColor: '#1db954',
                         backgroundColor: 'rgba(29, 185, 84, 0.1)',
                         borderWidth: 3,
@@ -1255,91 +822,71 @@ function smartClassify(meter) {
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
                     scales: {
-                        y: {
-                            grid: { color: '#222230' },
-                            ticks: { color: '#b3b3b3' },
-                            beginAtZero: true
-                        },
-                        x: {
-                            grid: { color: '#222230' },
-                            ticks: { color: '#b3b3b3' }
-                        }
+                        y: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' }, beginAtZero: true },
+                        x: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' } }
                     }
                 }
             });
         }
 
-        function triggerSort(columnKey) {
-            if (currentSort.column === columnKey) { 
-                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc'; 
-            } else { 
-                currentSort.column = columnKey; 
-                currentSort.direction = ['adress', 'serienummer', 'area'].includes(columnKey) ? 'asc' : 'desc'; 
+        // ── Sortering ─────────────────────────────────────────────────────────────
+        function triggerSort(col) {
+            if (currentSort.column === col) {
+                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentSort.column = col;
+                currentSort.direction = ['adress', 'serienummer', 'area'].includes(col) ? 'asc' : 'desc';
             }
-            
-            // Justera CSS klasser för sorteringspilar
             document.querySelectorAll('th').forEach(th => th.classList.remove('active-sort'));
-            const targetTh = document.getElementById(`th-${columnKey}`);
-            if (targetTh) targetTh.classList.add('active-sort');
-            
+            document.getElementById(`th-${col}`)?.classList.add('active-sort');
             displayResults();
         }
 
-        // Exporterar slutrapport i Excel-format (.xlsx)
+        // ── Export ────────────────────────────────────────────────────────────────
         document.getElementById('exportBtn').onclick = () => {
-            if (currentResults.length === 0) return;
-            let exportData = currentResults.map(r => ({
-                'Mätarnummer': r.serienummer,
-                'Adress': extractCleanAddressOnly(r.adress),
-                'Kommundel': r.area,
-                'Högsta Brus (dB)': r.max,
-                'Förändring %': r.change.toFixed(1) + '%',
-                'Statusklass': categories[r.category]?.label || r.category,
-                'Fältkommentar': r.memo || ''
-            }));
-            const ws = XLSX.utils.json_to_sheet(exportData);
+            if (!currentResults.length) return;
+            const data = currentResults
+                .filter(r => !HIDDEN_CATS.has(r.category))
+                .map(r => ({
+                    'Mätarnummer': r.serienummer,
+                    'Adress': extractCleanAddressOnly(r.adress),
+                    'Kommundel': r.area,
+                    'Högsta Brus (dB)': r.max,
+                    'Förändring %': r.change.toFixed(1) + '%',
+                    'Statusklass': categories[r.category]?.label || r.category,
+                    'Fältkommentar': r.memo || ''
+                }));
+            const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Läckagerapport");
-            XLSX.writeFile(wb, `Karma_Lacksok_Rapport_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, 'Läckagerapport');
+            XLSX.writeFile(wb, `Karma_Lacksok_Rapport_${new Date().toISOString().slice(0, 10)}.xlsx`);
         };
 
-        // Sätt PDF.js worker
-        if (window['pdfjs-dist/build/pdf']) {
-            window['pdfjs-dist/build/pdf'].GlobalWorkerOptions.workerSrc =
-                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        }
-
-        // Event Listeners och bindningar
-        document.getElementById('th-adress').onclick = () => triggerSort('adress');
+        // ── Event listeners ───────────────────────────────────────────────────────
+        document.getElementById('th-adress').onclick      = () => triggerSort('adress');
         document.getElementById('th-serienummer').onclick = () => triggerSort('serienummer');
-        document.getElementById('th-area').onclick = () => triggerSort('area');
-        document.getElementById('th-change').onclick = () => triggerSort('change');
-        document.getElementById('th-max').onclick = () => triggerSort('max');
-        
-        document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
-        document.getElementById('fileInput').onchange = (e) => handleFiles(e.target.files);
+        document.getElementById('th-area').onclick        = () => triggerSort('area');
+        document.getElementById('th-change').onclick      = () => triggerSort('change');
+        document.getElementById('th-max').onclick         = () => triggerSort('max');
+
+        document.getElementById('uploadBtn').onclick  = () => document.getElementById('fileInput').click();
+        document.getElementById('fileInput').onchange = e => handleFiles(e.target.files);
         document.getElementById('analyzeBtn').onclick = () => runAnalysis();
         document.getElementById('searchInput').oninput = () => displayResults();
-        document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
-        
-        document.getElementById('closeModalBtn').onclick = () => { document.getElementById('graphModal').style.display = 'none'; };
-        window.onclick = (e) => { if(e.target === document.getElementById('graphModal')) document.getElementById('graphModal').style.display = 'none'; };
+        document.getElementById('areaFilter').onchange = e => { currentAreaFilter = e.target.value; displayResults(); };
 
-        document.getElementById('clearBtn').onclick = () => { 
-            uploadedFiles = []; 
-            currentResults = []; 
-            ignoredIds.clear(); 
-            interestingIds.clear(); 
-            userCategories.clear(); 
-            updateFileList(); 
-            document.getElementById('results').style.display = 'none'; 
-            document.getElementById('fileInput').value = ""; 
+        document.getElementById('closeModalBtn').onclick = () => { document.getElementById('graphModal').style.display = 'none'; };
+        window.onclick = e => { if (e.target === document.getElementById('graphModal')) document.getElementById('graphModal').style.display = 'none'; };
+
+        document.getElementById('clearBtn').onclick = () => {
+            uploadedFiles = []; currentResults = [];
+            ignoredIds.clear(); interestingIds.clear(); userCategories.clear();
+            updateFileList();
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('fileInput').value = '';
         };
     </script>
 </body>

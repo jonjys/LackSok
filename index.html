@@ -9,6 +9,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <style>
         /* --- DESIGN SYSTEM (KARMA COMPACT / SPOTIFY DARK THEME) --- */
@@ -565,11 +566,11 @@
 
     <div class="upload-section">
         <div class="btn-group">
-            <button id="uploadBtn">📁 Välj Mätarfiler (Excel/CSV)</button>
+            <button id="uploadBtn">📁 Välj Mätarfiler (Excel/CSV/PDF)</button>
             <button id="analyzeBtn" class="secondary">⚡ Kör Morgonanalys</button>
             <button id="exportBtn" class="secondary">📥 Exportera Rapport</button>
             <button id="clearBtn" class="secondary danger">🗑️ Nollställ</button>
-            <input type="file" id="fileInput" multiple style="display: none;" accept=".xlsx, .xls, .csv">
+            <input type="file" id="fileInput" multiple style="display: none;" accept=".xlsx, .xls, .csv, .pdf">
         </div>
         
         <div class="accordion-trigger" id="accordionTrigger">
@@ -796,6 +797,111 @@
                 };
                 reader.readAsArrayBuffer(file);
             });
+        }
+
+        // Parsar Kamstrup PDF-rapport (Filtrerade mätare) via PDF.js
+        function parsePDFFile(file) {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    const meters = [];
+
+                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                        const page = await pdf.getPage(pageNum);
+                        const textContent = await page.getTextContent();
+
+                        const items = textContent.items
+                            .filter(item => item.str.trim().length > 0)
+                            .map(item => ({ str: item.str.trim(), x: item.transform[4], y: item.transform[5] }));
+
+                        const rows = groupPDFRows(items, 4);
+                        let pendingCity = null;
+
+                        for (const row of rows) {
+                            const joined = row.map(i => i.str).join(' ');
+
+                            // Skippa rubrik- och sidfotssrader
+                            if (row.some(i => i.str === 'Serienummer' || i.str === 'Adress')) { pendingCity = null; continue; }
+                            if (/Rapport utfärdad|Sida \d+|Filtrerade mätare|\bmätare\b|^Filtrera/i.test(joined)) { pendingCity = null; continue; }
+
+                            // Hitta serienumret — rent numerisk sträng 7–10 siffror
+                            const snItem = row.find(i => /^\d{7,10}$/.test(i.str));
+
+                            if (snItem) {
+                                const meter = buildMeterFromPDFRow(row, snItem, pendingCity);
+                                if (meter) meters.push(meter);
+                                pendingCity = null;
+                            } else {
+                                // Kan vara stadsnamnsrad vid 2-radsadresser (Kamstrup-format)
+                                const hasCityOrPostal = /(TULLINGE|TUMBA|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\b\d{5}\b)/i.test(joined);
+                                const hasDate = /\d{4}-\d{2}-\d{2}/.test(joined);
+                                if (hasCityOrPostal && !hasDate && row.filter(i => i.str.length > 2).length <= 3) {
+                                    pendingCity = row.filter(i => /[A-ZÅÄÖ]/i.test(i.str)).map(i => i.str).join(' ');
+                                } else {
+                                    pendingCity = null;
+                                }
+                            }
+                        }
+                    }
+                    resolve(meters);
+                } catch (err) { reject(err); }
+            });
+        }
+
+        function groupPDFRows(items, tolerance) {
+            if (!items.length) return [];
+            items.sort((a, b) => b.y - a.y || a.x - b.x);
+            const rows = [];
+            let cur = [items[0]], curY = items[0].y;
+            for (let i = 1; i < items.length; i++) {
+                if (Math.abs(items[i].y - curY) <= tolerance) {
+                    cur.push(items[i]);
+                } else {
+                    rows.push([...cur].sort((a, b) => a.x - b.x));
+                    cur = [items[i]];
+                    curY = items[i].y;
+                }
+            }
+            if (cur.length) rows.push([...cur].sort((a, b) => a.x - b.x));
+            return rows;
+        }
+
+        function buildMeterFromPDFRow(row, snItem, pendingCity) {
+            // Adress = allt till vänster om serienumret (x > 20 för att skippa flaggkolumn)
+            const addrItems = row.filter(i => i.x < snItem.x - 5 && i.x > 20 && /[A-ZÅÄÖ\d]/i.test(i.str));
+            let adress = addrItems.map(i => i.str).join(' ').trim();
+            if (pendingCity) adress = adress ? adress + ' ' + pendingCity : pendingCity;
+            if (!adress) return null;
+
+            // Allt till höger om serienumret: datum → värden → infokod
+            const afterSN = row.filter(i => i.x > snItem.x + 10).sort((a, b) => a.x - b.x);
+            let senasteVarde = 0, infokod = '', dateFound = false, numCount = 0;
+
+            for (const item of afterSN) {
+                const t = item.str;
+                if (/^\d{4}-\d{2}-\d{2}/.test(t)) { dateFound = true; continue; }
+                if (/^\d{1,2}:\d{2}$/.test(t)) continue; // Skippa klockslag HH:MM
+                if (dateFound) {
+                    if (/^\d+$/.test(t)) {
+                        numCount++;
+                        if (numCount === 1) senasteVarde = parseInt(t);
+                    } else if (t.length > 1) {
+                        infokod = infokod ? infokod + ' ' + t : t;
+                    }
+                }
+            }
+
+            return {
+                id: snItem.str,
+                adress,
+                serienummer: snItem.str,
+                value: senasteVarde,
+                infokod: infokod.trim(),
+                area: identifyArea(adress, ''),
+                street: cleanStreetName(adress)
+            };
         }
 
        // Hitta smartClassify i din befintliga fil och ersätt den med detta:
@@ -1047,39 +1153,34 @@ function smartClassify(meter) {
             displayResults(); 
         }
 
-        // Hanterar filinläsning i flera omgångar utan överskrivning
+        // Hanterar filinläsning i flera omgångar utan överskrivning (Excel + PDF)
         function handleFiles(files) {
-            let loadedCount = 0;
-            let targetFiles = Array.from(files).filter(f => !f.name.toLowerCase().endsWith('.pdf'));
+            const allFiles = Array.from(files);
+            if (allFiles.length === 0) { document.getElementById('fileInput').value = ""; return; }
 
-            if (targetFiles.length === 0) {
-                alert("Mätarsystemet hanterar endast Excel-filer (.xlsx, .xls) eller .csv. PDF-dokument kan inte läsas direkt.");
-                document.getElementById('fileInput').value = "";
-                return;
+            let processed = 0;
+            const total = allFiles.length;
+
+            function checkDone() {
+                processed++;
+                if (processed === total) {
+                    updateFileList();
+                    document.getElementById('fileInput').value = "";
+                }
             }
 
-            for (let file of targetFiles) {
+            for (const file of allFiles) {
                 const date = extractDateFromFilename(file.name);
-                parseExcelFile(file).then(meters => {
+                const isPDF = file.name.toLowerCase().endsWith('.pdf');
+                const parser = isPDF ? parsePDFFile(file) : parseExcelFile(file);
+
+                parser.then(meters => {
                     if (meters.length > 0) {
-                        // Kontrollera om exakt samma filnamn redan laddats in
                         const exists = uploadedFiles.some(f => f.name === file.name);
-                        if (!exists) {
-                            uploadedFiles.push({ name: file.name, date: date, meters: meters });
-                        }
+                        if (!exists) uploadedFiles.push({ name: file.name, date, meters });
                     }
-                    loadedCount++; 
-                    if (loadedCount === targetFiles.length) {
-                        updateFileList();
-                        document.getElementById('fileInput').value = ""; // Nollställ fältet för nästa klick
-                    }
-                }).catch(() => { 
-                    loadedCount++; 
-                    if (loadedCount === targetFiles.length) {
-                        updateFileList();
-                        document.getElementById('fileInput').value = "";
-                    }
-                });
+                    checkDone();
+                }).catch(checkDone);
             }
         }
 
@@ -1207,6 +1308,12 @@ function smartClassify(meter) {
             XLSX.utils.book_append_sheet(wb, ws, "Läckagerapport");
             XLSX.writeFile(wb, `Karma_Lacksok_Rapport_${new Date().toISOString().slice(0,10)}.xlsx`);
         };
+
+        // Sätt PDF.js worker
+        if (window['pdfjs-dist/build/pdf']) {
+            window['pdfjs-dist/build/pdf'].GlobalWorkerOptions.workerSrc =
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
 
         // Event Listeners och bindningar
         document.getElementById('th-adress').onclick = () => triggerSort('adress');

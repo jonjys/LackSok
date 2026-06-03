@@ -798,32 +798,47 @@
             });
         }
 
-        // Algoritmisk klassificering baserad på historikmönster och varians
-        function smartClassify(meter) {
-            const cleanAddr = extractCleanAddressOnly(meter.adress);
-            if (fieldKnowledgeBase[cleanAddr]) return fieldKnowledgeBase[cleanAddr].cat;
-            if (cleanAddr.includes("HÖGBRINKSVÄGEN")) return 'storing';
+       // Hitta smartClassify i din befintliga fil och ersätt den med detta:
 
-            if (!meter.history || meter.history.length === 0) return 'normal';
-            
-            const history = meter.history;
-            const latest = history[history.length - 1].value;
-            const values = history.map(h => h.value);
-            const maxVal = Math.max(...values);
-            const minVal = Math.min(...values);
-            const variance = maxVal - minVal;
-            
-            if (meter.infokod && meter.infokod.toLowerCase().includes('leak')) return 'leak_code';
-            
-            // Hög varians men högt mätbrus tyder oftast på externa pumpar eller industriella flöden som slår till/från
-            if (variance >= 35 && latest > 25) return 'storing';
-            // Konstant högt mätbrus med låg varians över flera dagar tyder på en skarp servisläcka
-            if (latest >= 24 && variance <= 6 && history.length >= 2) return 'aktiv_lacka';
-            if (latest >= 18 && (latest - minVal) >= 10) return 'misstankt';
-            if (latest >= 20) return 'misstankt';
-            
-            return 'normal';
-        }
+function smartClassify(meter) {
+    const cleanAddr = extractCleanAddressOnly(meter.adress);
+    // Detta sparar dina 1200 rader i kunskapsbasen så att dina manuella val ligger kvar!
+    if (fieldKnowledgeBase[cleanAddr]) return fieldKnowledgeBase[cleanAddr].cat;
+
+    if (!meter.history || meter.history.length < 5) return 'normal';
+    
+    const history = [...meter.history].sort((a,b) => a.date - b.date);
+    const totalReadings = history.length;
+    
+    const currentNoise = history[totalReadings - 1].value;
+    const maxHistorical = Math.max(...history.map(h => h.value));
+
+    // 1. FILTRERA BORT HISTORISKT LAGADE LÄCKOR (T.ex. Petunievägen/Gröndalsvägen)
+    const recentReadings = history.slice(-4);
+    const isConsistentlyQuietNow = recentReadings.every(h => h.value <= 22);
+    if (isConsistentlyQuietNow) {
+        if (maxHistorical >= 50) return 'lagad';
+        return 'normal'; 
+    }
+
+    // 2. DETEKTOR FÖR NYUPPKOMMEN, IHÅLLANDE ÖKNING (T.ex. Axels Väg 15)
+    const recentPeriod = history.slice(-3);   // Senaste mätningarna
+    const olderPeriod = history.slice(0, -3);   // Allt historiskt bakåt
+
+    const isOlderPeriodQuiet = olderPeriod.every(h => h.value <= 12); // Varit tyst och stabil förut
+    const isRecentPeriodHigh = recentPeriod.every(h => h.value >= 18); // Har hoppat upp och stannat kvar
+
+    if (isOlderPeriodQuiet && isRecentPeriodHigh) {
+        return 'misstankt'; // Flagga direkt som skarp misstänkt läcka!
+    }
+
+    // 3. STANDARD FALLBACKS
+    if (meter.infokod && meter.infokod.toLowerCase().includes('leak')) return 'leak_code';
+    if (currentNoise >= 28) return 'aktiv_lacka';
+    if (currentNoise >= 16) return 'ny_matare'; // Sorteras till säsongsanalys om det är en mjuk ökning
+    
+    return 'normal';
+}
 
         // Sammanställer och analyserar tidsseriedatan kronologiskt
         function runAnalysis() {

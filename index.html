@@ -261,7 +261,6 @@
         .copy-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
         .field-memo-tag { display: block; background: #1e1e24; border: 1px solid #444; color: #2dd4bf; font-size: 11px; padding: 4px 8px; border-radius: 4px; margin-top: 4px; max-width: 320px; line-height: 1.4; }
-        .history-flow-container { font-family: monospace; font-size: 11px; background: #111; padding: 6px 10px; border-radius: 4px; display: inline-block; }
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
         .category-select-compact { background: #222; color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px; font-size: 12px; }
         .action-btn { background: transparent; border: none; cursor: pointer; font-size: 16px; padding: 4px; }
@@ -273,7 +272,7 @@
 <body>
 
     <h1>Karma - Läcksök Pro</h1>
-    <div class="subtitle">Skarp läcksökningsvy (bortfiltrerade pumpar och industristörningar)</div>
+    <div class="subtitle">Skarp läcksökningsvy (Borttaget historik-textfält för bättre skärmlayout)</div>
 
     <div class="upload-section">
         <div class="btn-group">
@@ -328,7 +327,6 @@
                         <th style="width: 90px; text-align: center;">Kopiera</th>
                         <th id="th-serienummer">Mätarnummer ↕</th>
                         <th id="th-area">Område ↕</th>
-                        <th>Historik (dB)</th>
                         <th id="th-change">Förändring ↕</th>
                         <th id="th-max">Max ↕</th>
                         <th id="th-category">Klassificering ↕</th>
@@ -350,7 +348,6 @@
                                 <th style="width: 120px;">Klassa</th>
                                 <th>Adress / Fastighet</th>
                                 <th>Mätarnummer</th>
-                                <th>Historik (dB)</th>
                                 <th>Max</th>
                                 <th>Typ av störning</th>
                             </tr>
@@ -372,7 +369,7 @@
 
         let currentSort = { column: 'change', direction: 'desc' };
         let currentAreaFilter = 'all';
-        let currentCategoryFilter = 'all'; // 'all' i huvudlistan visar extreme, aktiv_lacka, misstankt, ny_matare, lagad, normal
+        let currentCategoryFilter = 'all';
 
         const fieldKnowledgeBase = {
             "GRANBACKEN 2": { cat: "aktiv_lacka", memo: "🚨 FLÖDESEXPLOSION! Bruset sköt upp spikrakt till 73 dB i början av juni. Åk ut direkt!" },
@@ -407,7 +404,7 @@
             normal: { label: 'Normal bakgrund', bg: '#333', color: '#bbb', symbol: '⚪' }
         };
 
-        // Rullgardin Mätarfiler
+        // Rullgardiner
         const accordionTrigger = document.getElementById('accordionTrigger');
         const fileGridContainer = document.getElementById('fileGridContainer');
         const arrowIndicator = document.getElementById('arrowIndicator');
@@ -416,7 +413,6 @@
             arrowIndicator.innerText = fileGridContainer.classList.contains('open') ? "▾" : "▸";
         };
 
-        // Rullgardin Störningar/Pumpar
         const noiseAccordionTrigger = document.getElementById('noiseAccordionTrigger');
         const noiseGridContainer = document.getElementById('noiseGridContainer');
         const noiseArrowIndicator = document.getElementById('noiseArrowIndicator');
@@ -503,7 +499,7 @@
             const variance = maxVal - minVal;
             
             if (meter.infokod && meter.infokod.toLowerCase().includes('leak')) return 'leak_code';
-            if (variance >= 35 && latest > 25) return 'storing'; // Pumpar som slår vilt upp och ner
+            if (variance >= 35 && latest > 25) return 'storing';
             if (latest >= 18 && (latest - minVal) >= 10) return 'misstankt';
             if (latest >= 24 && variance <= 6 && history.length >= 2) return 'aktiv_lacka';
             if (latest >= 20) return 'misstankt';
@@ -552,7 +548,6 @@
             tbody.innerHTML = '';
             noiseTbody.innerHTML = '';
             
-            // Sortering
             currentResults.sort((a, b) => {
                 let valA = a[currentSort.column]; let valB = b[currentSort.column];
                 if (typeof valA === 'string') return currentSort.direction === 'desc' ? valB.localeCompare(valA) : valA.localeCompare(valB);
@@ -562,18 +557,15 @@
             let activeNoiseCount = 0;
 
             currentResults.forEach(r => {
-                // Globala filter (Sök + Område)
                 if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
                 if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
                 if (ignoredIds.has(r.id)) return;
 
-                const historyStr = r.history.map(h => `${h.dateStr}: <strong>${h.value} dB</strong>`).join(' → ');
                 let catOptions = '';
                 for (let c in categories) {
                     catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol} ${categories[c].label}</option>`;
                 }
 
-                // FLÖDESUPPDELNING: Är det en pump/störning eller LEAK-larm efter mätaren?
                 if (r.category === 'storing' || r.category === 'leak_code') {
                     activeNoiseCount++;
                     const noiseTr = document.createElement('tr');
@@ -589,13 +581,11 @@
                             ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
                         </td>
                         <td><code>${r.serienummer}</code></td>
-                        <td><div class="history-flow-container">${historyStr}</div></td>
                         <td><strong>${r.max} dB</strong></td>
                         <td><span class="badge" style="background:${categories[r.category].bg}; color:${categories[r.category].color}">${categories[r.category].label}</span></td>
                     `;
                     noiseTbody.appendChild(noiseTr);
                 } else {
-                    // HUVUDLISTAN (Här hamnar bara relevanta läckor/misstänkta)
                     if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
 
                     const tr = document.createElement('tr');
@@ -621,9 +611,8 @@
                         </td>
                         <td><code>${r.serienummer}</code></td>
                         <td><span class="badge" style="background:#333;">${r.area}</span></td>
-                        <td><div class="history-flow-container">${historyStr}</div></td>
                         <td><span class="${r.change > 0 ? 'trend-up' : ''}">${changeSign}${r.change.toFixed(1)}%</span></td>
-                        <td><strong>${r.max}</strong></td>
+                        <td><strong>${r.max} dB</strong></td>
                         <td><span class="badge" style="background:${categories[r.category].bg}; color:${categories[r.category].color}">${categories[r.category].label}</span></td>
                     `;
                     tbody.appendChild(tr);

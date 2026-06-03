@@ -35,7 +35,9 @@
             font-size: 28px;
             font-weight: 700;
             margin-bottom: 4px;
-        }        .subtitle {
+        }
+
+        .subtitle {
             color: var(--text-muted);
             font-size: 14px;
             margin-bottom: 24px;
@@ -132,7 +134,7 @@
             font-style: italic;
         }
 
-        /* StatsGrid med de nya valen */
+        /* StatsGrid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -185,6 +187,7 @@
             margin-bottom: 24px;
             border-left: 4px solid var(--primary);
             background-color: var(--bg-card);
+            line-height: 1.5;
         }
 
         /* Filterverktyg */
@@ -275,13 +278,14 @@
 
         .cluster-banner {
             display: inline-block;
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid var(--clr-extreme);
-            color: #ff8888;
+            background: rgba(249, 115, 22, 0.15);
+            border: 1px solid var(--clr-misstankt);
+            color: #ffaa66;
             font-size: 11px;
             padding: 2px 6px;
             border-radius: 4px;
             margin-top: 4px;
+            font-weight: bold;
         }
 
         .history-flow-container {
@@ -396,7 +400,6 @@
         let currentAreaFilter = 'all';
         let currentCategoryFilter = 'all';
 
-        // Matchar exakt dina nya knappar och val
         const categories = {
             extreme: { label: 'Extrem ökning', bg: '#ef4444', color: '#fff', symbol: '🔴', action: 'Akut Burst – åk ut direkt' },
             misstankt: { label: 'Misstänkt', bg: '#f97316', color: '#fff', symbol: '🟠', action: 'Förhöjt brus, bevaka utveckling' },
@@ -420,13 +423,13 @@
         }
 
         function cleanStreetName(address) {
-            if (!address) return 'Okänd gata';
-            // Plockar bort nummer och postnummer för att gruppera på gatunamn
-            let clean = address.split(/\d+/)[0].trim();
-            return clean.toUpperCase();
+            if (!address) return 'OKÄND GATA';
+            // Rensar bort siffror och postnummer för att få ett rent gatunamn
+            let parts = address.split(/\d+/);
+            if(parts.length > 0) return parts[0].trim().toUpperCase();
+            return address.toUpperCase().trim();
         }
 
-        // RIKTIG Excel-läsare som tolkar Kamstrups exporterade kolumner
         function parseExcelFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -440,7 +443,6 @@
                         
                         let meters = [];
                         jsonData.forEach(row => {
-                            // Kamstrup-kolumner kan variera i gemener/versaler, vi mappar de vanligaste
                             let id = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'];
                             let address = row['Adress'] || row['Plats'] || row['address'];
                             let value = parseFloat(row['Senaste värde'] || row['Senaste avläsning'] || row['Brus'] || row['value'] || 0);
@@ -530,7 +532,6 @@
                 });
             });
 
-            // Uppdatera områdesväljaren dynamiskt
             const areaDropdown = document.getElementById('areaFilter');
             areaDropdown.innerHTML = '<option value="all">Alla områden</option>';
             areasSet.forEach(a => {
@@ -538,7 +539,7 @@
             });
             areaDropdown.value = currentAreaFilter;
 
-            // Beräkna gatu-kluster
+            // Beräkna gatu-kluster (Hög känslighet: Minst 2 mätare på samma gata som ökat med >= 12 i brus)
             metersMap.forEach(m => {
                 if (m.history.length < 2) return;
                 const first = m.history[0];
@@ -549,7 +550,7 @@
                 }
                 streetClusters[m.street].totalMeters++;
                 
-                if (last.value > first.value && (last.value - first.value) >= 15) {
+                if (last.value > first.value && (last.value - first.value) >= 12) {
                     streetClusters[m.street].increasingMeters++;
                 }
             });
@@ -572,6 +573,11 @@
                 let finalCategory = userCategories.get(m.id);
                 if (!finalCategory) finalCategory = smartClassify(m);
                 
+                // Ett kluster flaggas om minst 2 mätare ELLER 30% av gatan har parallell brusökning
+                let isStreetCluster = streetClusters[m.street] && 
+                                      streetClusters[m.street].increasingMeters >= 2 && 
+                                      (streetClusters[m.street].increasingMeters / streetClusters[m.street].totalMeters) >= 0.25;
+
                 currentResults.push({
                     id: m.id,
                     adress: m.adress,
@@ -584,7 +590,7 @@
                     change: totalChange,
                     max: maxValue,
                     category: finalCategory,
-                    isCluster: streetClusters[m.street] && streetClusters[m.street].increasingMeters >= 2 && (streetClusters[m.street].increasingMeters / streetClusters[m.street].totalMeters) >= 0.35
+                    isCluster: isStreetCluster
                 });
             }
             
@@ -610,7 +616,7 @@
                         updateFileList();
                     }
                 }).catch(err => {
-                    console.error("Fel vid filläsning:", err);
+                    console.error("Fel vid läsning av fil:", err);
                     loadedCount++;
                     if (loadedCount === files.length) updateFileList();
                 });
@@ -693,7 +699,7 @@
                     </td>
                     <td>
                         <div class="table-adress-text">${r.adress}</div>
-                        ${r.isCluster ? `<span class="cluster-banner">🔗 Gatu-kluster (${streetClusters[r.street].increasingMeters} st)</span>` : ''}
+                        ${r.isCluster ? `<span class="cluster-banner">🔗 GATU-KLUSTER (${streetClusters[r.street].increasingMeters} mätare höjda)</span>` : ''}
                     </td>
                     <td><code>${r.serienummer}</code></td>
                     <td><span class="badge" style="background:#444;">${r.area}</span></td>
@@ -707,15 +713,21 @@
         }
 
         function updateStatsAndInsights(filtered) {
-            let counts = { total: currentResults.length, extreme: 0, misstankt: 0, leak_code: 0, lagad: 0, storing: 0 };
+            let counts = { total: currentResults.length, extreme: 0, misstankt: 0, leak_code: 0, lagad: 0, storing: 0, clustersDetected: 0 };
             
+            let detectedClusterStreets = new Set();
+
             currentResults.forEach(r => {
                 if (r.category === 'extreme') counts.extreme++;
                 if (r.category === 'misstankt') counts.misstankt++;
                 if (r.category === 'leak_code') counts.leak_code++;
                 if (r.category === 'lagad') counts.lagad++;
                 if (r.category === 'storing') counts.storing++;
+                if (r.isCluster) {
+                    detectedClusterStreets.add(r.street);
+                }
             });
+            counts.clustersDetected = detectedClusterStreets.size;
 
             const statsGrid = document.getElementById('statsGrid');
             statsGrid.innerHTML = `
@@ -728,12 +740,19 @@
             `;
 
             const insight = document.getElementById('insightBox');
-            if (counts.extreme > 0) {
+            if (counts.clustersDetected > 0) {
+                let gatuLista = Array.from(detectedClusterStreets).join(', ');
+                insight.innerHTML = `⚠️ <strong>Varning för Huvudledning eller Extern Störning:</strong> Detekterade <strong>${counts.clustersDetected} gatu-kluster</strong> på [${gatuLista}]. Eftersom mätarna hör upp till 200m kan detta tyda på en läcka på er <strong>huvudledning i gatan</strong> eller korsande fjärrvärmestörningar snarare än enskilda hus!`;
+                insight.style.borderColor = "var(--clr-misstankt)";
+                insight.style.backgroundColor = "rgba(249, 115, 22, 0.05)";
+            } else if (counts.extreme > 0) {
                 insight.innerHTML = `⚠️ <strong>Systeminsikt:</strong> Läcksök Pro har upptäckt <strong>${counts.extreme} akuta flödesexplosioner</strong>. Prioritera att åka ut på dessa direkt.`;
                 insight.style.borderColor = "var(--clr-extreme)";
+                insight.style.backgroundColor = "rgba(239, 68, 68, 0.05)";
             } else {
-                insight.innerHTML = `💡 <strong>Systeminsikt:</strong> Inga nya dygnsavvikelser eller extrema burst-larm registrerade för stunden.`;
+                insight.innerHTML = `💡 <strong>Systeminsikt:</strong> Inga gatu-kluster eller extrema burst-larm registrerade för stunden. Nätet ser stabilt ut.`;
                 insight.style.borderColor = "var(--primary)";
+                insight.style.backgroundColor = "var(--bg-card)";
             }
         }
 
@@ -744,7 +763,6 @@
 
         function changeCategory(id, newCat) {
             userCategories.set(id, newCat);
-            // Spara valet och uppdatera tabellen i realtid
             let item = currentResults.find(r => r.id === id);
             if(item) item.category = newCat;
             displayResults();
@@ -753,25 +771,6 @@
         function toggleInteresting(id) {
             if (interestingIds.has(id)) interestingIds.delete(id);
             else interestingIds.add(id);
-            displayResults();
-        }
-
-        function toggleIgnore(id) {
-            ignoredIds.add(id);
-            displayResults();
-        }
-
-        function setSort(col) {
-            if (currentSort.column === col) {
-                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
-            } else {
-                currentSort.column = col;
-                currentSort.direction = 'desc';
-            }
-            
-            const labels = { change: 'Förändring %', latestValue: 'Senaste värde', max: 'Toppvärde' };
-            const dirStr = currentSort.direction === 'desc' ? '(Högst först)' : '(Lägst först)';
-            document.getElementById('sortIndicator').innerText = `📌 Sorterar efter: ${labels[col]} ${dirStr}`;
             displayResults();
         }
 
@@ -791,7 +790,6 @@
             document.getElementById('results').style.display = 'none';
         };
 
-        window.toggleIgnore = toggleIgnore;
         window.toggleInteresting = toggleInteresting;
         window.changeCategory = changeCategory;
     </script>

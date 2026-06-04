@@ -504,20 +504,21 @@
 
             const hist = meter.history;
 
-            // Enkelmätning (t.ex. ensam PDF) — klassificera på aktuellt värde
+            // Enkelmätning (t.ex. ensam PDF) — utan historik kan vi ej skilja läcka från konstant brus
             if (!hist || hist.length < 2) {
                 const v = hist?.length ? hist[hist.length - 1].value : 0;
-                if (v >= 50) return 'aktiv_lacka';
-                if (v >= 28) return 'aktiv_lacka';
+                if (v >= 50) return 'ny_matare'; // Extremt högt men okänd historik — kräver analys
+                if (v >= 28) return 'ny_matare'; // Kan vara konstant brus — kräver fler mätningar
                 if (v >= 18) return 'ny_matare';
                 return 'normal';
             }
 
-            // Partial trend (2–4 filer): enkel tröskelanalys
+            // Partial trend (2–4 filer): kolla om värdet alltid legat högt (= konstant brus)
             if (hist.length < 5) {
                 const sorted = [...hist].sort((a, b) => a.date - b.date);
                 const current = sorted[sorted.length - 1].value;
-                if (current >= 28) return 'aktiv_lacka';
+                const alwaysHigh = sorted.every(h => h.value >= 18);
+                if (current >= 28) return alwaysHigh ? 'storing' : 'aktiv_lacka';
                 if (current >= 18) return 'ny_matare';
                 return 'normal';
             }
@@ -541,8 +542,11 @@
                 return 'misstankt';
             }
 
-            // 3. Standard-fallbacks
-            if (currentNoise >= 28) return 'aktiv_lacka';
+            // 3. Standard-fallbacks — konstant historiskt högt = brus, inte läcka
+            if (currentNoise >= 28) {
+                const neverQuiet = history.every(h => h.value >= 18);
+                return neverQuiet ? 'storing' : 'aktiv_lacka';
+            }
             if (currentNoise >= 16) return 'ny_matare';
             return 'normal';
         }

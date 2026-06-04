@@ -1,17 +1,17 @@
-// lacksok-pro.html
+// lacksok-pro-final.html
 
 <!DOCTYPE html>
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksök Pro v2.0</title>
+    <title>Karma - Läcksök Pro v3.5 (Master)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* --- DESIGN SYSTEM (KARMA COMPACT / SPOTIFY DARK THEME) --- */
+        /* --- DESIGN SYSTEM (KARMA SPOTIFY DARK COMPACT) --- */
         :root {
             --bg-main: #0a0a0c;
             --bg-card: #121216;
@@ -22,347 +22,64 @@
             --primary: #1db954;
             --primary-hover: #1ed760;
             --border-color: #22222a;
-            --focus-outline: #22c55e;
             
-            /* Högkontrasts-statusar för läcksökning */
-            --clr-extreme: #dc2626;       /* Akuta rörbrott (Kommunal ledning) */
-            --clr-aktiv-lacka: #f87171;   /* Konstant rött flöde på servis */
-            --clr-misstankt: #f97316;     /* Orange: Nyuppstådd ihållande ökning */
-            --clr-leak: #eab308;           /* Gul: Fastighetens egen läckkod active */
-            --clr-storing: #38bdf8;        /* Blå: Pumpar, mätarstörningar (Hydrofor) */
-            --clr-ny-matare: #c084fc;      /* Lila: Saknar lång historik / Säsongsanalys */
-            --clr-lagad: #10b981;          /* Grön: Har varit hög, men blivit tyst */
-            --clr-normal: #27272a;         /* Grå: Normalt bakgrundsbrus */
+            --clr-extreme: #dc2626;       
+            --clr-aktiv-lacka: #f87171;   
+            --clr-misstankt: #f97316;       
+            --clr-leak: #eab308;           
+            --clr-storing: #38bdf8;        
+            --clr-ny-matare: #c084fc;      
+            --clr-lagad: #10b981;
+            --clr-normal: #27272a;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg-main); color: var(--text-main); padding: 24px; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            padding: 32px;
-            -webkit-font-smoothing: antialiased;
-        }
+        .app-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; }
+        .app-title-area h1 { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #ffffff 0%, #a0a0ab 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .app-title-area .subtitle { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
 
-        /* --- APP HEADER --- */
-        .app-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 28px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 20px;
-        }
+        .upload-section { background-color: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid var(--border-color); }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 
-        .app-title-area h1 {
-            font-size: 32px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #ffffff 0%, #a0a0ab 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+        button { background-color: var(--primary); color: #ffffff; border: none; padding: 10px 22px; font-size: 13px; font-weight: 700; border-radius: 50px; cursor: pointer; transition: transform 0.15s ease; }
+        button:hover { transform: scale(1.02); background-color: var(--primary-hover); }
+        button.secondary { background-color: transparent; border: 1px solid var(--text-muted); color: var(--text-main); }
+        button.secondary:hover { background-color: rgba(255, 255, 255, 0.06); }
+        button.danger { background-color: #5f1a1a; border: 1px solid #991b1b; }
 
-        .app-title-area .subtitle {
-            color: var(--text-muted);
-            font-size: 14px;
-            margin-top: 4px;
-            font-weight: 500;
-        }
+        .accordion-trigger { background: #161620; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 16px; border-radius: 8px; font-size: 13px; margin-top: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: fit-content; gap: 12px; }
+        .file-grid-container { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .file-grid-container.open { max-height: 300px; overflow-y: auto; margin-top: 12px; }
+        .file-grid-compact { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #09090d; border-radius: 8px; }
+        .file-chip-compact { display: inline-flex; align-items: center; background: #161620; font-size: 12px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); color: var(--text-muted); }
 
-        /* --- UPLOAD CONTAINER --- */
-        .upload-section {
-            background-color: var(--bg-card);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 32px;
-            border: 1px solid var(--border-color);
-        }
-
-        .btn-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            align-items: center;
-        }
-
-        button {
-            background-color: var(--primary);
-            color: #ffffff;
-            border: none;
-            padding: 12px 26px;
-            font-size: 14px;
-            font-weight: 700;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        button:hover {
-            transform: scale(1.03);
-            background-color: var(--primary-hover);
-        }
-
-        button.secondary {
-            background-color: transparent;
-            border: 1px solid var(--text-muted);
-            color: var(--text-main);
-        }
-
-        button.secondary:hover {
-            background-color: rgba(255, 255, 255, 0.06);
-            border-color: #ffffff;
-        }
-
-        button.danger {
-            background-color: #7f1d1d;
-            border: 1px solid #b91c1c;
-        }
-        button.danger:hover {
-            background-color: #991b1b;
-        }
-
-        /* COMPACT FILE ACCORDION */
-        .accordion-trigger {
-            background: #181822;
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-top: 18px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: fit-content;
-            gap: 12px;
-            font-weight: 600;
-            user-select: none;
-        }
-        .accordion-trigger:hover {
-            background: #222230;
-        }
-
-        .file-grid-container {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .file-grid-container.open {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-top: 14px;
-        }
-
-        .file-grid-compact {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            padding: 16px;
-            background: #09090d;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .file-chip-compact {
-            display: inline-flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #161620;
-            font-size: 12px;
-            padding: 8px 14px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            min-width: 260px;
-            max-width: 320px;
-        }
-        .file-chip-compact .remove-file {
-            color: #ef4444;
-            cursor: pointer;
-            font-weight: bold;
-            margin-left: 10px;
-            font-size: 14px;
-        }
-
-        .no-files-text {
-            font-size: 13px;
-            color: var(--text-muted);
-            font-style: italic;
-        }
-
-        /* --- COUNTER CARDS (SPOTIFY MIX) --- */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        .stat-card {
-            background-color: var(--bg-card);
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            transition: all 0.2s ease;
-            position: relative;
-            cursor: pointer;
-        }
-
-        .stat-card:hover {
-            background-color: var(--bg-card-hover);
-            transform: translateY(-2px);
-        }
-
-        .stat-card.active {
-            border: 2px solid var(--primary);
-            box-shadow: 0 0 12px rgba(29, 185, 84, 0.2);
-        }
-
-        .stat-card .num {
-            font-size: 32px;
-            font-weight: 800;
-            line-height: 1;
-            margin-bottom: 6px;
-            letter-spacing: -1px;
-        }
-
-        .stat-card .label {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background-color: var(--bg-card); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; transition: border-color 0.2s; }
+        .stat-card.active { border: 2px solid var(--primary); }
+        .stat-card .num { font-size: 28px; font-weight: 800; }
+        .stat-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-top: 2px; }
         .stat-card.color-total { border-left: 4px solid var(--text-main); }
         .stat-card.color-aktiv-lacka { border-left: 4px solid var(--clr-aktiv-lacka); }
         .stat-card.color-misstankt { border-left: 4px solid var(--clr-misstankt); }
         .stat-card.color-noise { border-left: 4px solid var(--clr-storing); }
 
-        /* --- AUTOMATIC FIELD TIPS --- */
-        .insight-box {
-            padding: 18px 22px;
-            border-radius: 10px;
-            font-size: 14px;
-            line-height: 1.5;
-            margin-bottom: 32px;
-            border-left: 4px solid var(--primary);
-            background-color: var(--bg-card);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .insight-box { padding: 14px 18px; border-radius: 8px; font-size: 13px; margin-bottom: 24px; border-left: 4px solid var(--primary); background-color: var(--bg-card); color: var(--text-muted); }
+        .insight-box strong { color: #fff; }
 
-        /* --- FILTERS & TOOLBAR --- */
-        .toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            gap: 16px;
-        }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; }
+        .search-input { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 10px 20px; border-radius: 50px; width: 280px; font-size: 13px; outline: none; }
+        .filter-select { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 10px 20px; border-radius: 50px; font-size: 13px; cursor: pointer; outline: none; }
 
-        .search-input {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            color: #ffffff;
-            padding: 12px 24px;
-            border-radius: 50px;
-            width: 320px;
-            font-size: 14px;
-            outline: none;
-            transition: all 0.2s ease;
-        }
+        .section-title { font-size: 16px; font-weight: 800; margin: 28px 0 12px 0; display: flex; align-items: center; gap: 8px; }
+        .results-container { background-color: var(--bg-card); border-radius: 12px; padding: 16px; border: 1px solid var(--border-color); overflow-x: auto; margin-bottom: 24px; }
 
-        .search-input:focus {
-            border-color: var(--focus-outline);
-            background-color: var(--bg-card-hover);
-        }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; padding: 12px; border-bottom: 2px solid var(--border-color); font-weight: 700; }
+        td { padding: 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; vertical-align: middle; }
+        tr:hover td { background-color: rgba(255, 255, 255, 0.01); }
 
-        .filter-select {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            color: #ffffff;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-size: 14px;
-            cursor: pointer;
-            outline: none;
-        }
-        .filter-select:focus {
-            border-color: var(--focus-outline);
-        }
-
-        /* --- DATA TABLES --- */
-        .section-title {
-            font-size: 18px;
-            font-weight: 800;
-            margin: 36px 0 16px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .results-container {
-            background-color: var(--bg-card);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            overflow-x: auto;
-            margin-bottom: 32px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            color: var(--text-muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            padding: 16px 12px;
-            border-bottom: 2px solid var(--border-color);
-            text-align: left;
-            user-select: none;
-            cursor: pointer;
-        }
-        th:hover {
-            color: #ffffff;
-        }
-        th.active-sort {
-            color: var(--primary);
-        }
-
-        td {
-            padding: 16px 12px;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-muted);
-            vertical-align: middle;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        tr:hover td {
-            background-color: rgba(255, 255, 255, 0.02);
-        }
-
-        /* VÄNSTERKANT-INDIKERING BASERAT PÅ KLASSIFICERING */
         .row-extreme td:first-child { border-left: 4px solid var(--clr-extreme); }
         .row-aktiv_lacka td:first-child { border-left: 4px solid var(--clr-aktiv-lacka); }
         .row-misstankt td:first-child { border-left: 4px solid var(--clr-misstankt); }
@@ -372,196 +89,76 @@
         .row-lagad td:first-child { border-left: 4px solid var(--clr-lagad); }
         .row-normal td:first-child { border-left: 4px solid var(--clr-normal); }
 
-        .table-adress-text {
-            font-weight: 700;
-            font-size: 15px;
-            color: #ffffff;
-        }
+        .table-adress-text { font-weight: 700; font-size: 14px; color: #ffffff; }
+        .field-memo-tag { display: inline-block; background: #181824; border: 1px solid #2e2e42; color: #2dd4bf; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; font-weight: 600; }
+        .copy-btn { background: #1c1c24; border: 1px solid var(--border-color); color: var(--text-muted); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+        .copy-btn:hover { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; display: inline-block; }
 
-        /* PM-tagg under adressen */
-        .field-memo-tag {
-            display: inline-block;
-            background: #14141e;
-            border: 1px solid #2e2e3e;
-            color: #2dd4bf;
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin-top: 4px;
-            font-weight: 600;
-        }
+        .category-select-compact { background: #161620; color: #ffffff; border: 1px solid var(--border-color); border-radius: 6px; padding: 4px 8px; font-size: 12px; outline: none; cursor: pointer; }
+        .noise-accordion-box { background: #08080c; border: 1px dashed var(--border-color); border-radius: 12px; padding: 16px; margin-top: 24px; }
 
-        .copy-btn {
-            background: #1c1c24;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-        .copy-btn:hover {
-            background: var(--primary);
-            color: #ffffff;
-            border-color: var(--primary);
-        }
-
-        .badge {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            display: inline-block;
-            letter-spacing: 0.5px;
-        }
-
-        code {
-            font-family: monospace;
-            background-color: #16161c;
-            padding: 4px 8px;
-            border-radius: 4px;
-            color: #e2e8f0;
-            font-size: 13px;
-        }
-
-        .trend-up {
-            color: #ef4444;
-            font-weight: 700;
-        }
-        .trend-down {
-            color: #10b981;
-            font-weight: 700;
-        }
-
-        .category-select-compact {
-            background: #161620;
-            color: #ffffff;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 13px;
-            font-weight: 600;
-            outline: none;
-            cursor: pointer;
-        }
-        .category-select-compact:focus {
-            border-color: var(--primary);
-        }
-
-        /* BRUS / DOLDA STÖRNINGAR ACCORDION BOX */
-        .noise-accordion-box {
-            background: #0d0d11;
-            border: 1px dashed #2e2e3e;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 36px;
-        }
-
-        /* --- TREND MODAL WINDOW --- */
-        .graph-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .graph-modal-content {
-            background: #121218;
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            width: 100%;
-            max-width: 700px;
-            padding: 24px;
-            position: relative;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-        }
-
-        .close-modal-btn {
-            position: absolute;
-            top: 16px;
-            right: 20px;
-            font-size: 24px;
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-        }
-        .close-modal-btn:hover {
-            color: #ffffff;
-        }
+        .graph-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 1000; justify-content: center; align-items: center; }
+        .graph-modal-content { background: #121216; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 750px; padding: 24px; position: relative; }
+        .close-modal-btn { position: absolute; top: 14px; right: 18px; font-size: 22px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="app-header">
         <div class="app-title-area">
-            <h1>Karma - Läcksök Pro</h1>
-            <div class="subtitle">Skarp läcksöknings- och trendanalysmodul för distributionsnät</div>
+            <h1>Karma - Läcksök Pro v3.5</h1>
+            <div class="subtitle">Full tidslinjeanalys baserad på historiska och filtrerade mätdata</div>
         </div>
     </div>
 
     <div class="upload-section">
         <div class="btn-group">
-            <button id="uploadBtn">📁 Välj Mätarfiler (Excel/CSV)</button>
-            <button id="analyzeBtn" class="secondary">⚡ Kör Morgonanalys</button>
+            <button id="uploadBtn">📁 Läs in mätarfiler (Excel/CSV)</button>
+            <button id="analyzeBtn" class="secondary">⚡ Kör Full Tidsanalys</button>
             <button id="exportBtn" class="secondary">📥 Exportera Rapport</button>
-            <button id="clearBtn" class="secondary danger">🗑️ Nollställ</button>
+            <button id="clearBtn" class="secondary danger">🗑️ Rensa allt</button>
             <input type="file" id="fileInput" multiple style="display: none;" accept=".xlsx, .xls, .csv">
         </div>
         
         <div class="accordion-trigger" id="accordionTrigger">
-            <span>📂 Visa ackumulerade datafiler (<span id="fileCountText">0</span> st inlästa)</span>
-            <span id="arrowIndicator">▸</span>
+            <span>📂 Valda filer (<span id="fileCountText">0</span> st)</span> <span id="arrowIndicator">▸</span>
         </div>
         <div class="file-grid-container" id="fileGridContainer">
             <div class="file-grid-compact" id="fileList">
-                <span class="no-files-text">Inga mätarfiler inlästa ännu. Välj filer ovan för att starta.</span>
+                <span style="color:var(--text-muted); font-size:12px;">Inga filer laddade än.</span>
             </div>
         </div>
     </div>
 
     <div id="results" style="display: none;">
-        
         <div class="stats-grid" id="statsGrid"></div>
-
         <div class="insight-box" id="insightBox"></div>
 
         <div class="toolbar">
-            <input type="text" id="searchInput" class="search-input" placeholder="Sök adress, fastighet eller mätarnummer...">
+            <input type="text" id="searchInput" class="search-input" placeholder="Sök på adress eller mätarnummer...">
             <select id="areaFilter" class="filter-select">
-                <option value="all">Alla kommundelar (Hela Botkyrka)</option>
+                <option value="all">Alla områden</option>
                 <option value="TULLINGE">Tullinge</option>
                 <option value="TUMBA">Tumba</option>
-                <option value="NORSBORG">Norsborg</option>
-                <option value="ÖVRIGT">Övriga zoner / Okänd</option>
+                <option value="ÖVRIGT">Övrigt</option>
             </select>
         </div>
 
-        <div class="section-title">🎯 SKARPA LÄCKOR & MISSTÄNKTA (Prioriterad lyssningslista)</div>
+        <div class="section-title">🎯 AKTIVA ÄRENDEN & IHÅLLANDE STEGRINGAR</div>
         <div class="results-container">
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 50px; text-align: center;">Märk</th>
-                        <th style="width: 50px; text-align: center;">Dölj</th>
+                        <th style="width:50px; text-align:center;">Stjärna</th>
                         <th>Klassificering</th>
-                        <th id="th-adress">Adress / Fastighet ↕</th>
-                        <th style="width: 100px; text-align: center;">Urklipp</th>
-                        <th id="th-serienummer">Mätarnummer ↕</th>
-                        <th id="th-area">Område ↕</th>
-                        <th id="th-change" class="active-sort">Förändring ↕</th>
-                        <th id="th-max">Maxavläsning ↕</th>
-                        <th style="width: 70px; text-align: center;">Trend</th>
+                        <th>Adress / Fastighet</th>
+                        <th style="text-align:center;">Kopiera</th>
+                        <th>Mätarnummer</th>
+                        <th>Område</th>
+                        <th>Senaste Brus</th>
+                        <th>Maxvärde</th>
+                        <th style="text-align:center;">Trend</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
@@ -570,18 +167,17 @@
 
         <div class="noise-accordion-box">
             <div class="accordion-trigger" id="noiseAccordionTrigger" style="margin-top:0; width:100%; background:transparent; border:none; padding:0;">
-                <span>⚙️ Dämpat bakgrundsbrus, filterade störningar & historiskt lagade (<span id="noiseCountText">0</span> st dolda)</span>
-                <span id="noiseArrowIndicator">▸</span>
+                <span>⚙️ Normal Bakgrund, Brus & Historiskt Lagade Ärenden (<span id="noiseCountText">0</span> st)</span> <span id="noiseArrowIndicator">▸</span>
             </div>
             <div class="file-grid-container" id="noiseGridContainer">
-                <div class="results-container" style="background: #09090d; margin-top: 16px; border-color: #1f1f2e;">
+                <div class="results-container" style="background:#09090d; margin-top:12px; border-color:#1a1a24;">
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 220px;">Klassa om manuellt</th>
+                                <th>Klassa om</th>
                                 <th>Adress / Fastighet</th>
                                 <th>Mätarnummer</th>
-                                <th>Historiskt lägsta bakgrundsbrus (dB)</th>
+                                <th>Senaste / Max</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -595,8 +191,8 @@
     <div class="graph-modal" id="graphModal">
         <div class="graph-modal-content">
             <button class="close-modal-btn" id="closeModalBtn">&times;</button>
-            <h3 id="modalTitle" style="font-weight: 800; font-size: 18px; letter-spacing: -0.5px;">Brustrend över tid</h3>
-            <div style="width: 100%; height: 320px; position: relative; margin-top: 20px;">
+            <h3 id="modalTitle" style="font-size:18px; font-weight:800;">Brustrend över tid</h3>
+            <div style="width:100%; height:320px; position:relative; margin-top:16px;">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
@@ -605,69 +201,344 @@
     <script>
         let uploadedFiles = [];
         let currentResults = [];
-        let ignoredIds = new Set();
         let interestingIds = new Set();
         let userCategories = new Map();
         let activeChartInstance = null;
-
-        // State-tracking för UI sortering och filtrering
-        let currentSort = { column: 'change', direction: 'desc' };
         let currentAreaFilter = 'all';
         let currentCategoryFilter = 'all';
 
-        // --- FAST STATISK DATA / SPÅRBARHETSMATRIS (1200+ RADER POTENTIAL) ---
-        const fieldKnowledgeBase = {
+        // Master-databas för dina kända skarpa fall
+        const staticKnowledgeBase = {
             "LAXVÄGEN 8": { cat: "aktiv_lacka", memo: "📋 Kunds sida (LEAK). Skickat till Jimmy." },
             "MALMSJÖVÄGEN 25": { cat: "aktiv_lacka", memo: "✔ Kunds sida (LEAK) - KUND INFORMERAD." },
+            "VATTRAVÄGEN 8": { cat: "aktiv_lacka", memo: "📋 Driften undersöker läckans läge." },
             "LINDHOVSVÄGEN 3": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
             "LINDHOVSVÄGEN 5": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
             "LINDHOVSVÄGEN 7": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "NIBBLEVÄGEN 40": { cat: "extreme", memo: "🚨 KONSTATERAD LÄCKA PÅ KOMMUNENS LEDNING." },
-            "NIBBLEBACKEN 40": { cat: "extreme", memo: "🚨 KONSTATERAD LÄCKA PÅ KOMMUNENS LEDNING." }
+            "NIBBLEBACKEN 40": { cat: "extreme", memo: "🚨 AKTIV LÄCKA PÅ VÅR SIDA (KOMMUNEN)." },
+            
+            "DALKÄRRSVÄGEN 11": { cat: "lagad", memo: "🟢 LAGAD - Läcka på kundens servisledning." },
+            "ENGWALLS VÄG 13": { cat: "lagad", memo: "🟢 LAGAD - Konstaterad läcka på SV till kund." },
+            "BROÄNGSVÄGEN 22": { cat: "lagad", memo: "🟢 LAGAD - Historisk läcka åtgärdad." },
+            "STORVRETSVÄGEN 97": { cat: "lagad", memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
+            "LÖVHOLMENVÄGEN 15": { cat: "lagad", memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
+            "JAKTVÄGEN 2": { cat: "lagad", memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." }
         };
 
         const categories = {
-            extreme: { label: 'Huvudledning', bg: '#dc2626', color: '#ffffff', symbol: '🚨' },
-            aktiv_lacka: { label: 'Aktiv läcka (Servis)', bg: '#f87171', color: '#000000', symbol: '🔴' },
-            misstankt: { label: 'Misstänkt / Läcklyssna', bg: '#f97316', color: '#ffffff', symbol: '🟠' },
-            ny_matare: { label: 'Säsongsanalys', bg: '#c084fc', color: '#ffffff', symbol: '🟣' },
-            leak_code: { label: 'Efter mätare (LEAK)', bg: '#eab308', color: '#000000', symbol: '🟡' },
-            storing: { label: 'Störning / Pump', bg: '#38bdf8', color: '#ffffff', symbol: '🔵' },
-            lagad: { label: 'Historiskt lagad', bg: '#10b981', color: '#ffffff', symbol: '🟢' },
-            normal: { label: 'Normal bakgrund', bg: '#27272a', color: '#a0a0ab', symbol: '⚪' }
+            extreme: { label: 'Akut Huvudledning / Vår Sida', bg: '#dc2626', color: '#fff', symbol: '🚨' },
+            aktiv_lacka: { label: 'Aktiv läcka (Servis)', bg: '#f87171', color: '#000', symbol: '🔴' },
+            misstankt: { label: 'Misstänkt / Ihållande ökning', bg: '#f97316', color: '#fff', symbol: '🟠' },
+            ny_matare: { label: 'Säsongsanalys / Stegring', bg: '#c084fc', color: '#fff', symbol: '🟣' },
+            leak_code: { label: 'Mätarflagga (LEAK)', bg: '#eab308', color: '#000', symbol: '🟡' },
+            storing: { label: 'Störning / Pump', bg: '#38bdf8', color: '#fff', symbol: '🔵' },
+            lagad: { label: 'Historiskt lagad / Klar', bg: '#10b981', color: '#fff', symbol: '🟢' },
+            normal: { label: 'Normal bakgrund', bg: '#27272a', color: '#bbb', symbol: '⚪' }
         };
 
-        // UI-kopplingar för filer och paneler
-        document.getElementById('accordionTrigger').onclick = () => {
-            const container = document.getElementById('fileGridContainer');
-            container.classList.toggle('open');
-            document.getElementById('arrowIndicator').innerText = container.classList.contains('open') ? "▾" : "▸";
-        };
+        function cleanAddressText(addr) {
+            if (!addr) return "";
+            let txt = addr.toString().replace(/[\r\n]+/g, " ");
+            return txt.replace(/\b(TUMBA|TULLINGE|NORSBORG|UTTRAN|\d{3}\s?\d{2})\b/gi, "").trim().replace(/\s+/g, " ").toUpperCase();
+        }
 
-        document.getElementById('noiseAccordionTrigger').onclick = () => {
-            const container = document.getElementById('noiseGridContainer');
-            container.classList.toggle('open');
-            document.getElementById('noiseArrowIndicator').innerText = container.classList.contains('open') ? "▾" : "▸";
-        };
+        // --- EXCEL OCH CSV PARSER (Äter alla kolumnformat) ---
+        function parseFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                        let results = [];
 
-        // Hjälpfunktion för att leta efter datum i filnamn eller strängar
-        function extractDateFromFilename(filename) {
-            const reg = /(\d{4})[-_](\d{2})[-_](\d{2})/;
-            const match = filename.match(reg);
-            if (match) {
-                return new Date(match[1], match[2] - 1, match[3]);
+                        // Extrahera datum från filnamn om möjligt (t.ex. 2026-06-04)
+                        let fileDate = new Date(file.lastModified);
+                        const match = file.name.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
+                        if (match) fileDate = new Date(match[1], match[2] - 1, match[3]);
+
+                        jsonData.forEach(row => {
+                            let id = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'];
+                            let address = row['Adress'] || row['Plats'] || row['address'];
+                            
+                            // Stödjer både 'Senaste värde' och 'Senaste avläsning' (Brus dB)
+                            let noiseStr = row['Senaste värde'] || row['Senaste avläsning'] || row['Brus'] || '0';
+                            let value = parseFloat(noiseStr.toString().replace(/[^0-9.]/g, '')) || 0;
+                            
+                            let maxVal = parseFloat(row['Maxvärde'] || value);
+                            let avgVal = parseFloat(row['Genomsnittsvärde'] || value);
+                            let infokod = row['Infokod'] || row['Aktiva händelser'] || '';
+                            let atgardad = row['Åtgärdad den'] || '';
+                            let kommentar = row['Kommentar'] || '';
+
+                            if (id) {
+                                let cleanAddr = address ? address.toString().trim() : 'Okänd adress';
+                                let area = cleanAddr.toUpperCase().includes('TULLINGE') ? 'TULLINGE' : (cleanAddr.toUpperCase().includes('TUMBA') ? 'TUMBA' : 'ÖVRIGT');
+                                
+                                results.push({
+                                    id: id.toString().trim(),
+                                    adress: cleanAddr,
+                                    value: value,
+                                    maxVal: isNaN(maxVal) ? value : maxVal,
+                                    avgVal: isNaN(avgVal) ? value : avgVal,
+                                    infokod: infokod.toString().trim(),
+                                    atgardad: atgardad,
+                                    kommentar: kommentar,
+                                    area: area,
+                                    fileDate: fileDate
+                                });
+                            }
+                        });
+                        resolve(results);
+                    } catch (err) { reject(err); }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // --- FULLSTÄNDIG TIDSSERIEANALYS ---
+        function runAnalysis() {
+            if (uploadedFiles.length === 0) return;
+            let finalMap = new Map();
+
+            // Sortera filerna kronologiskt så tidslinjen stämmer
+            uploadedFiles.sort((a, b) => a.date - b.date);
+
+            uploadedFiles.forEach(f => {
+                f.data.forEach(m => {
+                    if (!finalMap.has(m.id)) {
+                        finalMap.set(m.id, {
+                            id: m.id, adress: m.adress, area: m.area,
+                            infokod: m.infokod, atgardad: m.atgardad,
+                            kommentar: m.kommentar, history: []
+                        });
+                    }
+                    let current = finalMap.get(m.id);
+                    let dStr = m.fileDate.toISOString().slice(0, 10);
+                    
+                    // Lägg till mätpunkt om datumet inte redan finns registrerat för mätaren
+                    if (!current.history.some(h => h.dateStr === dStr)) {
+                        current.history.push({ dateStr: dStr, value: m.value, maxVal: m.maxVal, avgVal: m.avgVal });
+                    }
+                    if (m.atgardad && m.atgardad !== "-") current.atgardad = m.atgardad;
+                    if (m.kommentar) current.kommentar = m.kommentar;
+                });
+            });
+
+            currentResults = [];
+            for (let [id, m] of finalMap) {
+                m.history.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+                
+                let latestReading = m.history[m.history.length - 1];
+                let firstReading = m.history[0];
+                
+                let currentNoise = latestReading.value;
+                let maxHistorical = Math.max(...m.history.map(h => h.maxVal));
+                
+                let cleanKey = cleanAddressText(m.adress);
+                let finalCategory = userCategories.get(m.id) || smartClassify(m, currentNoise, maxHistorical, cleanKey);
+                
+                let memo = m.kommentar ? `💬 ${m.kommentar}` : "";
+                if (staticKnowledgeBase[cleanKey]) memo = staticKnowledgeBase[cleanKey].memo;
+
+                currentResults.push({
+                    id: m.id,
+                    adress: m.adress.replace(/[\r\n]+/g, " "),
+                    serienummer: m.id,
+                    area: m.area,
+                    currentNoise: currentNoise,
+                    maxHistorical: maxHistorical,
+                    category: finalCategory,
+                    history: m.history,
+                    memo: memo
+                });
             }
-            return null;
+
+            document.getElementById('results').style.display = 'block';
+            displayResults();
         }
 
-        function formatShortDate(date) {
-            if (!date || isNaN(date.getTime())) return "Okänt datum";
-            return date.toISOString().slice(0, 10);
+        // --- HIERARKISK SMART-CLASSIFY ALGORITM ---
+        function smartClassify(meter, currentNoise, maxHistorical, cleanKey) {
+            // Regel 1: Direkt matchning mot kända fältärenden
+            if (staticKnowledgeBase[cleanKey]) return staticKnowledgeBase[cleanKey].cat;
+
+            // Regel 2: Kamstrups egna klarmarkeringar
+            if (meter.atgardad && meter.atgardad !== "-") return 'lagad';
+            if (meter.kommentar && meter.kommentar.toLowerCase().includes('åtgärdad')) return 'lagad';
+
+            // Regel 3: Är mätaren helt tyst just nu men har haft extrema toppar? -> Historiskt lagad
+            if (currentNoise <= 22 && maxHistorical >= 45) return 'lagad';
+
+            // Regel 4: Aktiv och ihållande läcka (Hög dB nu)
+            if (currentNoise >= 35) return 'aktiv_lacka';
+
+            // Regel 5: Aktiv LEAK-infokod
+            if (meter.infokod && meter.infokod.toUpperCase().includes('LEAK')) return 'leak_code';
+
+            // Regel 6: Trender och stegringar (Om bruset ökat gradvis över tidslinjen)
+            if (meter.history.length >= 3) {
+                let firstVals = meter.history.slice(0, 2).map(h => h.value);
+                let avgStart = firstVals.reduce((a,b)=>a+b, 0) / firstVals.length;
+                if (currentNoise >= avgStart + 12 && avgStart <= 15) {
+                    return 'misstankt';
+                }
+            }
+
+            if (currentNoise >= 16) return 'ny_matare';
+            return 'normal';
         }
 
-        function extractCleanAddressOnly(fullAddress) {
-            if (!fullAddress) return "";
-            return fullAddress
-                .replace(/\b(TUMBA|TULLINGE|NORSBORG|UTTRAN|\d{3}\s?\d{2})\b/gi, "")
-                .trim()
-                .replace(/\s+/g
+        function displayResults() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const tbody = document.getElementById('tableBody');
+            const noiseTbody = document.getElementById('noiseTableBody');
+            
+            tbody.innerHTML = '';
+            noiseTbody.innerHTML = '';
+            
+            // Sortera efter högsta nuvarande brus
+            currentResults.sort((a, b) => b.currentNoise - a.currentNoise);
+
+            let hiddenCount = 0;
+
+            currentResults.forEach(r => {
+                if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
+                if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
+
+                let catOptions = '';
+                for (let c in categories) {
+                    catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol} ${categories[c].label}</option>`;
+                }
+
+                // Dela upp i aktiva ärenden vs dolda brus/historiska
+                let isHidden = ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category);
+
+                if (isHidden) {
+                    hiddenCount++;
+                    const tr = document.createElement('tr');
+                    tr.className = `row-${r.category}`;
+                    tr.innerHTML = `
+                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
+                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag" style="color:#10b981; border-color:#10b981;">${r.memo}</span>` : ''}</td>
+                        <td><code>${r.serienummer}</code></td>
+                        <td><strong>${r.currentNoise} dB</strong> / ${r.maxHistorical} dB</td>
+                        <td><span class="badge" style="background:${categories[r.category].bg}; color:${categories[r.category].color}">${categories[r.category].label}</span></td>
+                    `;
+                    noiseTbody.appendChild(tr);
+                } else {
+                    if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = `row-${r.category}`;
+                    tr.innerHTML = `
+                        <td style="text-align:center;"><button style="background:transparent; border:none; cursor:pointer;" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
+                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
+                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}</td>
+                        <td style="text-align:center;"><button class="copy-btn" onclick="copyAddress('${r.adress}', event)">📋 Kopiera</button></td>
+                        <td><code>${r.serienummer}</code></td>
+                        <td><span class="badge" style="background:#1f1f2e; color:#fff;">${r.area}</span></td>
+                        <td><span style="color:#f87171; font-weight:bold;">${r.currentNoise} dB</span></td>
+                        <td><strong>${r.maxHistorical} dB</strong></td>
+                        <td style="text-align:center;"><button class="copy-btn" style="padding:4px 8px;" onclick="openGraph('${r.id}')">📈</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+
+            document.getElementById('noiseCountText').innerText = hiddenCount;
+            updateStats();
+        }
+
+        function updateStats() {
+            let c = { total: 0, extreme: 0, aktiv_lacka: 0, misstankt: 0, hidden: 0 };
+            currentResults.forEach(r => {
+                if (['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category)) c.hidden++;
+                else {
+                    c.total++;
+                    if (r.category === 'extreme') c.extreme++;
+                    if (r.category === 'aktiv_lacka') c.aktiv_lacka++;
+                    if (r.category === 'misstankt') c.misstankt++;
+                }
+            });
+
+            const grid = document.getElementById('statsGrid');
+            grid.innerHTML = `
+                <div class="stat-card color-total ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="filterCat('all')"><div class="num">${c.total}</div><div class="label">Aktiva larm</div></div>
+                <div class="stat-card color-aktiv-lacka ${currentCategoryFilter === 'aktiv_lacka' ? 'active' : ''}" onclick="filterCat('aktiv_lacka')"><div class="num">${c.aktiv_lacka + c.extreme}</div><div class="label">Konstaterade läckor</div></div>
+                <div class="stat-card color-misstankt ${currentCategoryFilter === 'misstankt' ? 'active' : ''}" onclick="filterCat('misstankt')"><div class="num">${c.misstankt}</div><div class="label">Ihållande stegringar</div></div>
+                <div class="stat-card color-noise"><div class="num">${c.hidden}</div><div class="label">Undansorterade</div></div>
+            `;
+            document.getElementById('insightBox').innerHTML = `💡 <strong>Analys klar för hela tidsperioden:</strong> Systemet har byggt en kronologisk tidslinje mätare för mätare. Alla lagade huvudledningar och källarbrunnar har filtrerats bort till bottenpanelen automatiskt.`;
+        }
+
+        function filterCat(cat) { currentCategoryFilter = cat; displayResults(); }
+        function changeCategory(id, newCat) { userCategories.set(id, newCat); let item = currentResults.find(r => r.id === id); if(item) item.category = newCat; displayResults(); }
+        function toggleInteresting(id) { if(interestingIds.has(id)) interestingIds.delete(id); else interestingIds.add(id); displayResults(); }
+        
+        function copyAddress(fullAddr, e) {
+            navigator.clipboard.writeText(cleanAddressText(fullAddr)).then(() => {
+                e.target.innerText = "Klar! ✔";
+                setTimeout(() => { e.target.innerText = "📋 Kopiera"; }, 1200);
+            });
+        }
+
+        function openGraph(id) {
+            const meter = currentResults.find(r => r.id === id); if (!meter) return;
+            document.getElementById('modalTitle').innerText = `Tidslinje för ${cleanAddressText(meter.adress)}`;
+            document.getElementById('graphModal').style.display = 'flex';
+            
+            const labels = meter.history.map(h => h.dateStr);
+            const dataPoints = meter.history.map(h => h.value);
+            
+            if (activeChartInstance) activeChartInstance.destroy();
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            activeChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{ label: 'Brus dB', data: dataPoints, borderColor: '#1db954', backgroundColor: 'rgba(29, 185, 84, 0.05)', fill: true, tension: 0.1 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0 } } }
+            });
+        }
+
+        // --- FILHANTERING ---
+        function handleFiles(files) {
+            let filesArray = Array.from(files);
+            let loaded = 0;
+            filesArray.forEach(file => {
+                parseFile(file).then(data => {
+                    if (data.length > 0) uploadedFiles.push({ name: file.name, date: file.lastModified, data: data });
+                    loaded++; if (loaded === filesArray.length) updateFileList();
+                }).catch(() => { loaded++; if (loaded === filesArray.length) updateFileList(); });
+            });
+        }
+
+        function updateFileList() {
+            document.getElementById('fileCountText').innerText = uploadedFiles.length;
+            const grid = document.getElementById('fileList'); grid.innerHTML = '';
+            uploadedFiles.forEach(f => {
+                const chip = document.createElement('div'); chip.className = 'file-chip-compact';
+                chip.innerHTML = `<span>📄 ${f.name}</span>`;
+                grid.appendChild(chip);
+            });
+        }
+
+        // Event Listeners
+        document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
+        document.getElementById('fileInput').onchange = (e) => handleFiles(e.target.files);
+        document.getElementById('analyzeBtn').onclick = () => runAnalysis();
+        document.getElementById('searchInput').oninput = () => displayResults();
+        document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
+        document.getElementById('closeModalBtn').onclick = () => document.getElementById('graphModal').style.display = 'none';
+        document.getElementById('clearBtn').onclick = () => { uploadedFiles = []; currentResults = []; updateFileList(); document.getElementById('results').style.display = 'none'; };
+        
+        // Drag & drop drag-triggers för dragspelen
+        document.getElementById('accordionTrigger').onclick = () => document.getElementById('fileGridContainer').classList.toggle('open');
+        document.getElementById('noiseAccordionTrigger').onclick = () => document.getElementById('noiseGridContainer').classList.toggle('open');
+    </script>
+</body>
+</html>

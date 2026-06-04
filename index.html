@@ -340,6 +340,10 @@
                 .trim().replace(/\s+/g, ' ').toUpperCase();
         }
 
+        function avg(readings) {
+            return readings.reduce((s, h) => s + h.value, 0) / readings.length;
+        }
+
         // ── Excel-parser ──────────────────────────────────────────────────────────
         function parseExcelFile(file) {
             return new Promise((resolve, reject) => {
@@ -490,65 +494,102 @@
         }
 
         // ── Analysmotor ───────────────────────────────────────────────────────────
+        // Returnerar { cat, reason } — reason används i bottenpanelens kommentar
         function smartClassify(meter) {
+            const R = (cat, reason) => ({ cat, reason });
             const cleanAddr = extractCleanAddressOnly(meter.adress);
-            if (fieldKnowledgeBase[cleanAddr]) return fieldKnowledgeBase[cleanAddr].cat;
+            if (fieldKnowledgeBase[cleanAddr]) return R(fieldKnowledgeBase[cleanAddr].cat, 'knowledge_base');
 
             const info = (meter.infokod || '').toLowerCase();
 
-            // Kamstrup infokoder — hanteras alltid oavsett historik
-            if (info.includes('burst') || info.includes('rörbrott')) return 'extreme';
-            if (info.includes('dry'))                                  return 'normal';
-            if (info.includes('reverse'))                              return 'storing';
-            if (info.includes('leak') || info.includes('läckage'))    return 'leak_code';
+            // Kamstrup hårdvarularm — alltid högsta prioritet
+            if (info.includes('burst') || info.includes('rörbrott')) return R('extreme',    'burst');
+            if (info.includes('dry'))                                  return R('normal',     'dry');
+            if (info.includes('reverse'))                              return R('storing',    'reverse');
+            if (info.includes('leak') || info.includes('läckage'))    return R('leak_code',  'leak_alarm');
 
             const hist = meter.history;
 
-            // Enkelmätning (t.ex. ensam PDF) — utan historik kan vi ej skilja läcka från konstant brus
+            // Enkelmätning — utan historik kan vi ej skilja läcka från konstant brus
             if (!hist || hist.length < 2) {
                 const v = hist?.length ? hist[hist.length - 1].value : 0;
-                if (v >= 50) return 'ny_matare'; // Extremt högt men okänd historik — kräver analys
-                if (v >= 28) return 'ny_matare'; // Kan vara konstant brus — kräver fler mätningar
-                if (v >= 18) return 'ny_matare';
-                return 'normal';
+                if (v >= 18) return R('ny_matare', 'single_reading');
+                return R('normal', 'single_reading');
             }
 
-            // Partial trend (2–4 filer): kolla om värdet alltid legat högt (= konstant brus)
-            if (hist.length < 5) {
-                const sorted = [...hist].sort((a, b) => a.date - b.date);
-                const current = sorted[sorted.length - 1].value;
-                const alwaysHigh = sorted.every(h => h.value >= 18);
-                if (current >= 28) return alwaysHigh ? 'storing' : 'aktiv_lacka';
-                if (current >= 18) return 'ny_matare';
-                return 'normal';
-            }
-
-            // Full trendanalys (≥5 filer)
             const history = [...hist].sort((a, b) => a.date - b.date);
             const n = history.length;
             const currentNoise  = history[n - 1].value;
             const maxHistorical = Math.max(...history.map(h => h.value));
 
+            // Beräkna säsongsmedelvärden (minst 2 mätningar per säsong krävs)
+            const WINTER = new Set([10, 11, 0, 1, 2]); // Nov–Mar
+            const SUMMER = new Set([4, 5, 6, 7, 8]);   // Maj–Sep
+            const winterR = history.filter(h => WINTER.has(new Date(h.date).getMonth()));
+            const summerR = history.filter(h => SUMMER.has(new Date(h.date).getMonth()));
+            const winterAvg = winterR.length >= 2 ? avg(winterR) : null;
+            const summerAvg = summerR.length >= 2 ? avg(summerR) : null;
+
+            // Stabilitetsmått: senaste 3 mätningar, max avvikelse < 30% av medel
+            const last3 = history.slice(-3);
+            const isStableHigh = last3.length === 3 && (() => {
+                const vals = last3.map(h => h.value);
+                const mean = vals.reduce((a, b) => a + b, 0) / 3;
+                const maxDev = Math.max(...vals.map(v => Math.abs(v - mean)));
+                return mean > 18 && (mean > 0 ? maxDev / mean : 1) < 0.30;
+            })();
+
+            // Partial trend (2–4 filer)
+            if (hist.length < 5) {
+                const alwaysHigh = history.every(h => h.value >= 18);
+                if (currentNoise >= 28) return alwaysHigh ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
+                if (currentNoise >= 18) return R('ny_matare', 'elevated');
+                return R('normal', 'ok');
+            }
+
+            // ── Full trendanalys (≥5 filer) ──────────────────────────────────────
+
             // 1. Reparationsdetektorn
             const recentFour = history.slice(-4);
             if (recentFour.every(h => h.value <= 22)) {
-                return maxHistorical >= 50 ? 'lagad' : 'normal';
+                return maxHistorical >= 50 ? R('lagad', 'repaired') : R('normal', 'ok');
             }
 
-            // 2. Ihållande stegringsdetektor (X=3)
+            // 2. Värmepumpsdetektor — säsongsmönster (vinter >> sommar)
+            if (winterAvg !== null && summerAvg !== null) {
+                const ratio = summerAvg > 0 ? winterAvg / summerAvg : 0;
+                if (summerAvg < 20 && ratio > 1.5 && winterAvg > 25) {
+                    return R('storing', 'heat_pump');
+                }
+                // Konstant värmepump (högt hela året men stabilt säsongsmönster)
+                if (summerAvg < 30 && ratio > 0.7 && ratio < 1.4 && isStableHigh) {
+                    return R('storing', 'heat_pump_constant');
+                }
+            }
+
+            // 3. Fjärrvärmestörning — infokod osäker + stabilt högt
+            const hasUncertainCode = info.includes('ej fastställt') || info.includes('annat brus');
+            if (hasUncertainCode && isStableHigh) return R('storing', 'district_heating');
+
+            // 4. Industridetektering — Tullinge + stabilt högt + högt maxvärde
+            if (meter.area === 'TULLINGE' && isStableHigh && maxHistorical > 80) {
+                return R('storing', 'industrial');
+            }
+
+            // 5. Ihållande stegringsdetektor (X=3): lågt historiskt → plötsligt högt → stannar
             const recentThree = history.slice(-3);
             const olderPeriod  = history.slice(0, -3);
             if (olderPeriod.every(h => h.value <= 12) && recentThree.every(h => h.value >= 18)) {
-                return 'misstankt';
+                return R('misstankt', 'persistent_rise');
             }
 
-            // 3. Standard-fallbacks — konstant historiskt högt = brus, inte läcka
+            // 6. Konstant historiskt högt = störningskälla, inte ny läcka
             if (currentNoise >= 28) {
                 const neverQuiet = history.every(h => h.value >= 18);
-                return neverQuiet ? 'storing' : 'aktiv_lacka';
+                return neverQuiet ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
             }
-            if (currentNoise >= 16) return 'ny_matare';
-            return 'normal';
+            if (currentNoise >= 16) return R('ny_matare', 'elevated');
+            return R('normal', 'ok');
         }
 
         // ── Analys-runner ─────────────────────────────────────────────────────────
@@ -569,18 +610,34 @@
             });
 
             for (const [, m] of metersMap) {
-                const first = m.history[0];
-                const last  = m.history[m.history.length - 1];
+                const history = [...m.history].sort((a, b) => a.date - b.date);
+                const first = history[0];
+                const last  = history[history.length - 1];
                 const totalChange = first.value > 0 ? ((last.value / first.value) - 1) * 100 : last.value * 100;
-                const maxValue    = Math.max(...m.history.map(h => h.value));
-                const finalCategory = userCategories.get(m.id) || smartClassify(m);
-                const cleanAddr   = extractCleanAddressOnly(m.adress);
+                const maxValue    = Math.max(...history.map(h => h.value));
 
+                const classified = smartClassify(m);
+                const finalCategory = userCategories.has(m.id)
+                    ? { cat: userCategories.get(m.id), reason: 'manual' }
+                    : classified;
+
+                // Säsongsdata för bottenpanel-kommentarer
+                const WINTER = new Set([10, 11, 0, 1, 2]);
+                const SUMMER = new Set([4, 5, 6, 7, 8]);
+                const wR = history.filter(h => WINTER.has(new Date(h.date).getMonth()));
+                const sR = history.filter(h => SUMMER.has(new Date(h.date).getMonth()));
+                const winterAvg = wR.length >= 2 ? Math.round(avg(wR)) : null;
+                const summerAvg = sR.length >= 2 ? Math.round(avg(sR)) : null;
+
+                const cleanAddr = extractCleanAddressOnly(m.adress);
                 currentResults.push({
                     id: m.id, adress: m.adress, serienummer: m.serienummer,
-                    area: m.area, street: m.street, history: m.history,
+                    area: m.area, street: m.street, history,
                     infokod: m.infokod,
-                    change: totalChange, max: maxValue, category: finalCategory,
+                    change: totalChange, max: maxValue,
+                    category: finalCategory.cat,
+                    reason: finalCategory.reason,
+                    winterAvg, summerAvg,
                     memo: fieldKnowledgeBase[cleanAddr]?.memo || ''
                 });
             }
@@ -590,9 +647,22 @@
 
         // ── Rendering ─────────────────────────────────────────────────────────────
         function getBottomComment(r) {
-            if (r.category === 'lagad')     return `✅ Historiskt lagad — Max: <strong>${r.max} dB</strong>. Konsekvent tyst de senaste 4 mätningarna.`;
-            if (r.category === 'leak_code') return `🟡 LEAK-larm${r.infokod ? ` (${r.infokod})` : ''} — Troligtvis abonnentens sida.`;
-            if (r.category === 'storing')   return `🔵 Störning/pump — Fluktuerar för kraftigt för att klassas som aktiv läcka.`;
+            if (r.category === 'lagad') return `✅ Historiskt lagad — Max: <strong>${r.max}</strong>. Konsekvent tyst de senaste 4 mätningarna.`;
+            if (r.category === 'leak_code') {
+                const sub = r.reason === 'reverse' ? 'Bakåtflöde (REVERSE)' : r.reason === 'dry' ? 'Tom mätare (DRY)' : `LEAK-larm${r.infokod ? ` (${r.infokod})` : ''}`;
+                return `🟡 ${sub} — Troligtvis abonnentens sida.`;
+            }
+            if (r.category === 'storing') {
+                if (r.reason === 'heat_pump' || r.reason === 'heat_pump_constant') {
+                    const ratio = r.summerAvg && r.winterAvg ? ` (vinter: ${r.winterAvg} / sommar: ${r.summerAvg})` : '';
+                    return `🔥 Värmepump — Säsongsmönster detekterat${ratio}. Inget läckage.`;
+                }
+                if (r.reason === 'district_heating') return `🏭 Fjärrvärmestörning — Stabil nivå + osäker infokod. Inget läckage.`;
+                if (r.reason === 'industrial')       return `🏭 Industriprocess — Tullinge-zone, stabilt högt värde. Kontrollera med kund.`;
+                if (r.reason === 'reverse')          return `↩️ Bakåtflöde (REVERSE) — Kontrollera installation.`;
+                if (r.reason === 'always_high')      return `🔵 Konstant bakgrundsbrus — Aldrig tyst i historiken. Trolig permanent störningskälla.`;
+                return `🔵 Störning/pump — Fluktuerar för kraftigt för att klassas som aktiv läcka.`;
+            }
             return '';
         }
 
@@ -710,11 +780,45 @@
             }
         }
 
+        // ── localStorage persistence ──────────────────────────────────────────────
+        function persistState() {
+            try {
+                localStorage.setItem('lacksok_fav_v3',    JSON.stringify([...interestingIds]));
+                localStorage.setItem('lacksok_pro_cats',  JSON.stringify([...userCategories.entries()]));
+                localStorage.setItem('lacksok_pro_hidden', JSON.stringify([...ignoredIds]));
+            } catch(e) {}
+        }
+
+        function loadPersistedState() {
+            try {
+                JSON.parse(localStorage.getItem('lacksok_fav_v3')     || '[]').forEach(id      => interestingIds.add(id));
+                JSON.parse(localStorage.getItem('lacksok_pro_cats')   || '[]').forEach(([k,v]) => userCategories.set(k, v));
+                JSON.parse(localStorage.getItem('lacksok_pro_hidden') || '[]').forEach(id      => ignoredIds.add(id));
+            } catch(e) {}
+        }
+
         // ── Kategori / filter-actions ─────────────────────────────────────────────
         function setCategoryFilter(cat) { currentCategoryFilter = cat; displayResults(); }
-        function changeCategory(id, newCat) { userCategories.set(id, newCat); const r = currentResults.find(r => r.id === id); if (r) r.category = newCat; displayResults(); }
-        function toggleInteresting(id) { interestingIds.has(id) ? interestingIds.delete(id) : interestingIds.add(id); displayResults(); }
-        function toggleIgnore(id) { ignoredIds.add(id); displayResults(); }
+
+        function changeCategory(id, newCat) {
+            userCategories.set(id, newCat);
+            const r = currentResults.find(r => r.id === id);
+            if (r) { r.category = newCat; r.reason = 'manual'; }
+            persistState();
+            displayResults();
+        }
+
+        function toggleInteresting(id) {
+            interestingIds.has(id) ? interestingIds.delete(id) : interestingIds.add(id);
+            persistState();
+            displayResults();
+        }
+
+        function toggleIgnore(id) {
+            ignoredIds.add(id);
+            persistState();
+            displayResults();
+        }
 
         // ── Filinläsning ──────────────────────────────────────────────────────────
         function setUploadState(busy, msg) {
@@ -888,10 +992,14 @@
         document.getElementById('clearBtn').onclick = () => {
             uploadedFiles = []; currentResults = [];
             ignoredIds.clear(); interestingIds.clear(); userCategories.clear();
+            persistState();
             updateFileList();
             document.getElementById('results').style.display = 'none';
             document.getElementById('fileInput').value = '';
         };
+
+        // Ladda sparade val från föregående session
+        loadPersistedState();
     </script>
 </body>
 </html>

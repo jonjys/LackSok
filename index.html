@@ -421,12 +421,13 @@
                     const tr = document.createElement('tr');
                     tr.className = `row-${r.category}`;
                     tr.innerHTML = `
-                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
+                        <td><select class="category-select-compact">${catOptions}</select></td>
                         <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag" style="color:#10b981; border-color:#10b981;">${r.memo}</span>` : ''}</td>
                         <td><code>${r.serienummer}</code></td>
                         <td><strong>${r.currentNoise} dB</strong> / ${r.maxHistorical} dB</td>
                         <td><span class="badge" style="background:${categories[r.category].bg}; color:${categories[r.category].color}">${categories[r.category].label}</span></td>
                     `;
+                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
                     noiseTbody.appendChild(tr);
                 } else {
                     if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
@@ -434,16 +435,20 @@
                     const tr = document.createElement('tr');
                     tr.className = `row-${r.category}`;
                     tr.innerHTML = `
-                        <td style="text-align:center;"><button style="background:transparent; border:none; cursor:pointer;" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
-                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
+                        <td style="text-align:center;"><button class="star-btn" style="background:transparent; border:none; cursor:pointer;">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
+                        <td><select class="category-select-compact">${catOptions}</select></td>
                         <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}</td>
-                        <td style="text-align:center;"><button class="copy-btn" onclick="copyAddress('${r.adress}', event)">📋 Kopiera</button></td>
+                        <td style="text-align:center;"><button class="copy-btn">📋 Kopiera</button></td>
                         <td><code>${r.serienummer}</code></td>
                         <td><span class="badge" style="background:#1f1f2e; color:#fff;">${r.area}</span></td>
                         <td><span style="color:#f87171; font-weight:bold;">${r.currentNoise} dB</span></td>
                         <td><strong>${r.maxHistorical} dB</strong></td>
-                        <td style="text-align:center;"><button class="copy-btn" style="padding:4px 8px;" onclick="openGraph('${r.id}')">📈</button></td>
+                        <td style="text-align:center;"><button class="copy-btn" style="padding:4px 8px;">📈</button></td>
                     `;
+                    tr.querySelector('.star-btn').addEventListener('click', () => toggleInteresting(r.id));
+                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
+                    tr.querySelectorAll('.copy-btn')[0].addEventListener('click', (e) => copyAddress(r.adress, e));
+                    tr.querySelectorAll('.copy-btn')[1].addEventListener('click', () => openGraph(r.id));
                     tbody.appendChild(tr);
                 }
             });
@@ -480,9 +485,43 @@
         
         function copyAddress(fullAddr, e) {
             navigator.clipboard.writeText(cleanAddressText(fullAddr)).then(() => {
-                e.target.innerText = "Klar! ✔";
-                setTimeout(() => { e.target.innerText = "📋 Kopiera"; }, 1200);
+                const btn = e.currentTarget || e.target;
+                btn.innerText = "Klar! ✔";
+                setTimeout(() => { btn.innerText = "📋 Kopiera"; }, 1200);
             });
+        }
+
+        function exportReport() {
+            if (currentResults.length === 0) {
+                alert('Ingen data att exportera. Kör analysen först.');
+                return;
+            }
+            const activeRows = currentResults
+                .filter(r => !['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category))
+                .map(r => ({
+                    'Mätarnummer': r.serienummer,
+                    'Adress': r.adress,
+                    'Område': r.area,
+                    'Klassificering': categories[r.category].label,
+                    'Senaste Brus (dB)': r.currentNoise,
+                    'Maxvärde (dB)': r.maxHistorical,
+                    'Notering': r.memo || ''
+                }));
+            const hiddenRows = currentResults
+                .filter(r => ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category))
+                .map(r => ({
+                    'Mätarnummer': r.serienummer,
+                    'Adress': r.adress,
+                    'Område': r.area,
+                    'Klassificering': categories[r.category].label,
+                    'Senaste Brus (dB)': r.currentNoise,
+                    'Maxvärde (dB)': r.maxHistorical,
+                    'Notering': r.memo || ''
+                }));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(activeRows), 'Aktiva ärenden');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hiddenRows), 'Bakgrund & Lagade');
+            XLSX.writeFile(wb, `lacksok-rapport-${new Date().toISOString().slice(0, 10)}.xlsx`);
         }
 
         function openGraph(id) {
@@ -531,14 +570,22 @@
         document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
         document.getElementById('fileInput').onchange = (e) => handleFiles(e.target.files);
         document.getElementById('analyzeBtn').onclick = () => runAnalysis();
+        document.getElementById('exportBtn').onclick = () => exportReport();
         document.getElementById('searchInput').oninput = () => displayResults();
         document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
         document.getElementById('closeModalBtn').onclick = () => document.getElementById('graphModal').style.display = 'none';
         document.getElementById('clearBtn').onclick = () => { uploadedFiles = []; currentResults = []; updateFileList(); document.getElementById('results').style.display = 'none'; };
-        
-        // Drag & drop drag-triggers för dragspelen
-        document.getElementById('accordionTrigger').onclick = () => document.getElementById('fileGridContainer').classList.toggle('open');
-        document.getElementById('noiseAccordionTrigger').onclick = () => document.getElementById('noiseGridContainer').classList.toggle('open');
+
+        document.getElementById('accordionTrigger').onclick = () => {
+            document.getElementById('fileGridContainer').classList.toggle('open');
+            const isOpen = document.getElementById('fileGridContainer').classList.contains('open');
+            document.getElementById('arrowIndicator').textContent = isOpen ? '▾' : '▸';
+        };
+        document.getElementById('noiseAccordionTrigger').onclick = () => {
+            document.getElementById('noiseGridContainer').classList.toggle('open');
+            const isOpen = document.getElementById('noiseGridContainer').classList.contains('open');
+            document.getElementById('noiseArrowIndicator').textContent = isOpen ? '▾' : '▸';
+        };
     </script>
 </body>
 </html>

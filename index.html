@@ -1,17 +1,18 @@
-// lacksok-pro-final.html
-
 <!DOCTYPE html>
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksök Pro v3.5 (Master)</title>
+    <title>Karma - Läcksök Pro v4.0 (Fullständig)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
 
     <style>
-        /* --- DESIGN SYSTEM (KARMA SPOTIFY DARK COMPACT) --- */
         :root {
             --bg-main: #0a0a0c;
             --bg-card: #121216;
@@ -31,6 +32,7 @@
             --clr-ny-matare: #c084fc;      
             --clr-lagad: #10b981;
             --clr-normal: #27272a;
+            --clr-heatpump: #f59e0b;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -55,7 +57,12 @@
         .file-grid-compact { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #09090d; border-radius: 8px; }
         .file-chip-compact { display: inline-flex; align-items: center; background: #161620; font-size: 12px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); color: var(--text-muted); }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .progress-container { background: #1a1a22; border-radius: 8px; margin-top: 16px; padding: 12px; }
+        .progress-bar-bg { background: #2a2a32; border-radius: 20px; height: 8px; overflow: hidden; }
+        .progress-fill { background: var(--primary); width: 0%; height: 8px; border-radius: 20px; transition: width 0.3s ease; }
+        .progress-text { font-size: 12px; color: var(--text-muted); margin-top: 8px; text-align: center; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .stat-card { background-color: var(--bg-card); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; transition: border-color 0.2s; }
         .stat-card.active { border: 2px solid var(--primary); }
         .stat-card .num { font-size: 28px; font-weight: 800; }
@@ -63,12 +70,13 @@
         .stat-card.color-total { border-left: 4px solid var(--text-main); }
         .stat-card.color-aktiv-lacka { border-left: 4px solid var(--clr-aktiv-lacka); }
         .stat-card.color-misstankt { border-left: 4px solid var(--clr-misstankt); }
+        .stat-card.color-heatpump { border-left: 4px solid var(--clr-heatpump); }
         .stat-card.color-noise { border-left: 4px solid var(--clr-storing); }
 
         .insight-box { padding: 14px 18px; border-radius: 8px; font-size: 13px; margin-bottom: 24px; border-left: 4px solid var(--primary); background-color: var(--bg-card); color: var(--text-muted); }
         .insight-box strong { color: #fff; }
 
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
         .search-input { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 10px 20px; border-radius: 50px; width: 280px; font-size: 13px; outline: none; }
         .filter-select { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 10px 20px; border-radius: 50px; font-size: 13px; cursor: pointer; outline: none; }
 
@@ -88,6 +96,7 @@
         .row-ny_matare td:first-child { border-left: 4px solid var(--clr-ny-matare); }
         .row-lagad td:first-child { border-left: 4px solid var(--clr-lagad); }
         .row-normal td:first-child { border-left: 4px solid var(--clr-normal); }
+        .row-heatpump td:first-child { border-left: 4px solid var(--clr-heatpump); }
 
         .table-adress-text { font-weight: 700; font-size: 14px; color: #ffffff; }
         .field-memo-tag { display: inline-block; background: #181824; border: 1px solid #2e2e42; color: #2dd4bf; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; font-weight: 600; }
@@ -107,18 +116,18 @@
 
     <div class="app-header">
         <div class="app-title-area">
-            <h1>Karma - Läcksök Pro v3.5</h1>
-            <div class="subtitle">Full tidslinjeanalys baserad på historiska och filtrerade mätdata</div>
+            <h1>Karma - Läcksök Pro v4.0</h1>
+            <div class="subtitle">PDF-stöd • Batch-bearbetning • Värmepumpsdetektering • Fjärrvärmestörning</div>
         </div>
     </div>
 
     <div class="upload-section">
         <div class="btn-group">
-            <button id="uploadBtn">📁 Läs in mätarfiler (Excel/CSV)</button>
+            <button id="uploadBtn">📁 Läs in mätarfiler (Excel/CSV/PDF)</button>
             <button id="analyzeBtn" class="secondary">⚡ Kör Full Tidsanalys</button>
             <button id="exportBtn" class="secondary">📥 Exportera Rapport</button>
             <button id="clearBtn" class="secondary danger">🗑️ Rensa allt</button>
-            <input type="file" id="fileInput" multiple style="display: none;" accept=".xlsx, .xls, .csv">
+            <input type="file" id="fileInput" multiple style="display: none;" accept=".xlsx, .xls, .csv, .pdf">
         </div>
         
         <div class="accordion-trigger" id="accordionTrigger">
@@ -128,6 +137,13 @@
             <div class="file-grid-compact" id="fileList">
                 <span style="color:var(--text-muted); font-size:12px;">Inga filer laddade än.</span>
             </div>
+        </div>
+        
+        <div id="progressContainer" style="display: none;" class="progress-container">
+            <div class="progress-bar-bg">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <div id="progressText" class="progress-text">0 filer bearbetade</div>
         </div>
     </div>
 
@@ -207,7 +223,6 @@
         let currentAreaFilter = 'all';
         let currentCategoryFilter = 'all';
 
-        // Master-databas för dina kända skarpa fall
         const staticKnowledgeBase = {
             "LAXVÄGEN 8": { cat: "aktiv_lacka", memo: "📋 Kunds sida (LEAK). Skickat till Jimmy." },
             "MALMSJÖVÄGEN 25": { cat: "aktiv_lacka", memo: "✔ Kunds sida (LEAK) - KUND INFORMERAD." },
@@ -216,7 +231,6 @@
             "LINDHOVSVÄGEN 5": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
             "LINDHOVSVÄGEN 7": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
             "NIBBLEBACKEN 40": { cat: "extreme", memo: "🚨 AKTIV LÄCKA PÅ VÅR SIDA (KOMMUNEN)." },
-            
             "DALKÄRRSVÄGEN 11": { cat: "lagad", memo: "🟢 LAGAD - Läcka på kundens servisledning." },
             "ENGWALLS VÄG 13": { cat: "lagad", memo: "🟢 LAGAD - Konstaterad läcka på SV till kund." },
             "BROÄNGSVÄGEN 22": { cat: "lagad", memo: "🟢 LAGAD - Historisk läcka åtgärdad." },
@@ -231,8 +245,9 @@
             misstankt: { label: 'Misstänkt / Ihållande ökning', bg: '#f97316', color: '#fff', symbol: '🟠' },
             ny_matare: { label: 'Säsongsanalys / Stegring', bg: '#c084fc', color: '#fff', symbol: '🟣' },
             leak_code: { label: 'Mätarflagga (LEAK)', bg: '#eab308', color: '#000', symbol: '🟡' },
-            storing: { label: 'Störning / Pump', bg: '#38bdf8', color: '#fff', symbol: '🔵' },
+            storing: { label: 'Störning / Pump / Fjärrvärme', bg: '#38bdf8', color: '#fff', symbol: '🔵' },
             lagad: { label: 'Historiskt lagad / Klar', bg: '#10b981', color: '#fff', symbol: '🟢' },
+            heatpump: { label: '🔥 Värmepump (Normal säsong)', bg: '#f59e0b', color: '#fff', symbol: '🔥' },
             normal: { label: 'Normal bakgrund', bg: '#27272a', color: '#bbb', symbol: '⚪' }
         };
 
@@ -242,8 +257,57 @@
             return txt.replace(/\b(TUMBA|TULLINGE|NORSBORG|UTTRAN|\d{3}\s?\d{2})\b/gi, "").trim().replace(/\s+/g, " ").toUpperCase();
         }
 
-        // --- EXCEL OCH CSV PARSER (Äter alla kolumnformat) ---
-        function parseFile(file) {
+        // ========== PDF-PARSNING ==========
+        async function parsePDF(file, fileDate) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+                const maxPages = Math.min(pdf.numPages, 15);
+                
+                for (let i = 1; i <= maxPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+                }
+                
+                const results = [];
+                const lines = fullText.split(/\n|\r|\.\s|,\s/);
+                
+                for (let line of lines) {
+                    const addressMatch = line.match(/([A-ZÅÄÖ][A-ZÅÄÖ\s]+(VÄGEN?|GATAN?|BACKEN|VÄG|STIGEN|PLAN|TORGET?)\s+\d+\s*[A-ZÅÄÖ]*)/i);
+                    const serialMatch = line.match(/\b(\d{7,9})\b/);
+                    const valueMatch = line.match(/(\d{2,3})\s*(dB|BRUS|m³)?/i);
+                    
+                    if (addressMatch && valueMatch && valueMatch[1] >= 0 && valueMatch[1] <= 500) {
+                        const address = addressMatch[1].trim();
+                        const serial = serialMatch ? serialMatch[1] : address;
+                        const noiseValue = parseInt(valueMatch[1]);
+                        
+                        results.push({
+                            id: serial,
+                            adress: address,
+                            value: noiseValue,
+                            maxVal: noiseValue,
+                            avgVal: noiseValue,
+                            infokod: "",
+                            atgardad: "",
+                            kommentar: "",
+                            area: address.toUpperCase().includes('TULLINGE') ? 'TULLINGE' : 
+                                   (address.toUpperCase().includes('TUMBA') ? 'TUMBA' : 'ÖVRIGT'),
+                            fileDate: fileDate
+                        });
+                    }
+                }
+                return results;
+            } catch (err) {
+                console.warn("PDF-fel:", file.name, err);
+                return [];
+            }
+        }
+
+        // ========== EXCEL/CSV-PARSNING ==========
+        function parseExcel(file, fileDate) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -254,28 +318,21 @@
                         const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
                         let results = [];
 
-                        // Extrahera datum från filnamn om möjligt (t.ex. 2026-06-04)
-                        let fileDate = new Date(file.lastModified);
-                        const match = file.name.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
-                        if (match) fileDate = new Date(match[1], match[2] - 1, match[3]);
-
                         jsonData.forEach(row => {
                             let id = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'];
                             let address = row['Adress'] || row['Plats'] || row['address'];
-                            
-                            // Stödjer både 'Senaste värde' och 'Senaste avläsning' (Brus dB)
                             let noiseStr = row['Senaste värde'] || row['Senaste avläsning'] || row['Brus'] || '0';
                             let value = parseFloat(noiseStr.toString().replace(/[^0-9.]/g, '')) || 0;
-                            
                             let maxVal = parseFloat(row['Maxvärde'] || value);
                             let avgVal = parseFloat(row['Genomsnittsvärde'] || value);
                             let infokod = row['Infokod'] || row['Aktiva händelser'] || '';
                             let atgardad = row['Åtgärdad den'] || '';
                             let kommentar = row['Kommentar'] || '';
 
-                            if (id) {
-                                let cleanAddr = address ? address.toString().trim() : 'Okänd adress';
-                                let area = cleanAddr.toUpperCase().includes('TULLINGE') ? 'TULLINGE' : (cleanAddr.toUpperCase().includes('TUMBA') ? 'TUMBA' : 'ÖVRIGT');
+                            if (id && address) {
+                                let cleanAddr = address.toString().trim();
+                                let area = cleanAddr.toUpperCase().includes('TULLINGE') ? 'TULLINGE' : 
+                                          (cleanAddr.toUpperCase().includes('TUMBA') ? 'TUMBA' : 'ÖVRIGT');
                                 
                                 results.push({
                                     id: id.toString().trim(),
@@ -294,16 +351,84 @@
                         resolve(results);
                     } catch (err) { reject(err); }
                 };
+                reader.onerror = () => reject(new Error("Fil kunde inte läsas"));
                 reader.readAsArrayBuffer(file);
             });
         }
 
-        // --- FULLSTÄNDIG TIDSSERIEANALYS ---
+        // ========== BATCH-BEARBETNING MED PROGRESS ==========
+        async function handleFiles(files) {
+            const filesArray = Array.from(files);
+            const BATCH_SIZE = 5;
+            let totalProcessed = 0;
+            
+            // Visa progress-container
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressContainer.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressText.innerText = `0 av ${filesArray.length} filer bearbetade...`;
+            
+            for (let i = 0; i < filesArray.length; i += BATCH_SIZE) {
+                const batch = filesArray.slice(i, i + BATCH_SIZE);
+                const batchPromises = batch.map(async (file) => {
+                    try {
+                        const fileDate = new Date(file.lastModified);
+                        const ext = file.name.split('.').pop().toLowerCase();
+                        let data = [];
+                        
+                        if (ext === 'pdf') {
+                            data = await parsePDF(file, fileDate);
+                        } else {
+                            data = await parseExcel(file, fileDate);
+                        }
+                        
+                        if (data.length > 0) {
+                            uploadedFiles.push({ name: file.name, date: file.lastModified, data: data });
+                        }
+                    } catch (err) {
+                        console.warn(`Kunde inte läsa ${file.name}:`, err);
+                    }
+                });
+                
+                await Promise.allSettled(batchPromises);
+                totalProcessed = Math.min(i + BATCH_SIZE, filesArray.length);
+                const percent = (totalProcessed / filesArray.length) * 100;
+                progressFill.style.width = `${percent}%`;
+                progressText.innerText = `${totalProcessed} av ${filesArray.length} filer bearbetade...`;
+                
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+            }, 1500);
+            
+            updateFileList();
+        }
+
+        function updateFileList() {
+            document.getElementById('fileCountText').innerText = uploadedFiles.length;
+            const grid = document.getElementById('fileList');
+            grid.innerHTML = '';
+            if (uploadedFiles.length === 0) {
+                grid.innerHTML = '<span style="color:var(--text-muted); font-size:12px;">Inga filer laddade än.</span>';
+                return;
+            }
+            uploadedFiles.forEach(f => {
+                const chip = document.createElement('div');
+                chip.className = 'file-chip-compact';
+                chip.innerHTML = `<span>📄 ${f.name}</span>`;
+                grid.appendChild(chip);
+            });
+        }
+
+        // ========== FULLSTÄNDIG TIDSSERIEANALYS ==========
         function runAnalysis() {
             if (uploadedFiles.length === 0) return;
             let finalMap = new Map();
 
-            // Sortera filerna kronologiskt så tidslinjen stämmer
             uploadedFiles.sort((a, b) => a.date - b.date);
 
             uploadedFiles.forEach(f => {
@@ -318,7 +443,6 @@
                     let current = finalMap.get(m.id);
                     let dStr = m.fileDate.toISOString().slice(0, 10);
                     
-                    // Lägg till mätpunkt om datumet inte redan finns registrerat för mätaren
                     if (!current.history.some(h => h.dateStr === dStr)) {
                         current.history.push({ dateStr: dStr, value: m.value, maxVal: m.maxVal, avgVal: m.avgVal });
                     }
@@ -352,7 +476,8 @@
                     maxHistorical: maxHistorical,
                     category: finalCategory,
                     history: m.history,
-                    memo: memo
+                    memo: memo,
+                    infokod: m.infokod
                 });
             }
 
@@ -360,7 +485,29 @@
             displayResults();
         }
 
-        // --- HIERARKISK SMART-CLASSIFY ALGORITM ---
+        // ========== VÄRMEPUMPSDETEKTERING (HJÄLPFUNKTION) ==========
+        function isHeatpump(history) {
+            if (!history || history.length < 4) return false;
+            
+            let winterValues = [], summerValues = [];
+            for (let h of history) {
+                const date = new Date(h.dateStr);
+                if (isNaN(date.getTime())) continue;
+                const month = date.getMonth() + 1;
+                if ([11, 12, 1, 2, 3].includes(month)) winterValues.push(h.value);
+                if ([5, 6, 7, 8, 9].includes(month)) summerValues.push(h.value);
+            }
+            
+            if (winterValues.length < 2 || summerValues.length < 2) return false;
+            
+            const winterAvg = winterValues.reduce((a,b)=>a+b,0) / winterValues.length;
+            const summerAvg = summerValues.reduce((a,b)=>a+b,0) / summerValues.length;
+            
+            // Sommarmedel under 60 OCH vinter minst 1.5x högre OCH vinter över 40
+            return (summerAvg < 60 && winterAvg > summerAvg * 1.5 && winterAvg > 40);
+        }
+
+        // ========== HIERARKISK SMART-CLASSIFY ==========
         function smartClassify(meter, currentNoise, maxHistorical, cleanKey) {
             // Regel 1: Direkt matchning mot kända fältärenden
             if (staticKnowledgeBase[cleanKey]) return staticKnowledgeBase[cleanKey].cat;
@@ -372,13 +519,23 @@
             // Regel 3: Är mätaren helt tyst just nu men har haft extrema toppar? -> Historiskt lagad
             if (currentNoise <= 22 && maxHistorical >= 45) return 'lagad';
 
-            // Regel 4: Aktiv och ihållande läcka (Hög dB nu)
+            // Regel 4: 🔥 VÄRMEPUMP - högt på vintern, lågt på sommaren (NY!)
+            if (isHeatpump(meter.history)) {
+                return 'heatpump';
+            }
+
+            // Regel 5: 🏭 FJÄRRVÄRMESTÖRNING - "Ej fastställt" i Infokod
+            if (meter.infokod && (meter.infokod.includes("Ej fastställt") || meter.infokod.includes("Annat brus"))) {
+                if (currentNoise >= 25) return 'storing';
+            }
+
+            // Regel 6: Aktiv och ihållande läcka (Hög dB nu)
             if (currentNoise >= 35) return 'aktiv_lacka';
 
-            // Regel 5: Aktiv LEAK-infokod
+            // Regel 7: Aktiv LEAK-infokod
             if (meter.infokod && meter.infokod.toUpperCase().includes('LEAK')) return 'leak_code';
 
-            // Regel 6: Trender och stegringar (Om bruset ökat gradvis över tidslinjen)
+            // Regel 8: Trender och stegringar
             if (meter.history.length >= 3) {
                 let firstVals = meter.history.slice(0, 2).map(h => h.value);
                 let avgStart = firstVals.reduce((a,b)=>a+b, 0) / firstVals.length;
@@ -394,198 +551,4 @@
         function displayResults() {
             const query = document.getElementById('searchInput').value.toLowerCase().trim();
             const tbody = document.getElementById('tableBody');
-            const noiseTbody = document.getElementById('noiseTableBody');
-            
-            tbody.innerHTML = '';
-            noiseTbody.innerHTML = '';
-            
-            // Sortera efter högsta nuvarande brus
-            currentResults.sort((a, b) => b.currentNoise - a.currentNoise);
-
-            let hiddenCount = 0;
-
-            currentResults.forEach(r => {
-                if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
-                if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
-
-                let catOptions = '';
-                for (let c in categories) {
-                    catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol} ${categories[c].label}</option>`;
-                }
-
-                // Dela upp i aktiva ärenden vs dolda brus/historiska
-                let isHidden = ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category);
-
-                if (isHidden) {
-                    hiddenCount++;
-                    const tr = document.createElement('tr');
-                    tr.className = `row-${r.category}`;
-                    tr.innerHTML = `
-                        <td><select class="category-select-compact">${catOptions}</select></td>
-                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag" style="color:#10b981; border-color:#10b981;">${r.memo}</span>` : ''}</td>
-                        <td><code>${r.serienummer}</code></td>
-                        <td><strong>${r.currentNoise} dB</strong> / ${r.maxHistorical} dB</td>
-                        <td><span class="badge" style="background:${categories[r.category].bg}; color:${categories[r.category].color}">${categories[r.category].label}</span></td>
-                    `;
-                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
-                    noiseTbody.appendChild(tr);
-                } else {
-                    if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
-                    
-                    const tr = document.createElement('tr');
-                    tr.className = `row-${r.category}`;
-                    tr.innerHTML = `
-                        <td style="text-align:center;"><button class="star-btn" style="background:transparent; border:none; cursor:pointer;">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
-                        <td><select class="category-select-compact">${catOptions}</select></td>
-                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}</td>
-                        <td style="text-align:center;"><button class="copy-btn">📋 Kopiera</button></td>
-                        <td><code>${r.serienummer}</code></td>
-                        <td><span class="badge" style="background:#1f1f2e; color:#fff;">${r.area}</span></td>
-                        <td><span style="color:#f87171; font-weight:bold;">${r.currentNoise} dB</span></td>
-                        <td><strong>${r.maxHistorical} dB</strong></td>
-                        <td style="text-align:center;"><button class="copy-btn" style="padding:4px 8px;">📈</button></td>
-                    `;
-                    tr.querySelector('.star-btn').addEventListener('click', () => toggleInteresting(r.id));
-                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
-                    tr.querySelectorAll('.copy-btn')[0].addEventListener('click', (e) => copyAddress(r.adress, e));
-                    tr.querySelectorAll('.copy-btn')[1].addEventListener('click', () => openGraph(r.id));
-                    tbody.appendChild(tr);
-                }
-            });
-
-            document.getElementById('noiseCountText').innerText = hiddenCount;
-            updateStats();
-        }
-
-        function updateStats() {
-            let c = { total: 0, extreme: 0, aktiv_lacka: 0, misstankt: 0, hidden: 0 };
-            currentResults.forEach(r => {
-                if (['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category)) c.hidden++;
-                else {
-                    c.total++;
-                    if (r.category === 'extreme') c.extreme++;
-                    if (r.category === 'aktiv_lacka') c.aktiv_lacka++;
-                    if (r.category === 'misstankt') c.misstankt++;
-                }
-            });
-
-            const grid = document.getElementById('statsGrid');
-            grid.innerHTML = `
-                <div class="stat-card color-total ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="filterCat('all')"><div class="num">${c.total}</div><div class="label">Aktiva larm</div></div>
-                <div class="stat-card color-aktiv-lacka ${currentCategoryFilter === 'aktiv_lacka' ? 'active' : ''}" onclick="filterCat('aktiv_lacka')"><div class="num">${c.aktiv_lacka + c.extreme}</div><div class="label">Konstaterade läckor</div></div>
-                <div class="stat-card color-misstankt ${currentCategoryFilter === 'misstankt' ? 'active' : ''}" onclick="filterCat('misstankt')"><div class="num">${c.misstankt}</div><div class="label">Ihållande stegringar</div></div>
-                <div class="stat-card color-noise"><div class="num">${c.hidden}</div><div class="label">Undansorterade</div></div>
-            `;
-            document.getElementById('insightBox').innerHTML = `💡 <strong>Analys klar för hela tidsperioden:</strong> Systemet har byggt en kronologisk tidslinje mätare för mätare. Alla lagade huvudledningar och källarbrunnar har filtrerats bort till bottenpanelen automatiskt.`;
-        }
-
-        function filterCat(cat) { currentCategoryFilter = cat; displayResults(); }
-        function changeCategory(id, newCat) { userCategories.set(id, newCat); let item = currentResults.find(r => r.id === id); if(item) item.category = newCat; displayResults(); }
-        function toggleInteresting(id) { if(interestingIds.has(id)) interestingIds.delete(id); else interestingIds.add(id); displayResults(); }
-        
-        function copyAddress(fullAddr, e) {
-            navigator.clipboard.writeText(cleanAddressText(fullAddr)).then(() => {
-                const btn = e.currentTarget || e.target;
-                btn.innerText = "Klar! ✔";
-                setTimeout(() => { btn.innerText = "📋 Kopiera"; }, 1200);
-            });
-        }
-
-        function exportReport() {
-            if (currentResults.length === 0) {
-                alert('Ingen data att exportera. Kör analysen först.');
-                return;
-            }
-            const activeRows = currentResults
-                .filter(r => !['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category))
-                .map(r => ({
-                    'Mätarnummer': r.serienummer,
-                    'Adress': r.adress,
-                    'Område': r.area,
-                    'Klassificering': categories[r.category].label,
-                    'Senaste Brus (dB)': r.currentNoise,
-                    'Maxvärde (dB)': r.maxHistorical,
-                    'Notering': r.memo || ''
-                }));
-            const hiddenRows = currentResults
-                .filter(r => ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category))
-                .map(r => ({
-                    'Mätarnummer': r.serienummer,
-                    'Adress': r.adress,
-                    'Område': r.area,
-                    'Klassificering': categories[r.category].label,
-                    'Senaste Brus (dB)': r.currentNoise,
-                    'Maxvärde (dB)': r.maxHistorical,
-                    'Notering': r.memo || ''
-                }));
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(activeRows), 'Aktiva ärenden');
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hiddenRows), 'Bakgrund & Lagade');
-            XLSX.writeFile(wb, `lacksok-rapport-${new Date().toISOString().slice(0, 10)}.xlsx`);
-        }
-
-        function openGraph(id) {
-            const meter = currentResults.find(r => r.id === id); if (!meter) return;
-            document.getElementById('modalTitle').innerText = `Tidslinje för ${cleanAddressText(meter.adress)}`;
-            document.getElementById('graphModal').style.display = 'flex';
-            
-            const labels = meter.history.map(h => h.dateStr);
-            const dataPoints = meter.history.map(h => h.value);
-            
-            if (activeChartInstance) activeChartInstance.destroy();
-            const ctx = document.getElementById('trendChart').getContext('2d');
-            activeChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{ label: 'Brus dB', data: dataPoints, borderColor: '#1db954', backgroundColor: 'rgba(29, 185, 84, 0.05)', fill: true, tension: 0.1 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0 } } }
-            });
-        }
-
-        // --- FILHANTERING ---
-        function handleFiles(files) {
-            let filesArray = Array.from(files);
-            let loaded = 0;
-            filesArray.forEach(file => {
-                parseFile(file).then(data => {
-                    if (data.length > 0) uploadedFiles.push({ name: file.name, date: file.lastModified, data: data });
-                    loaded++; if (loaded === filesArray.length) updateFileList();
-                }).catch(() => { loaded++; if (loaded === filesArray.length) updateFileList(); });
-            });
-        }
-
-        function updateFileList() {
-            document.getElementById('fileCountText').innerText = uploadedFiles.length;
-            const grid = document.getElementById('fileList'); grid.innerHTML = '';
-            uploadedFiles.forEach(f => {
-                const chip = document.createElement('div'); chip.className = 'file-chip-compact';
-                chip.innerHTML = `<span>📄 ${f.name}</span>`;
-                grid.appendChild(chip);
-            });
-        }
-
-        // Event Listeners
-        document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
-        document.getElementById('fileInput').onchange = (e) => handleFiles(e.target.files);
-        document.getElementById('analyzeBtn').onclick = () => runAnalysis();
-        document.getElementById('exportBtn').onclick = () => exportReport();
-        document.getElementById('searchInput').oninput = () => displayResults();
-        document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
-        document.getElementById('closeModalBtn').onclick = () => document.getElementById('graphModal').style.display = 'none';
-        document.getElementById('clearBtn').onclick = () => { uploadedFiles = []; currentResults = []; updateFileList(); document.getElementById('results').style.display = 'none'; };
-
-        document.getElementById('accordionTrigger').onclick = () => {
-            document.getElementById('fileGridContainer').classList.toggle('open');
-            const isOpen = document.getElementById('fileGridContainer').classList.contains('open');
-            document.getElementById('arrowIndicator').textContent = isOpen ? '▾' : '▸';
-        };
-        document.getElementById('noiseAccordionTrigger').onclick = () => {
-            document.getElementById('noiseGridContainer').classList.toggle('open');
-            const isOpen = document.getElementById('noiseGridContainer').classList.contains('open');
-            document.getElementById('noiseArrowIndicator').textContent = isOpen ? '▾' : '▸';
-        };
-    </script>
-</body>
-</html>
+           

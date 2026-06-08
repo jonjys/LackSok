@@ -126,6 +126,12 @@
             <span style="color:var(--text-muted);font-size:12px;">Inga filer laddade än.</span>
         </div>
     </div>
+    <div id="progressBox" style="display:none; margin-top:14px; background:#1a1a22; border-radius:8px; padding:12px;">
+        <div style="background:#2a2a32; border-radius:20px; height:6px; overflow:hidden;">
+            <div id="progressFill" style="background:var(--primary); width:0%; height:6px; border-radius:20px; transition:width 0.3s;"></div>
+        </div>
+        <div id="progressText" style="font-size:12px; color:var(--text-muted); margin-top:8px; text-align:center;">Bearbetar...</div>
+    </div>
 </div>
 
 <div id="results" style="display:none;">
@@ -247,7 +253,9 @@
 
         const info = (infokod || '').toUpperCase();
         if (info.includes('LÄCK') || info.includes('LEAK')) return 'aktiv_lacka';
-        if (info.includes('BRUS') || info.includes('STÖRN')) return 'storning';
+        // "Ej fastställt" och "Annat brus" är typiskt fjärrvärmestörning, inte läckage
+        if (info.includes('EJ FASTSTÄLLT') || info.includes('ANNAT BRUS') ||
+            info.includes('BRUS') || info.includes('STÖRN')) return 'storning';
 
         if (ratio > 5)   return 'aktiv_lacka';
         if (ratio > 1)   return 'misstankt';
@@ -510,18 +518,37 @@
         XLSX.writeFile(wb, `lacksok-rapport-${new Date().toISOString().slice(0, 10)}.xlsx`);
     }
 
-    // ── FILHANTERING ─────────────────────────────────────────────────────────
-    function handleFiles(files) {
+    // ── FILHANTERING med batch-bearbetning och progress ──────────────────────
+    async function handleFiles(files) {
         const arr = Array.from(files);
-        let done = 0;
-        arr.forEach(file => {
-            parseFile(file)
-                .then(data => {
+        const BATCH = 5;
+        const progressBox  = document.getElementById('progressBox');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+
+        if (arr.length > 1) {
+            progressBox.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressText.innerText = `0 av ${arr.length} filer...`;
+        }
+
+        for (let i = 0; i < arr.length; i += BATCH) {
+            const batch = arr.slice(i, i + BATCH);
+            await Promise.allSettled(batch.map(async file => {
+                try {
+                    const data = await parseFile(file);
                     if (data.length > 0) uploadedFiles.push({ name: file.name, date: file.lastModified, data });
-                })
-                .catch(() => {})
-                .finally(() => { if (++done === arr.length) updateFileList(); });
-        });
+                } catch (e) { /* hoppa över trasiga filer */ }
+            }));
+
+            const processed = Math.min(i + BATCH, arr.length);
+            progressFill.style.width = `${(processed / arr.length) * 100}%`;
+            progressText.innerText = `${processed} av ${arr.length} filer klara...`;
+            await new Promise(r => setTimeout(r, 30));
+        }
+
+        setTimeout(() => { progressBox.style.display = 'none'; }, 1200);
+        updateFileList();
     }
 
     function updateFileList() {

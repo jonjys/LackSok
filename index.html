@@ -1,591 +1,550 @@
-// lacksok-pro-final.html
-
 <!DOCTYPE html>
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksök Pro v3.5 (Master)</title>
-    
+    <title>Karma - Läcksök Pro v4.0</title>
+
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* --- DESIGN SYSTEM (KARMA SPOTIFY DARK COMPACT) --- */
         :root {
             --bg-main: #0a0a0c;
             --bg-card: #121216;
-            --bg-card-hover: #1c1c24;
             --bg-input: #1a1a22;
             --text-main: #ffffff;
             --text-muted: #a0a0ab;
             --primary: #1db954;
             --primary-hover: #1ed760;
-            --border-color: #22222a;
-            
-            --clr-extreme: #dc2626;       
-            --clr-aktiv-lacka: #f87171;   
-            --clr-misstankt: #f97316;       
-            --clr-leak: #eab308;           
-            --clr-storing: #38bdf8;        
-            --clr-ny-matare: #c084fc;      
-            --clr-lagad: #10b981;
-            --clr-normal: #27272a;
+            --border: #22222a;
+            --clr-aktiv:      #dc2626;
+            --clr-kund:       #f97316;
+            --clr-misstankt:  #eab308;
+            --clr-lagad:      #10b981;
+            --clr-varmepanna: #38bdf8;
+            --clr-storning:   #c084fc;
+            --clr-normal:     #27272a;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg-main); color: var(--text-main); padding: 24px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg-main); color: var(--text-main); padding: 24px; }
 
-        .app-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; }
-        .app-title-area h1 { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #ffffff 0%, #a0a0ab 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .app-title-area .subtitle { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+        .app-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+        .app-header h1 { font-size: 26px; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #a0a0ab 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .app-header .subtitle { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+        .formula-badge { background: #1a1a22; border: 1px solid #2e2e42; color: #1db954; font-family: monospace; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 8px; white-space: nowrap; }
 
-        .upload-section { background-color: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid var(--border-color); }
+        .upload-section { background: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid var(--border); }
         .btn-group { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        button { background: var(--primary); color: #fff; border: none; padding: 10px 22px; font-size: 13px; font-weight: 700; border-radius: 50px; cursor: pointer; transition: transform 0.15s; }
+        button:hover { transform: scale(1.02); background: var(--primary-hover); }
+        button.secondary { background: transparent; border: 1px solid var(--text-muted); color: var(--text-main); }
+        button.secondary:hover { background: rgba(255,255,255,0.06); transform: none; }
+        button.danger { background: #5f1a1a; border: 1px solid #991b1b; }
+        button.danger:hover { background: #7f1d1d; }
 
-        button { background-color: var(--primary); color: #ffffff; border: none; padding: 10px 22px; font-size: 13px; font-weight: 700; border-radius: 50px; cursor: pointer; transition: transform 0.15s ease; }
-        button:hover { transform: scale(1.02); background-color: var(--primary-hover); }
-        button.secondary { background-color: transparent; border: 1px solid var(--text-muted); color: var(--text-main); }
-        button.secondary:hover { background-color: rgba(255, 255, 255, 0.06); }
-        button.danger { background-color: #5f1a1a; border: 1px solid #991b1b; }
+        .accordion-trigger { background: #161620; border: 1px solid var(--border); color: var(--text-main); padding: 10px 16px; border-radius: 8px; font-size: 13px; margin-top: 14px; cursor: pointer; display: inline-flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .collapsible { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .collapsible.open { max-height: 300px; overflow-y: auto; margin-top: 12px; }
+        .file-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #09090d; border-radius: 8px; }
+        .file-chip { display: inline-flex; align-items: center; background: #161620; font-size: 12px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); color: var(--text-muted); }
 
-        .accordion-trigger { background: #161620; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 16px; border-radius: 8px; font-size: 13px; margin-top: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: fit-content; gap: 12px; }
-        .file-grid-container { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-        .file-grid-container.open { max-height: 300px; overflow-y: auto; margin-top: 12px; }
-        .file-grid-compact { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #09090d; border-radius: 8px; }
-        .file-chip-compact { display: inline-flex; align-items: center; background: #161620; font-size: 12px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); color: var(--text-muted); }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background-color: var(--bg-card); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; transition: border-color 0.2s; }
-        .stat-card.active { border: 2px solid var(--primary); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .stat-card { background: var(--bg-card); padding: 16px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; transition: border-color 0.2s; }
         .stat-card .num { font-size: 28px; font-weight: 800; }
-        .stat-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-top: 2px; }
-        .stat-card.color-total { border-left: 4px solid var(--text-main); }
-        .stat-card.color-aktiv-lacka { border-left: 4px solid var(--clr-aktiv-lacka); }
-        .stat-card.color-misstankt { border-left: 4px solid var(--clr-misstankt); }
-        .stat-card.color-noise { border-left: 4px solid var(--clr-storing); }
+        .stat-card .lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-top: 2px; }
+        .stat-card.c-total     { border-left: 4px solid var(--text-main); }
+        .stat-card.c-aktiv     { border-left: 4px solid var(--clr-aktiv); }
+        .stat-card.c-kund      { border-left: 4px solid var(--clr-kund); }
+        .stat-card.c-misstankt { border-left: 4px solid var(--clr-misstankt); }
+        .stat-card.active { outline: 2px solid var(--primary); }
 
-        .insight-box { padding: 14px 18px; border-radius: 8px; font-size: 13px; margin-bottom: 24px; border-left: 4px solid var(--primary); background-color: var(--bg-card); color: var(--text-muted); }
+        .insight-box { padding: 14px 18px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; border-left: 4px solid var(--primary); background: var(--bg-card); color: var(--text-muted); }
         .insight-box strong { color: #fff; }
 
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; }
-        .search-input { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 10px 20px; border-radius: 50px; width: 280px; font-size: 13px; outline: none; }
-        .filter-select { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 10px 20px; border-radius: 50px; font-size: 13px; cursor: pointer; outline: none; }
+        .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+        .area-btn { background: #161620; border: 1px solid var(--border); color: var(--text-muted); padding: 7px 16px; border-radius: 50px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .area-btn:hover { color: var(--text-main); }
+        .area-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-        .section-title { font-size: 16px; font-weight: 800; margin: 28px 0 12px 0; display: flex; align-items: center; gap: 8px; }
-        .results-container { background-color: var(--bg-card); border-radius: 12px; padding: 16px; border: 1px solid var(--border-color); overflow-x: auto; margin-bottom: 24px; }
+        .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+        .search-input { background: var(--bg-card); border: 1px solid var(--border); color: #fff; padding: 10px 20px; border-radius: 50px; width: 300px; font-size: 13px; outline: none; }
+        .search-input::placeholder { color: var(--text-muted); }
 
+        .section-title { font-size: 15px; font-weight: 800; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; }
+        .results-container { background: var(--bg-card); border-radius: 12px; padding: 16px; border: 1px solid var(--border); overflow-x: auto; margin-bottom: 24px; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; padding: 12px; border-bottom: 2px solid var(--border-color); font-weight: 700; }
-        td { padding: 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; vertical-align: middle; }
-        tr:hover td { background-color: rgba(255, 255, 255, 0.01); }
+        th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; padding: 10px 12px; border-bottom: 2px solid var(--border); font-weight: 700; }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,0.01); }
 
-        .row-extreme td:first-child { border-left: 4px solid var(--clr-extreme); }
-        .row-aktiv_lacka td:first-child { border-left: 4px solid var(--clr-aktiv-lacka); }
-        .row-misstankt td:first-child { border-left: 4px solid var(--clr-misstankt); }
-        .row-storing td:first-child { border-left: 4px solid var(--clr-storing); }
-        .row-leak_code td:first-child { border-left: 4px solid var(--clr-leak); }
-        .row-ny_matare td:first-child { border-left: 4px solid var(--clr-ny-matare); }
-        .row-lagad td:first-child { border-left: 4px solid var(--clr-lagad); }
-        .row-normal td:first-child { border-left: 4px solid var(--clr-normal); }
+        .row-aktiv_lacka  td:first-child { border-left: 4px solid var(--clr-aktiv); }
+        .row-kund_lacka   td:first-child { border-left: 4px solid var(--clr-kund); }
+        .row-misstankt    td:first-child { border-left: 4px solid var(--clr-misstankt); }
+        .row-lagad        td:first-child { border-left: 4px solid var(--clr-lagad); }
+        .row-varmepanna   td:first-child { border-left: 4px solid var(--clr-varmepanna); }
+        .row-storning     td:first-child { border-left: 4px solid var(--clr-storning); }
+        .row-normal       td:first-child { border-left: 4px solid var(--clr-normal); }
 
-        .table-adress-text { font-weight: 700; font-size: 14px; color: #ffffff; }
-        .field-memo-tag { display: inline-block; background: #181824; border: 1px solid #2e2e42; color: #2dd4bf; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; font-weight: 600; }
-        .copy-btn { background: #1c1c24; border: 1px solid var(--border-color); color: var(--text-muted); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
-        .copy-btn:hover { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+        .addr-text { font-weight: 700; font-size: 13px; }
+        .memo-tag { display: inline-block; background: #181824; border: 1px solid #2e2e42; color: #2dd4bf; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-top: 3px; font-weight: 600; }
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; display: inline-block; }
+        .copy-btn { background: #1c1c24; border: 1px solid var(--border); color: var(--text-muted); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+        .copy-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .cat-select { background: #161620; color: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 12px; outline: none; cursor: pointer; min-width: 160px; }
 
-        .category-select-compact { background: #161620; color: #ffffff; border: 1px solid var(--border-color); border-radius: 6px; padding: 4px 8px; font-size: 12px; outline: none; cursor: pointer; }
-        .noise-accordion-box { background: #08080c; border: 1px dashed var(--border-color); border-radius: 12px; padding: 16px; margin-top: 24px; }
-
-        .graph-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 1000; justify-content: center; align-items: center; }
-        .graph-modal-content { background: #121216; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 750px; padding: 24px; position: relative; }
-        .close-modal-btn { position: absolute; top: 14px; right: 18px; font-size: 22px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+        .ratio-extreme { color: #dc2626; font-weight: 800; font-size: 14px; }
+        .ratio-high    { color: #f97316; font-weight: 700; }
+        .ratio-medium  { color: #eab308; font-weight: 600; }
+        .ratio-low     { color: var(--text-muted); }
     </style>
 </head>
 <body>
 
-    <div class="app-header">
-        <div class="app-title-area">
-            <h1>Karma - Läcksök Pro v3.5</h1>
-            <div class="subtitle">Full tidslinjeanalys baserad på historiska och filtrerade mätdata</div>
+<div class="app-header">
+    <div>
+        <h1>Karma — Läcksök Pro v4.0</h1>
+        <div class="subtitle">Kamstrup mätardata · Sorterar på (Senaste/Genomsnitt)−1 · Kategorier sparas i webbläsaren</div>
+    </div>
+    <div class="formula-badge">=(E/F)−1</div>
+</div>
+
+<div class="upload-section">
+    <div class="btn-group">
+        <button id="uploadBtn">📁 Läs in mätarfiler (Excel/CSV)</button>
+        <button id="analyzeBtn" class="secondary">⚡ Kör Analys</button>
+        <button id="exportBtn" class="secondary">📥 Exportera Rapport</button>
+        <button id="clearBtn" class="secondary danger">🗑️ Rensa allt</button>
+        <input type="file" id="fileInput" multiple style="display:none;" accept=".xlsx,.xls,.csv">
+    </div>
+    <div class="accordion-trigger" id="accordionTrigger">
+        <span>📂 Valda filer (<span id="fileCountText">0</span> st)</span>
+        <span id="arrowIndicator">▸</span>
+    </div>
+    <div class="collapsible" id="fileGridContainer">
+        <div class="file-grid" id="fileList">
+            <span style="color:var(--text-muted);font-size:12px;">Inga filer laddade än.</span>
         </div>
     </div>
+</div>
 
-    <div class="upload-section">
-        <div class="btn-group">
-            <button id="uploadBtn">📁 Läs in mätarfiler (Excel/CSV)</button>
-            <button id="analyzeBtn" class="secondary">⚡ Kör Full Tidsanalys</button>
-            <button id="exportBtn" class="secondary">📥 Exportera Rapport</button>
-            <button id="clearBtn" class="secondary danger">🗑️ Rensa allt</button>
-            <input type="file" id="fileInput" multiple style="display: none;" accept=".xlsx, .xls, .csv">
-        </div>
-        
-        <div class="accordion-trigger" id="accordionTrigger">
-            <span>📂 Valda filer (<span id="fileCountText">0</span> st)</span> <span id="arrowIndicator">▸</span>
-        </div>
-        <div class="file-grid-container" id="fileGridContainer">
-            <div class="file-grid-compact" id="fileList">
-                <span style="color:var(--text-muted); font-size:12px;">Inga filer laddade än.</span>
-            </div>
-        </div>
+<div id="results" style="display:none;">
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="insight-box" id="insightBox"></div>
+
+    <div class="filter-bar">
+        <span style="color:var(--text-muted);font-size:11px;font-weight:700;text-transform:uppercase;">Område:</span>
+        <button class="area-btn active" data-area="alla">Alla</button>
+        <button class="area-btn" data-area="TUMBA">Tumba</button>
+        <button class="area-btn" data-area="TULLINGE">Tullinge</button>
+        <button class="area-btn" data-area="UTTRAN">Uttran</button>
+        <button class="area-btn" data-area="GRÖDINGE">Grödinge</button>
+        <button class="area-btn" data-area="NORSBORG">Norsborg</button>
+        <button class="area-btn" data-area="ÖVRIGT">Övrigt</button>
     </div>
 
-    <div id="results" style="display: none;">
-        <div class="stats-grid" id="statsGrid"></div>
-        <div class="insight-box" id="insightBox"></div>
-
-        <div class="toolbar">
-            <input type="text" id="searchInput" class="search-input" placeholder="Sök på adress eller mätarnummer...">
-            <select id="areaFilter" class="filter-select">
-                <option value="all">Alla områden</option>
-                <option value="TULLINGE">Tullinge</option>
-                <option value="TUMBA">Tumba</option>
-                <option value="ÖVRIGT">Övrigt</option>
-            </select>
-        </div>
-
-        <div class="section-title">🎯 AKTIVA ÄRENDEN & IHÅLLANDE STEGRINGAR</div>
-        <div class="results-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:50px; text-align:center;">Stjärna</th>
-                        <th>Klassificering</th>
-                        <th>Adress / Fastighet</th>
-                        <th style="text-align:center;">Kopiera</th>
-                        <th>Mätarnummer</th>
-                        <th>Område</th>
-                        <th>Senaste Brus</th>
-                        <th>Maxvärde</th>
-                        <th style="text-align:center;">Trend</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-        </div>
-
-        <div class="noise-accordion-box">
-            <div class="accordion-trigger" id="noiseAccordionTrigger" style="margin-top:0; width:100%; background:transparent; border:none; padding:0;">
-                <span>⚙️ Normal Bakgrund, Brus & Historiskt Lagade Ärenden (<span id="noiseCountText">0</span> st)</span> <span id="noiseArrowIndicator">▸</span>
-            </div>
-            <div class="file-grid-container" id="noiseGridContainer">
-                <div class="results-container" style="background:#09090d; margin-top:12px; border-color:#1a1a24;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Klassa om</th>
-                                <th>Adress / Fastighet</th>
-                                <th>Mätarnummer</th>
-                                <th>Senaste / Max</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="noiseTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+    <div class="toolbar">
+        <input type="text" id="searchInput" class="search-input" placeholder="Sök på adress eller serienummer...">
     </div>
 
-    <div class="graph-modal" id="graphModal">
-        <div class="graph-modal-content">
-            <button class="close-modal-btn" id="closeModalBtn">&times;</button>
-            <h3 id="modalTitle" style="font-size:18px; font-weight:800;">Brustrend över tid</h3>
-            <div style="width:100%; height:320px; position:relative; margin-top:16px;">
-                <canvas id="trendChart"></canvas>
-            </div>
-        </div>
+    <div class="section-title">📊 MÄTARE RANKADE EFTER (E/F)−1 — HÖGST AVVIKELSE ÖVERST</div>
+    <div class="results-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Adress</th>
+                    <th>Serienummer</th>
+                    <th>Område</th>
+                    <th style="text-align:right;">Senaste (E)</th>
+                    <th style="text-align:right;">Genomsnitt (F)</th>
+                    <th style="text-align:right;">📈 (E/F)−1</th>
+                    <th>Aktiva händelser</th>
+                    <th>Kategori</th>
+                    <th style="text-align:center;">Kopiera</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
     </div>
+</div>
 
-    <script>
-        let uploadedFiles = [];
-        let currentResults = [];
-        let interestingIds = new Set();
-        let userCategories = new Map();
-        let activeChartInstance = null;
-        let currentAreaFilter = 'all';
-        let currentCategoryFilter = 'all';
+<script>
+    // ── STATE ────────────────────────────────────────────────────────────────
+    let uploadedFiles  = [];
+    let currentResults = [];
+    let currentAreaFilter   = 'alla';
+    let currentCatFilter    = 'alla';
 
-        // Master-databas för dina kända skarpa fall
-        const staticKnowledgeBase = {
-            "LAXVÄGEN 8": { cat: "aktiv_lacka", memo: "📋 Kunds sida (LEAK). Skickat till Jimmy." },
-            "MALMSJÖVÄGEN 25": { cat: "aktiv_lacka", memo: "✔ Kunds sida (LEAK) - KUND INFORMERAD." },
-            "VATTRAVÄGEN 8": { cat: "aktiv_lacka", memo: "📋 Driften undersöker läckans läge." },
-            "LINDHOVSVÄGEN 3": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "LINDHOVSVÄGEN 5": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "LINDHOVSVÄGEN 7": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "NIBBLEBACKEN 40": { cat: "extreme", memo: "🚨 AKTIV LÄCKA PÅ VÅR SIDA (KOMMUNEN)." },
-            
-            "DALKÄRRSVÄGEN 11": { cat: "lagad", memo: "🟢 LAGAD - Läcka på kundens servisledning." },
-            "ENGWALLS VÄG 13": { cat: "lagad", memo: "🟢 LAGAD - Konstaterad läcka på SV till kund." },
-            "BROÄNGSVÄGEN 22": { cat: "lagad", memo: "🟢 LAGAD - Historisk läcka åtgärdad." },
-            "STORVRETSVÄGEN 97": { cat: "lagad", memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
-            "LÖVHOLMENVÄGEN 15": { cat: "lagad", memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
-            "JAKTVÄGEN 2": { cat: "lagad", memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." }
-        };
+    // Kategorier sparas i localStorage – överlever reload och nya filer
+    let savedCategories = JSON.parse(localStorage.getItem('lacksok_v4_cats') || '{}');
 
-        const categories = {
-            extreme: { label: 'Akut Huvudledning / Vår Sida', bg: '#dc2626', color: '#fff', symbol: '🚨' },
-            aktiv_lacka: { label: 'Aktiv läcka (Servis)', bg: '#f87171', color: '#000', symbol: '🔴' },
-            misstankt: { label: 'Misstänkt / Ihållande ökning', bg: '#f97316', color: '#fff', symbol: '🟠' },
-            ny_matare: { label: 'Säsongsanalys / Stegring', bg: '#c084fc', color: '#fff', symbol: '🟣' },
-            leak_code: { label: 'Mätarflagga (LEAK)', bg: '#eab308', color: '#000', symbol: '🟡' },
-            storing: { label: 'Störning / Pump', bg: '#38bdf8', color: '#fff', symbol: '🔵' },
-            lagad: { label: 'Historiskt lagad / Klar', bg: '#10b981', color: '#fff', symbol: '🟢' },
-            normal: { label: 'Normal bakgrund', bg: '#27272a', color: '#bbb', symbol: '⚪' }
-        };
+    // ── KÄNDA FÄLTÄRENDEN ────────────────────────────────────────────────────
+    const knowledgeBase = {
+        "ALICE TEGNÉRS VÄG 23":  { cat: "varmepanna",  memo: "🔥 Värmepanna – bekräftat." },
+        "ALICE TEGNERSVÄG 23":   { cat: "varmepanna",  memo: "🔥 Värmepanna – bekräftat." },
+        "BROÄNGSVÄGEN 22":       { cat: "lagad",       memo: "✅ Lagad – historisk läcka åtgärdad." },
+        "VATTRAVÄGEN 8":         { cat: "aktiv_lacka", memo: "🚨 Aktivt – driften undersöker." },
+        "LAXVÄGEN 8":            { cat: "aktiv_lacka", memo: "📋 Kunds sida (LEAK). Skickat till Jimmy." },
+        "MALMSJÖVÄGEN 25":       { cat: "aktiv_lacka", memo: "✔ Kunds sida – KUND INFORMERAD." },
+        "LINDHOVSVÄGEN 3":       { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Jimmy." },
+        "LINDHOVSVÄGEN 5":       { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Jimmy." },
+        "LINDHOVSVÄGEN 7":       { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Jimmy." },
+        "NIBBLEBACKEN 40":       { cat: "aktiv_lacka", memo: "🚨 AKTIV LÄCKA VÅR SIDA (KOMMUNEN)." },
+        "DALKÄRRSVÄGEN 11":      { cat: "lagad",       memo: "✅ Lagad – servisledning." },
+        "ENGWALLS VÄG 13":       { cat: "lagad",       memo: "✅ Lagad – SV till kund." },
+        "STORVRETSVÄGEN 97":     { cat: "lagad",       memo: "✅ Lagad – huvudledning." },
+        "LÖVHOLMENVÄGEN 15":     { cat: "lagad",       memo: "✅ Lagad – huvudledning." },
+        "JAKTVÄGEN 2":           { cat: "lagad",       memo: "✅ Lagad – huvudledning." }
+    };
 
-        function cleanAddressText(addr) {
-            if (!addr) return "";
-            let txt = addr.toString().replace(/[\r\n]+/g, " ");
-            return txt.replace(/\b(TUMBA|TULLINGE|NORSBORG|UTTRAN|\d{3}\s?\d{2})\b/gi, "").trim().replace(/\s+/g, " ").toUpperCase();
-        }
+    const categories = {
+        aktiv_lacka: { label: 'Aktivt läckage', symbol: '🚨', bg: '#dc2626', color: '#fff' },
+        kund_lacka:  { label: 'Kundleckage',    symbol: '📬', bg: '#f97316', color: '#fff' },
+        misstankt:   { label: 'Misstänkt',      symbol: '⚠️', bg: '#eab308', color: '#000' },
+        lagad:       { label: 'Lagat',          symbol: '✅', bg: '#10b981', color: '#fff' },
+        varmepanna:  { label: 'Värmepanna',     symbol: '🔥', bg: '#38bdf8', color: '#000' },
+        storning:    { label: 'Störning',       symbol: '⚡', bg: '#c084fc', color: '#fff' },
+        normal:      { label: 'Normal',         symbol: '⚪', bg: '#27272a', color: '#aaa' }
+    };
 
-        // --- EXCEL OCH CSV PARSER (Äter alla kolumnformat) ---
-        function parseFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-                        let results = [];
+    // ── HJÄLPFUNKTIONER ──────────────────────────────────────────────────────
+    function cleanAddr(addr) {
+        if (!addr) return '';
+        return addr.toString()
+            .replace(/[\r\n]+/g, ' ')
+            .replace(/\b(TUMBA|TULLINGE|NORSBORG|UTTRAN|GRÖDINGE|\d{3}\s?\d{2})\b/gi, '')
+            .trim().replace(/\s+/g, ' ').toUpperCase();
+    }
 
-                        // Extrahera datum från filnamn om möjligt (t.ex. 2026-06-04)
-                        let fileDate = new Date(file.lastModified);
-                        const match = file.name.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
-                        if (match) fileDate = new Date(match[1], match[2] - 1, match[3]);
+    function getArea(addr) {
+        const u = (addr || '').toUpperCase();
+        if (u.includes('TUMBA'))    return 'TUMBA';
+        if (u.includes('TULLINGE')) return 'TULLINGE';
+        if (u.includes('UTTRAN'))   return 'UTTRAN';
+        if (u.includes('GRÖDINGE')) return 'GRÖDINGE';
+        if (u.includes('NORSBORG')) return 'NORSBORG';
+        return 'ÖVRIGT';
+    }
 
-                        jsonData.forEach(row => {
-                            let id = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'];
-                            let address = row['Adress'] || row['Plats'] || row['address'];
-                            
-                            // Stödjer både 'Senaste värde' och 'Senaste avläsning' (Brus dB)
-                            let noiseStr = row['Senaste värde'] || row['Senaste avläsning'] || row['Brus'] || '0';
-                            let value = parseFloat(noiseStr.toString().replace(/[^0-9.]/g, '')) || 0;
-                            
-                            let maxVal = parseFloat(row['Maxvärde'] || value);
-                            let avgVal = parseFloat(row['Genomsnittsvärde'] || value);
-                            let infokod = row['Infokod'] || row['Aktiva händelser'] || '';
-                            let atgardad = row['Åtgärdad den'] || '';
-                            let kommentar = row['Kommentar'] || '';
+    function ratioClass(r) {
+        if (r > 5)   return 'ratio-extreme';
+        if (r > 1)   return 'ratio-high';
+        if (r > 0.3) return 'ratio-medium';
+        return 'ratio-low';
+    }
 
-                            if (id) {
-                                let cleanAddr = address ? address.toString().trim() : 'Okänd adress';
-                                let area = cleanAddr.toUpperCase().includes('TULLINGE') ? 'TULLINGE' : (cleanAddr.toUpperCase().includes('TUMBA') ? 'TUMBA' : 'ÖVRIGT');
-                                
-                                results.push({
-                                    id: id.toString().trim(),
-                                    adress: cleanAddr,
-                                    value: value,
-                                    maxVal: isNaN(maxVal) ? value : maxVal,
-                                    avgVal: isNaN(avgVal) ? value : avgVal,
-                                    infokod: infokod.toString().trim(),
-                                    atgardad: atgardad,
-                                    kommentar: kommentar,
-                                    area: area,
-                                    fileDate: fileDate
-                                });
-                            }
-                        });
-                        resolve(results);
-                    } catch (err) { reject(err); }
-                };
-                reader.readAsArrayBuffer(file);
-            });
-        }
+    function formatRatio(r, avgVal) {
+        if (avgVal <= 0) return '—';
+        const pct = (r * 100).toFixed(0);
+        return `${pct > 0 ? '+' : ''}${pct}%`;
+    }
 
-        // --- FULLSTÄNDIG TIDSSERIEANALYS ---
-        function runAnalysis() {
-            if (uploadedFiles.length === 0) return;
-            let finalMap = new Map();
+    // ── SMART KLASSIFICERING ─────────────────────────────────────────────────
+    // Prioritet: 1) Manuellt sparad  2) Kunskapsbas  3) Infokod  4) Ratio
+    function autoClassify(ratio, infokod, cleanKey) {
+        const kb = knowledgeBase[cleanKey];
+        if (kb) return kb.cat;
 
-            // Sortera filerna kronologiskt så tidslinjen stämmer
-            uploadedFiles.sort((a, b) => a.date - b.date);
+        const info = (infokod || '').toUpperCase();
+        if (info.includes('LÄCK') || info.includes('LEAK')) return 'aktiv_lacka';
+        if (info.includes('BRUS') || info.includes('STÖRN')) return 'storning';
 
-            uploadedFiles.forEach(f => {
-                f.data.forEach(m => {
-                    if (!finalMap.has(m.id)) {
-                        finalMap.set(m.id, {
-                            id: m.id, adress: m.adress, area: m.area,
-                            infokod: m.infokod, atgardad: m.atgardad,
-                            kommentar: m.kommentar, history: []
+        if (ratio > 5)   return 'aktiv_lacka';
+        if (ratio > 1)   return 'misstankt';
+        if (ratio > 0.3) return 'kund_lacka';
+        return 'normal';
+    }
+
+    // ── EXCEL-PARSER ─────────────────────────────────────────────────────────
+    // Läser kolumner med namnmatchning (svenska headers) med fallback till position
+    // Förväntat format: A=Adress B=Serienummer E=Senaste värde F=Genomsnittsvärde
+    //                   G=Maxvärde  M=Aktiva händelser
+    function parseFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                    if (!raw || raw.length < 2) { resolve([]); return; }
+
+                    // Normalisera headers till lowercase för matchning
+                    const hdr = raw[0].map(h => (h || '').toString().toLowerCase().trim());
+
+                    const findCol = (terms, fallback) => {
+                        for (const t of terms) {
+                            const i = hdr.findIndex(h => h.includes(t));
+                            if (i !== -1) return i;
+                        }
+                        return fallback;
+                    };
+
+                    const cAddr   = findCol(['adress', 'plats'], 0);
+                    const cSerial = findCol(['serienummer', 'mätarnummer', 'mätare id'], 1);
+                    const cLast   = findCol(['senaste värde', 'brus (db)', 'brus'], 4);
+                    const cAvg    = findCol(['genomsnittsvärde', 'genomsnitt'], 5);
+                    const cMax    = findCol(['maxvärde', 'max'], 6);
+                    const cInfo   = findCol(['aktiva händelser', 'infokod', 'händelser'], 12);
+
+                    // Datum från filnamn (t.ex. 2026-06-04_export.xlsx)
+                    let fileDate = new Date(file.lastModified);
+                    const dm = file.name.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
+                    if (dm) fileDate = new Date(dm[1], dm[2] - 1, dm[3]);
+
+                    const toNum = v => {
+                        if (typeof v === 'number') return v;
+                        return parseFloat((v || '').toString().replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+                    };
+
+                    const results = [];
+                    for (let i = 1; i < raw.length; i++) {
+                        const row = raw[i];
+                        const id   = (row[cSerial] || '').toString().trim();
+                        const addr = (row[cAddr]   || '').toString().trim();
+                        if (!id || !addr) continue;
+
+                        results.push({
+                            id, adress: addr,
+                            value:   toNum(row[cLast]),
+                            avgVal:  toNum(row[cAvg]),
+                            maxVal:  toNum(row[cMax]) || toNum(row[cLast]),
+                            infokod: (row[cInfo] || '').toString().trim(),
+                            area:    getArea(addr),
+                            fileDate
                         });
                     }
-                    let current = finalMap.get(m.id);
-                    let dStr = m.fileDate.toISOString().slice(0, 10);
-                    
-                    // Lägg till mätpunkt om datumet inte redan finns registrerat för mätaren
-                    if (!current.history.some(h => h.dateStr === dStr)) {
-                        current.history.push({ dateStr: dStr, value: m.value, maxVal: m.maxVal, avgVal: m.avgVal });
-                    }
-                    if (m.atgardad && m.atgardad !== "-") current.atgardad = m.atgardad;
-                    if (m.kommentar) current.kommentar = m.kommentar;
-                });
-            });
+                    resolve(results);
+                } catch (err) { reject(err); }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
 
-            currentResults = [];
-            for (let [id, m] of finalMap) {
-                m.history.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
-                
-                let latestReading = m.history[m.history.length - 1];
-                let firstReading = m.history[0];
-                
-                let currentNoise = latestReading.value;
-                let maxHistorical = Math.max(...m.history.map(h => h.maxVal));
-                
-                let cleanKey = cleanAddressText(m.adress);
-                let finalCategory = userCategories.get(m.id) || smartClassify(m, currentNoise, maxHistorical, cleanKey);
-                
-                let memo = m.kommentar ? `💬 ${m.kommentar}` : "";
-                if (staticKnowledgeBase[cleanKey]) memo = staticKnowledgeBase[cleanKey].memo;
+    // ── ANALYS ───────────────────────────────────────────────────────────────
+    function runAnalysis() {
+        if (!uploadedFiles.length) return;
 
-                currentResults.push({
-                    id: m.id,
-                    adress: m.adress.replace(/[\r\n]+/g, " "),
-                    serienummer: m.id,
-                    area: m.area,
-                    currentNoise: currentNoise,
-                    maxHistorical: maxHistorical,
-                    category: finalCategory,
-                    history: m.history,
-                    memo: memo
-                });
-            }
+        // Bygg en karta per mätare — senaste fil vinner på värden
+        uploadedFiles.sort((a, b) => a.date - b.date);
+        const map = new Map();
 
-            document.getElementById('results').style.display = 'block';
-            displayResults();
-        }
-
-        // --- HIERARKISK SMART-CLASSIFY ALGORITM ---
-        function smartClassify(meter, currentNoise, maxHistorical, cleanKey) {
-            // Regel 1: Direkt matchning mot kända fältärenden
-            if (staticKnowledgeBase[cleanKey]) return staticKnowledgeBase[cleanKey].cat;
-
-            // Regel 2: Kamstrups egna klarmarkeringar
-            if (meter.atgardad && meter.atgardad !== "-") return 'lagad';
-            if (meter.kommentar && meter.kommentar.toLowerCase().includes('åtgärdad')) return 'lagad';
-
-            // Regel 3: Är mätaren helt tyst just nu men har haft extrema toppar? -> Historiskt lagad
-            if (currentNoise <= 22 && maxHistorical >= 45) return 'lagad';
-
-            // Regel 4: Aktiv och ihållande läcka (Hög dB nu)
-            if (currentNoise >= 35) return 'aktiv_lacka';
-
-            // Regel 5: Aktiv LEAK-infokod
-            if (meter.infokod && meter.infokod.toUpperCase().includes('LEAK')) return 'leak_code';
-
-            // Regel 6: Trender och stegringar (Om bruset ökat gradvis över tidslinjen)
-            if (meter.history.length >= 3) {
-                let firstVals = meter.history.slice(0, 2).map(h => h.value);
-                let avgStart = firstVals.reduce((a,b)=>a+b, 0) / firstVals.length;
-                if (currentNoise >= avgStart + 12 && avgStart <= 15) {
-                    return 'misstankt';
-                }
-            }
-
-            if (currentNoise >= 16) return 'ny_matare';
-            return 'normal';
-        }
-
-        function displayResults() {
-            const query = document.getElementById('searchInput').value.toLowerCase().trim();
-            const tbody = document.getElementById('tableBody');
-            const noiseTbody = document.getElementById('noiseTableBody');
-            
-            tbody.innerHTML = '';
-            noiseTbody.innerHTML = '';
-            
-            // Sortera efter högsta nuvarande brus
-            currentResults.sort((a, b) => b.currentNoise - a.currentNoise);
-
-            let hiddenCount = 0;
-
-            currentResults.forEach(r => {
-                if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
-                if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
-
-                let catOptions = '';
-                for (let c in categories) {
-                    catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol} ${categories[c].label}</option>`;
-                }
-
-                // Dela upp i aktiva ärenden vs dolda brus/historiska
-                let isHidden = ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category);
-
-                if (isHidden) {
-                    hiddenCount++;
-                    const tr = document.createElement('tr');
-                    tr.className = `row-${r.category}`;
-                    tr.innerHTML = `
-                        <td><select class="category-select-compact">${catOptions}</select></td>
-                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag" style="color:#10b981; border-color:#10b981;">${r.memo}</span>` : ''}</td>
-                        <td><code>${r.serienummer}</code></td>
-                        <td><strong>${r.currentNoise} dB</strong> / ${r.maxHistorical} dB</td>
-                        <td><span class="badge" style="background:${categories[r.category].bg}; color:${categories[r.category].color}">${categories[r.category].label}</span></td>
-                    `;
-                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
-                    noiseTbody.appendChild(tr);
+        uploadedFiles.forEach(f => {
+            f.data.forEach(m => {
+                if (!map.has(m.id)) {
+                    map.set(m.id, { ...m });
                 } else {
-                    if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
-                    
-                    const tr = document.createElement('tr');
-                    tr.className = `row-${r.category}`;
-                    tr.innerHTML = `
-                        <td style="text-align:center;"><button class="star-btn" style="background:transparent; border:none; cursor:pointer;">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
-                        <td><select class="category-select-compact">${catOptions}</select></td>
-                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}</td>
-                        <td style="text-align:center;"><button class="copy-btn">📋 Kopiera</button></td>
-                        <td><code>${r.serienummer}</code></td>
-                        <td><span class="badge" style="background:#1f1f2e; color:#fff;">${r.area}</span></td>
-                        <td><span style="color:#f87171; font-weight:bold;">${r.currentNoise} dB</span></td>
-                        <td><strong>${r.maxHistorical} dB</strong></td>
-                        <td style="text-align:center;"><button class="copy-btn" style="padding:4px 8px;">📈</button></td>
-                    `;
-                    tr.querySelector('.star-btn').addEventListener('click', () => toggleInteresting(r.id));
-                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
-                    tr.querySelectorAll('.copy-btn')[0].addEventListener('click', (e) => copyAddress(r.adress, e));
-                    tr.querySelectorAll('.copy-btn')[1].addEventListener('click', () => openGraph(r.id));
-                    tbody.appendChild(tr);
+                    const cur = map.get(m.id);
+                    cur.value = m.value;                        // alltid senaste
+                    if (m.avgVal > 0) cur.avgVal = m.avgVal;   // uppdatera genomsnitt
+                    if (m.maxVal > cur.maxVal) cur.maxVal = m.maxVal;
+                    if (m.infokod) cur.infokod = m.infokod;
+                    cur.adress = m.adress;
+                    cur.area   = m.area;
                 }
             });
+        });
 
-            document.getElementById('noiseCountText').innerText = hiddenCount;
-            updateStats();
-        }
+        currentResults = [];
+        for (const [, m] of map) {
+            // Kärnan: formel (E/F)−1
+            const ratio    = m.avgVal > 0 ? (m.value / m.avgVal) - 1 : 0;
+            const cleanKey = cleanAddr(m.adress);
+            const manualCat = savedCategories[m.id];
+            const category  = manualCat || autoClassify(ratio, m.infokod, cleanKey);
+            const memo      = knowledgeBase[cleanKey]?.memo || '';
 
-        function updateStats() {
-            let c = { total: 0, extreme: 0, aktiv_lacka: 0, misstankt: 0, hidden: 0 };
-            currentResults.forEach(r => {
-                if (['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category)) c.hidden++;
-                else {
-                    c.total++;
-                    if (r.category === 'extreme') c.extreme++;
-                    if (r.category === 'aktiv_lacka') c.aktiv_lacka++;
-                    if (r.category === 'misstankt') c.misstankt++;
-                }
-            });
-
-            const grid = document.getElementById('statsGrid');
-            grid.innerHTML = `
-                <div class="stat-card color-total ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="filterCat('all')"><div class="num">${c.total}</div><div class="label">Aktiva larm</div></div>
-                <div class="stat-card color-aktiv-lacka ${currentCategoryFilter === 'aktiv_lacka' ? 'active' : ''}" onclick="filterCat('aktiv_lacka')"><div class="num">${c.aktiv_lacka + c.extreme}</div><div class="label">Konstaterade läckor</div></div>
-                <div class="stat-card color-misstankt ${currentCategoryFilter === 'misstankt' ? 'active' : ''}" onclick="filterCat('misstankt')"><div class="num">${c.misstankt}</div><div class="label">Ihållande stegringar</div></div>
-                <div class="stat-card color-noise"><div class="num">${c.hidden}</div><div class="label">Undansorterade</div></div>
-            `;
-            document.getElementById('insightBox').innerHTML = `💡 <strong>Analys klar för hela tidsperioden:</strong> Systemet har byggt en kronologisk tidslinje mätare för mätare. Alla lagade huvudledningar och källarbrunnar har filtrerats bort till bottenpanelen automatiskt.`;
-        }
-
-        function filterCat(cat) { currentCategoryFilter = cat; displayResults(); }
-        function changeCategory(id, newCat) { userCategories.set(id, newCat); let item = currentResults.find(r => r.id === id); if(item) item.category = newCat; displayResults(); }
-        function toggleInteresting(id) { if(interestingIds.has(id)) interestingIds.delete(id); else interestingIds.add(id); displayResults(); }
-        
-        function copyAddress(fullAddr, e) {
-            navigator.clipboard.writeText(cleanAddressText(fullAddr)).then(() => {
-                const btn = e.currentTarget || e.target;
-                btn.innerText = "Klar! ✔";
-                setTimeout(() => { btn.innerText = "📋 Kopiera"; }, 1200);
+            currentResults.push({
+                id:       m.id,
+                adress:   m.adress.replace(/[\r\n]+/g, ' '),
+                area:     m.area,
+                lastVal:  m.value,
+                avgVal:   m.avgVal,
+                maxVal:   m.maxVal,
+                infokod:  m.infokod,
+                ratio,
+                category,
+                memo
             });
         }
 
-        function exportReport() {
-            if (currentResults.length === 0) {
-                alert('Ingen data att exportera. Kör analysen först.');
-                return;
+        // Sortera: högst (E/F)−1 överst
+        currentResults.sort((a, b) => b.ratio - a.ratio);
+
+        document.getElementById('results').style.display = 'block';
+        displayResults();
+    }
+
+    // ── RENDERA TABELL ───────────────────────────────────────────────────────
+    function displayResults() {
+        const query  = document.getElementById('searchInput').value.toLowerCase().trim();
+        const tbody  = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        let shown = 0;
+        currentResults.forEach(r => {
+            if (currentAreaFilter !== 'alla' && r.area !== currentAreaFilter) return;
+            if (currentCatFilter  !== 'alla' && r.category !== currentCatFilter) return;
+            if (query && !r.adress.toLowerCase().includes(query) && !r.id.includes(query)) return;
+            shown++;
+
+            let opts = '';
+            for (const [k, v] of Object.entries(categories)) {
+                opts += `<option value="${k}" ${r.category === k ? 'selected' : ''}>${v.symbol} ${v.label}</option>`;
             }
-            const activeRows = currentResults
-                .filter(r => !['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category))
-                .map(r => ({
-                    'Mätarnummer': r.serienummer,
-                    'Adress': r.adress,
-                    'Område': r.area,
-                    'Klassificering': categories[r.category].label,
-                    'Senaste Brus (dB)': r.currentNoise,
-                    'Maxvärde (dB)': r.maxHistorical,
-                    'Notering': r.memo || ''
-                }));
-            const hiddenRows = currentResults
-                .filter(r => ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare'].includes(r.category))
-                .map(r => ({
-                    'Mätarnummer': r.serienummer,
-                    'Adress': r.adress,
-                    'Område': r.area,
-                    'Klassificering': categories[r.category].label,
-                    'Senaste Brus (dB)': r.currentNoise,
-                    'Maxvärde (dB)': r.maxHistorical,
-                    'Notering': r.memo || ''
-                }));
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(activeRows), 'Aktiva ärenden');
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hiddenRows), 'Bakgrund & Lagade');
-            XLSX.writeFile(wb, `lacksok-rapport-${new Date().toISOString().slice(0, 10)}.xlsx`);
-        }
 
-        function openGraph(id) {
-            const meter = currentResults.find(r => r.id === id); if (!meter) return;
-            document.getElementById('modalTitle').innerText = `Tidslinje för ${cleanAddressText(meter.adress)}`;
-            document.getElementById('graphModal').style.display = 'flex';
-            
-            const labels = meter.history.map(h => h.dateStr);
-            const dataPoints = meter.history.map(h => h.value);
-            
-            if (activeChartInstance) activeChartInstance.destroy();
-            const ctx = document.getElementById('trendChart').getContext('2d');
-            activeChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{ label: 'Brus dB', data: dataPoints, borderColor: '#1db954', backgroundColor: 'rgba(29, 185, 84, 0.05)', fill: true, tension: 0.1 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0 } } }
+            const tr = document.createElement('tr');
+            tr.className = `row-${r.category}`;
+            tr.innerHTML = `
+                <td>
+                    <div class="addr-text">${r.adress}</div>
+                    ${r.memo ? `<div class="memo-tag">${r.memo}</div>` : ''}
+                </td>
+                <td><code style="font-size:12px;">${r.id}</code></td>
+                <td><span class="badge" style="background:#1f1f2e;color:#fff;">${r.area}</span></td>
+                <td style="text-align:right;font-weight:700;">${r.lastVal}</td>
+                <td style="text-align:right;color:var(--text-muted);">${r.avgVal > 0 ? r.avgVal : '—'}</td>
+                <td style="text-align:right;">
+                    <span class="${ratioClass(r.ratio)}">${formatRatio(r.ratio, r.avgVal)}</span>
+                </td>
+                <td style="font-size:11px;color:var(--text-muted);max-width:140px;">${r.infokod || '—'}</td>
+                <td><select class="cat-select">${opts}</select></td>
+                <td style="text-align:center;"><button class="copy-btn">📋</button></td>
+            `;
+
+            // Spara kategori i localStorage när användaren ändrar
+            tr.querySelector('select').addEventListener('change', function () {
+                r.category = this.value;
+                savedCategories[r.id] = this.value;
+                localStorage.setItem('lacksok_v4_cats', JSON.stringify(savedCategories));
+                tr.className = `row-${r.category}`;
+                updateStats();
             });
-        }
 
-        // --- FILHANTERING ---
-        function handleFiles(files) {
-            let filesArray = Array.from(files);
-            let loaded = 0;
-            filesArray.forEach(file => {
-                parseFile(file).then(data => {
-                    if (data.length > 0) uploadedFiles.push({ name: file.name, date: file.lastModified, data: data });
-                    loaded++; if (loaded === filesArray.length) updateFileList();
-                }).catch(() => { loaded++; if (loaded === filesArray.length) updateFileList(); });
+            // Kopiera adress
+            tr.querySelector('.copy-btn').addEventListener('click', e => {
+                navigator.clipboard.writeText(cleanAddr(r.adress)).then(() => {
+                    const btn = e.currentTarget;
+                    btn.innerText = '✔';
+                    setTimeout(() => { btn.innerText = '📋'; }, 1200);
+                });
             });
+
+            tbody.appendChild(tr);
+        });
+
+        updateStats(shown);
+    }
+
+    function updateStats(shown) {
+        const c = { total: 0, aktiv: 0, kund: 0, misstankt: 0 };
+        currentResults.forEach(r => {
+            c.total++;
+            if (r.category === 'aktiv_lacka') c.aktiv++;
+            if (r.category === 'kund_lacka')  c.kund++;
+            if (r.category === 'misstankt')   c.misstankt++;
+        });
+
+        const makeCard = (cls, num, label, filter) =>
+            `<div class="stat-card ${cls} ${currentCatFilter === filter ? 'active' : ''}"
+                  onclick="setCatFilter('${filter}')" style="cursor:pointer;">
+                <div class="num">${num}</div>
+                <div class="lbl">${label}</div>
+             </div>`;
+
+        document.getElementById('statsGrid').innerHTML =
+            makeCard('c-total',     c.total,     'Totalt',          'alla') +
+            makeCard('c-aktiv',     c.aktiv,     'Aktiva läckor',   'aktiv_lacka') +
+            makeCard('c-kund',      c.kund,      'Kundleckage',     'kund_lacka') +
+            makeCard('c-misstankt', c.misstankt, 'Misstänkta',      'misstankt');
+
+        const visText = (shown !== undefined && shown !== c.total)
+            ? ` · Visar <strong style="color:#fff;">${shown}</strong> efter filter`
+            : '';
+        document.getElementById('insightBox').innerHTML =
+            `💡 <strong>Rankad med formel (Senaste värde / Genomsnitt) − 1.</strong>
+             Mätare med högst avvikelse visas överst. Röd = extremt, Orange = hög, Gul = måttlig.
+             Kategorierna sparas automatiskt i webbläsaren.${visText}`;
+    }
+
+    function setCatFilter(f) {
+        currentCatFilter = f;
+        displayResults();
+    }
+
+    // ── EXPORT ───────────────────────────────────────────────────────────────
+    function exportReport() {
+        if (!currentResults.length) { alert('Ingen data. Kör analysen först.'); return; }
+        const rows = currentResults.map(r => ({
+            'Adress':              r.adress,
+            'Serienummer':         r.id,
+            'Område':              r.area,
+            'Senaste värde (E)':   r.lastVal,
+            'Genomsnittsvärde (F)': r.avgVal || '',
+            'Maxvärde':            r.maxVal,
+            '(E/F)−1 %':          r.avgVal > 0 ? `${(r.ratio * 100).toFixed(1)}%` : '—',
+            'Aktiva händelser':    r.infokod,
+            'Kategori':            `${categories[r.category]?.symbol} ${categories[r.category]?.label}`,
+            'Notering':            r.memo
+        }));
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Läcksök Rapport');
+        XLSX.writeFile(wb, `lacksok-rapport-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    // ── FILHANTERING ─────────────────────────────────────────────────────────
+    function handleFiles(files) {
+        const arr = Array.from(files);
+        let done = 0;
+        arr.forEach(file => {
+            parseFile(file)
+                .then(data => {
+                    if (data.length > 0) uploadedFiles.push({ name: file.name, date: file.lastModified, data });
+                })
+                .catch(() => {})
+                .finally(() => { if (++done === arr.length) updateFileList(); });
+        });
+    }
+
+    function updateFileList() {
+        document.getElementById('fileCountText').innerText = uploadedFiles.length;
+        const grid = document.getElementById('fileList');
+        if (!uploadedFiles.length) {
+            grid.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">Inga filer laddade än.</span>';
+            return;
         }
+        grid.innerHTML = uploadedFiles.map(f =>
+            `<div class="file-chip">📄 ${f.name}</div>`
+        ).join('');
+    }
 
-        function updateFileList() {
-            document.getElementById('fileCountText').innerText = uploadedFiles.length;
-            const grid = document.getElementById('fileList'); grid.innerHTML = '';
-            uploadedFiles.forEach(f => {
-                const chip = document.createElement('div'); chip.className = 'file-chip-compact';
-                chip.innerHTML = `<span>📄 ${f.name}</span>`;
-                grid.appendChild(chip);
-            });
-        }
+    // ── EVENT LISTENERS ──────────────────────────────────────────────────────
+    document.getElementById('uploadBtn').onclick  = () => document.getElementById('fileInput').click();
+    document.getElementById('fileInput').onchange = e  => handleFiles(e.target.files);
+    document.getElementById('analyzeBtn').onclick = () => runAnalysis();
+    document.getElementById('exportBtn').onclick  = () => exportReport();
+    document.getElementById('clearBtn').onclick   = () => {
+        uploadedFiles = []; currentResults = [];
+        updateFileList();
+        document.getElementById('results').style.display = 'none';
+    };
+    document.getElementById('searchInput').oninput = () => displayResults();
 
-        // Event Listeners
-        document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
-        document.getElementById('fileInput').onchange = (e) => handleFiles(e.target.files);
-        document.getElementById('analyzeBtn').onclick = () => runAnalysis();
-        document.getElementById('exportBtn').onclick = () => exportReport();
-        document.getElementById('searchInput').oninput = () => displayResults();
-        document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
-        document.getElementById('closeModalBtn').onclick = () => document.getElementById('graphModal').style.display = 'none';
-        document.getElementById('clearBtn').onclick = () => { uploadedFiles = []; currentResults = []; updateFileList(); document.getElementById('results').style.display = 'none'; };
+    document.getElementById('accordionTrigger').onclick = () => {
+        const c = document.getElementById('fileGridContainer');
+        c.classList.toggle('open');
+        document.getElementById('arrowIndicator').textContent = c.classList.contains('open') ? '▾' : '▸';
+    };
 
-        document.getElementById('accordionTrigger').onclick = () => {
-            document.getElementById('fileGridContainer').classList.toggle('open');
-            const isOpen = document.getElementById('fileGridContainer').classList.contains('open');
-            document.getElementById('arrowIndicator').textContent = isOpen ? '▾' : '▸';
-        };
-        document.getElementById('noiseAccordionTrigger').onclick = () => {
-            document.getElementById('noiseGridContainer').classList.toggle('open');
-            const isOpen = document.getElementById('noiseGridContainer').classList.contains('open');
-            document.getElementById('noiseArrowIndicator').textContent = isOpen ? '▾' : '▸';
-        };
-    </script>
+    document.querySelectorAll('.area-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.area-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentAreaFilter = btn.dataset.area;
+            displayResults();
+        });
+    });
+</script>
 </body>
 </html>

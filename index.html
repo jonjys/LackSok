@@ -551,4 +551,183 @@
         function displayResults() {
             const query = document.getElementById('searchInput').value.toLowerCase().trim();
             const tbody = document.getElementById('tableBody');
-           
+            const noiseTbody = document.getElementById('noiseTableBody');
+            
+            tbody.innerHTML = '';
+            noiseTbody.innerHTML = '';
+            
+            currentResults.sort((a, b) => b.currentNoise - a.currentNoise);
+
+            let hiddenCount = 0;
+
+            currentResults.forEach(r => {
+                if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
+                if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
+
+                let catOptions = '';
+                for (let c in categories) {
+                    catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol} ${categories[c].label}</option>`;
+                }
+
+                const isHidden = ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare', 'heatpump'].includes(r.category);
+
+                if (isHidden) {
+                    hiddenCount++;
+                    const tr = document.createElement('tr');
+                    tr.className = `row-${r.category}`;
+                    tr.innerHTML = `
+                        <td><select class="category-select-compact">${catOptions}</select></td>
+                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag" style="color:#10b981; border-color:#10b981;">${r.memo}</span>` : ''}</td>
+                        <td><code>${r.serienummer}</code></td>
+                        <td><strong>${r.currentNoise} dB</strong> / ${r.maxHistorical} dB</td>
+                        <td><span class="badge" style="background:${categories[r.category].bg}; color:${categories[r.category].color}">${categories[r.category].label}</span></td>
+                    `;
+                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
+                    noiseTbody.appendChild(tr);
+                } else {
+                    if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = `row-${r.category}`;
+                    tr.innerHTML = `
+                        <td style="text-align:center;"><button class="star-btn" style="background:transparent; border:none; cursor:pointer;">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
+                        <td><select class="category-select-compact">${catOptions}</select></td>
+                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}</td>
+                        <td style="text-align:center;"><button class="copy-btn">📋 Kopiera</button></td>
+                        <td><code>${r.serienummer}</code></td>
+                        <td><span class="badge" style="background:#1f1f2e; color:#fff;">${r.area}</span></td>
+                        <td><span style="color:#f87171; font-weight:bold;">${r.currentNoise} dB</span></td>
+                        <td><strong>${r.maxHistorical} dB</strong></td>
+                        <td style="text-align:center;"><button class="copy-btn" style="padding:4px 8px;">📈</button></td>
+                    `;
+                    tr.querySelector('.star-btn').addEventListener('click', () => toggleInteresting(r.id));
+                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
+                    tr.querySelectorAll('.copy-btn')[0].addEventListener('click', (e) => copyAddress(r.adress, e));
+                    tr.querySelectorAll('.copy-btn')[1].addEventListener('click', () => openGraph(r.id));
+                    tbody.appendChild(tr);
+                }
+            });
+
+            document.getElementById('noiseCountText').innerText = hiddenCount;
+            updateStats();
+        }
+
+        function updateStats() {
+            let c = { total: 0, extreme: 0, aktiv_lacka: 0, misstankt: 0, heatpump: 0, hidden: 0 };
+            
+            currentResults.forEach(r => {
+                if (r.category === 'heatpump') c.heatpump++;
+                
+                if (['normal', 'storing', 'leak_code', 'lagad', 'ny_matare', 'heatpump'].includes(r.category)) {
+                    c.hidden++;
+                } else {
+                    c.total++;
+                    if (r.category === 'extreme') c.extreme++;
+                    if (r.category === 'aktiv_lacka') c.aktiv_lacka++;
+                    if (r.category === 'misstankt') c.misstankt++;
+                }
+            });
+
+            const grid = document.getElementById('statsGrid');
+            grid.innerHTML = `
+                <div class="stat-card color-total ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="filterCat('all')"><div class="num">${c.total}</div><div class="label">Aktiva larm</div></div>
+                <div class="stat-card color-aktiv-lacka ${currentCategoryFilter === 'aktiv_lacka' ? 'active' : ''}" onclick="filterCat('aktiv_lacka')"><div class="num">${c.aktiv_lacka + c.extreme}</div><div class="label">Konstaterade läckor</div></div>
+                <div class="stat-card color-misstankt ${currentCategoryFilter === 'misstankt' ? 'active' : ''}" onclick="filterCat('misstankt')"><div class="num">${c.misstankt}</div><div class="label">Ihållande stegringar</div></div>
+                <div class="stat-card color-heatpump" onclick="filterCat('heatpump')"><div class="num">${c.heatpump}</div><div class="label">🔥 Värmepumpar</div></div>
+                <div class="stat-card color-noise"><div class="num">${c.hidden}</div><div class="label">Undansorterade</div></div>
+            `;
+            
+            document.getElementById('insightBox').innerHTML = `💡 <strong>Analys klar för hela tidsperioden:</strong> Systemet har byggt en kronologisk tidslinje mätare för mätare. 🔥 Värmepumpar (högt vinter/lågt sommar) har sorterats bort automatiskt. 🏭 "Ej fastställt" flaggas som fjärrvärmestörning.`;
+        }
+
+        function filterCat(cat) { currentCategoryFilter = cat; displayResults(); }
+        function changeCategory(id, newCat) { userCategories.set(id, newCat); let item = currentResults.find(r => r.id === id); if(item) item.category = newCat; displayResults(); }
+        function toggleInteresting(id) { if(interestingIds.has(id)) interestingIds.delete(id); else interestingIds.add(id); displayResults(); }
+        
+        function copyAddress(fullAddr, e) {
+            navigator.clipboard.writeText(cleanAddressText(fullAddr)).then(() => {
+                const btn = e.currentTarget || e.target;
+                btn.innerText = "Klar! ✔";
+                setTimeout(() => { btn.innerText = "📋 Kopiera"; }, 1200);
+            });
+        }
+
+        function exportReport() {
+            if (currentResults.length === 0) {
+                alert('Ingen data att exportera. Kör analysen först.');
+                return;
+            }
+            const activeRows = currentResults
+                .filter(r => !['normal', 'storing', 'leak_code', 'lagad', 'ny_matare', 'heatpump'].includes(r.category))
+                .map(r => ({
+                    'Mätarnummer': r.serienummer,
+                    'Adress': r.adress,
+                    'Område': r.area,
+                    'Klassificering': categories[r.category].label,
+                    'Senaste Brus (dB)': r.currentNoise,
+                    'Maxvärde (dB)': r.maxHistorical,
+                    'Notering': r.memo || ''
+                }));
+            const hiddenRows = currentResults
+                .filter(r => ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare', 'heatpump'].includes(r.category))
+                .map(r => ({
+                    'Mätarnummer': r.serienummer,
+                    'Adress': r.adress,
+                    'Område': r.area,
+                    'Klassificering': categories[r.category].label,
+                    'Senaste Brus (dB)': r.currentNoise,
+                    'Maxvärde (dB)': r.maxHistorical,
+                    'Notering': r.memo || ''
+                }));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(activeRows), 'Aktiva ärenden');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hiddenRows), 'Bakgrund & Lagade');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hiddenRows.filter(r => r.Klassificering === '🔥 Värmepump (Normal säsong)')), 'Värmepumpar');
+            XLSX.writeFile(wb, `lacksok-rapport-${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
+        function openGraph(id) {
+            const meter = currentResults.find(r => r.id === id); if (!meter) return;
+            document.getElementById('modalTitle').innerText = `Tidslinje för ${cleanAddressText(meter.adress)}`;
+            document.getElementById('graphModal').style.display = 'flex';
+            
+            const labels = meter.history.map(h => h.dateStr);
+            const dataPoints = meter.history.map(h => h.value);
+            
+            if (activeChartInstance) activeChartInstance.destroy();
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            activeChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{ label: 'Brus dB', data: dataPoints, borderColor: '#1db954', backgroundColor: 'rgba(29, 185, 84, 0.05)', fill: true, tension: 0.1 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0 } } }
+            });
+        }
+
+        // Event Listeners
+        document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
+        document.getElementById('fileInput').onchange = (e) => handleFiles(e.target.files);
+        document.getElementById('analyzeBtn').onclick = () => runAnalysis();
+        document.getElementById('exportBtn').onclick = () => exportReport();
+        document.getElementById('searchInput').oninput = () => displayResults();
+        document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
+        document.getElementById('closeModalBtn').onclick = () => document.getElementById('graphModal').style.display = 'none';
+        document.getElementById('clearBtn').onclick = () => { uploadedFiles = []; currentResults = []; updateFileList(); document.getElementById('results').style.display = 'none'; };
+
+        document.getElementById('accordionTrigger').onclick = () => {
+            document.getElementById('fileGridContainer').classList.toggle('open');
+            const isOpen = document.getElementById('fileGridContainer').classList.contains('open');
+            document.getElementById('arrowIndicator').textContent = isOpen ? '▾' : '▸';
+        };
+        document.getElementById('noiseAccordionTrigger').onclick = () => {
+            document.getElementById('noiseGridContainer').classList.toggle('open');
+            const isOpen = document.getElementById('noiseGridContainer').classList.contains('open');
+            document.getElementById('noiseArrowIndicator').textContent = isOpen ? '▾' : '▸';
+        };
+        
+        window.filterCat = filterCat;
+    </script>
+</body>
+</html>

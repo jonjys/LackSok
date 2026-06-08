@@ -256,9 +256,12 @@
     }
 
     // ── EXCEL-PARSER ─────────────────────────────────────────────────────────
-    // Läser kolumner med namnmatchning (svenska headers) med fallback till position
-    // Förväntat format: A=Adress B=Serienummer E=Senaste värde F=Genomsnittsvärde
-    //                   G=Maxvärde  M=Aktiva händelser
+    // Kamstrup-export har ibland en titelrad före kolumnrubrikerna.
+    // Kända kolumnpositioner (nollindexerade):
+    //  0=mätare  1=Mätare av intresse  2=Adress  3=Serienummer
+    //  4=Senaste avläsning(datum)  5=Senaste värde  6=Genomsnittsvärde
+    //  7=Maxvärde  8=Minimiflöde  9=Min flödesdatum  10=Infokod
+    //  11=Aktiva händelser  12=Stängda händelser  13=Ignorera  14=Följ
     function parseFile(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -269,8 +272,18 @@
                     const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
                     if (!raw || raw.length < 2) { resolve([]); return; }
 
-                    // Normalisera headers till lowercase för matchning
-                    const hdr = raw[0].map(h => (h || '').toString().toLowerCase().trim());
+                    // Hitta rubrikraden – sök de 10 första raderna efter en rad
+                    // som innehåller BÅDE 'adress' och 'serienummer'
+                    let headerRowIdx = 0;
+                    for (let i = 0; i < Math.min(10, raw.length); i++) {
+                        const joined = raw[i].map(c => (c || '').toString().toLowerCase()).join('|');
+                        if (joined.includes('adress') && joined.includes('serienummer')) {
+                            headerRowIdx = i;
+                            break;
+                        }
+                    }
+
+                    const hdr = raw[headerRowIdx].map(h => (h || '').toString().toLowerCase().trim());
 
                     const findCol = (terms, fallback) => {
                         for (const t of terms) {
@@ -280,12 +293,13 @@
                         return fallback;
                     };
 
-                    const cAddr   = findCol(['adress', 'plats'], 0);
-                    const cSerial = findCol(['serienummer', 'mätarnummer', 'mätare id'], 1);
-                    const cLast   = findCol(['senaste värde', 'brus (db)', 'brus'], 4);
-                    const cAvg    = findCol(['genomsnittsvärde', 'genomsnitt'], 5);
-                    const cMax    = findCol(['maxvärde', 'max'], 6);
-                    const cInfo   = findCol(['aktiva händelser', 'infokod', 'händelser'], 12);
+                    // Fallbacks matchar verklig Kamstrup-export
+                    const cAddr   = findCol(['adress', 'plats'], 2);
+                    const cSerial = findCol(['serienummer', 'mätarnummer', 'mätare id'], 3);
+                    const cLast   = findCol(['senaste värde'], 5);
+                    const cAvg    = findCol(['genomsnittsvärde', 'genomsnitt'], 6);
+                    const cMax    = findCol(['maxvärde'], 7);
+                    const cInfo   = findCol(['aktiva händelser', 'infokod'], 11);
 
                     // Datum från filnamn (t.ex. 2026-06-04_export.xlsx)
                     let fileDate = new Date(file.lastModified);
@@ -298,11 +312,14 @@
                     };
 
                     const results = [];
-                    for (let i = 1; i < raw.length; i++) {
+                    // Starta från raden EFTER rubrikraden
+                    for (let i = headerRowIdx + 1; i < raw.length; i++) {
                         const row = raw[i];
                         const id   = (row[cSerial] || '').toString().trim();
                         const addr = (row[cAddr]   || '').toString().trim();
                         if (!id || !addr) continue;
+                        // Hoppa över rader som ser ut som rubriker (t.ex. extra header-rader)
+                        if (isNaN(Number(id)) && id.toLowerCase().includes('nummer')) continue;
 
                         results.push({
                             id, adress: addr,

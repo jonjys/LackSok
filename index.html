@@ -10,6 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root {
@@ -125,6 +127,69 @@
         .graph-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 700px; padding: 24px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
         .close-modal-btn { position: absolute; top: 16px; right: 20px; font-size: 24px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
         .close-modal-btn:hover { color: #fff; }
+
+        /* ── Sparklines ──────────────────────────────────────────────────────── */
+        .spark-cell { display:flex; align-items:center; justify-content:center; cursor:pointer; }
+        .spark-cell:hover polyline { stroke-width:2.5; }
+
+        /* ── Map modal ───────────────────────────────────────────────────────── */
+        .map-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:2000; justify-content:center; align-items:center; padding:20px; }
+        .map-modal-content { background:#121218; border:1px solid var(--border-color); border-radius:16px; width:100%; max-width:1060px; height:640px; padding:20px; position:relative; display:flex; flex-direction:column; gap:12px; box-shadow:0 10px 40px rgba(0,0,0,0.6); }
+        #leafletMap { flex:1; border-radius:10px; min-height:0; }
+        .map-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--text-muted); }
+        .map-legend-item { display:flex; align-items:center; gap:6px; }
+        .map-legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+
+        /* ── Daily summary bar ───────────────────────────────────────────────── */
+        .daily-bar { background:linear-gradient(135deg,#0c1118,#111827); border:1px solid #1e3a5f; border-radius:10px; padding:12px 20px; margin-bottom:18px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; font-size:13px; }
+        .daily-bar-label { color:var(--text-muted); font-weight:600; white-space:nowrap; }
+        .daily-delta { display:inline-flex; align-items:center; gap:5px; }
+        .d-up   { color:#f87171; font-weight:800; }
+        .d-dn   { color:#34d399; font-weight:800; }
+        .d-eq   { color:#a0a0ab; }
+        .daily-date { margin-left:auto; color:#555; font-size:11px; }
+
+        /* ── Mobile ──────────────────────────────────────────────────────────── */
+        @media (max-width: 768px) {
+            body { padding:14px; }
+            .app-header { flex-direction:column; gap:12px; }
+            .app-title-area h1 { font-size:22px; }
+            .btn-group { flex-direction:column; }
+            .btn-group button { justify-content:center; padding:14px 20px; font-size:15px; border-radius:12px; }
+            .stats-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
+            .stat-card .num { font-size:24px; }
+            .stat-card { padding:14px; }
+            .search-input, .filter-select { width:100%; }
+            .toolbar-left { flex-direction:column; align-items:stretch; }
+            .results-container { padding:6px; overflow-x:auto; }
+            th, td { padding:10px 6px; font-size:12px; }
+            .section-title { font-size:14px; }
+            .map-modal-content { height:90vh; }
+        }
+
+        /* ── Print ───────────────────────────────────────────────────────────── */
+        @media print {
+            body { background:#fff; color:#000; padding:18px; }
+            .upload-section, .toolbar, .file-grid-container, .accordion-trigger,
+            .noise-accordion-box, .graph-modal, .map-modal,
+            .action-btn, .copy-btn, .category-select-compact,
+            #exportBtn, #clearBtn, #mapBtn, #printBtn, .no-print { display:none !important; }
+            .app-header { border-bottom:2px solid #000; margin-bottom:14px; }
+            .app-title-area h1 { -webkit-text-fill-color:#000; font-size:22px; background:none; color:#000; }
+            .stat-card { background:#fff; border:1px solid #ccc; }
+            .stat-card .num, .stat-card .label { color:#000; }
+            .results-container { box-shadow:none; border:1px solid #ccc; background:#fff; }
+            table { font-size:11px; }
+            th { color:#333; border-bottom:2px solid #000; }
+            td { border-bottom:1px solid #ddd; color:#000; }
+            tr { page-break-inside:avoid; }
+            .badge { background:#eee !important; color:#000 !important; border:1px solid #ccc; }
+            .section-title { color:#000; font-size:14px; }
+            .insight-box { border:1px solid #ccc; background:#f9f9f9; color:#000; }
+            .daily-bar { background:#f9f9f9; border:1px solid #ccc; color:#000; }
+            .trend-up, .trend-down { color:#000 !important; }
+            @page { margin:1.5cm; }
+        }
     </style>
 </head>
 <body>
@@ -140,7 +205,9 @@
         <div class="btn-group">
             <button id="uploadBtn">📁 Välj Mätarfiler (Excel/CSV/PDF)</button>
             <button id="analyzeBtn" class="secondary">⚡ Kör Morgonanalys</button>
+            <button id="mapBtn" class="secondary">🗺️ Visa Karta</button>
             <button id="exportBtn" class="secondary">📥 Exportera Rapport</button>
+            <button id="printBtn" class="secondary">🖨️ Skriv ut</button>
             <button id="clearBtn" class="secondary danger">🗑️ Nollställ</button>
             <input type="file" id="fileInput" multiple style="display: none;" accept=".xlsx, .xls, .csv, .pdf">
         </div>
@@ -156,6 +223,7 @@
 
     <div id="results" style="display: none;">
         <div class="stats-grid" id="statsGrid"></div>
+        <div id="dailySummaryBar" style="display:none;" class="daily-bar"></div>
         <div class="insight-box" id="insightBox"></div>
 
         <div class="toolbar">
@@ -218,6 +286,24 @@
         </div>
     </div>
 
+    <div class="map-modal" id="mapModal">
+        <div class="map-modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                <h3 style="font-size:17px; font-weight:800;">🗺️ Mätarkarta — Botkyrka distributionsnät</h3>
+                <button class="close-modal-btn" style="position:static;" onclick="document.getElementById('mapModal').style.display='none'">&times;</button>
+            </div>
+            <div id="mapStatusText" style="font-size:12px; color:var(--text-muted); flex-shrink:0;">Kör analys och öppna kartan för att geokoda mätare.</div>
+            <div id="leafletMap"></div>
+            <div class="map-legend" style="flex-shrink:0;">
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#dc2626;"></div>Akut Huvudledning</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#f87171;"></div>Aktiv läcka</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#f97316;"></div>Misstänkt</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#c084fc;"></div>Säsongsanalys krävs</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#38bdf8;"></div>Störning/Pump</div>
+            </div>
+        </div>
+    </div>
+
     <div class="graph-modal" id="graphModal">
         <div class="graph-modal-content">
             <button class="close-modal-btn" id="closeModalBtn">&times;</button>
@@ -245,6 +331,9 @@
         let currentSort = { column: 'change', direction: 'desc' };
         let currentAreaFilter = 'all';
         let currentCategoryFilter = 'all';
+        let geocache = new Map();
+        let leafletMap = null;
+        let mapMarkers = [];
 
         // Kategorier som sorteras till bottenpanelen (aldrig i huvudlistan)
         const BOTTOM_PANEL_CATS = new Set(['storing', 'leak_code', 'lagad']);
@@ -643,6 +732,7 @@
             }
             document.getElementById('results').style.display = 'block';
             displayResults();
+            saveDailySnapshot();
         }
 
         // ── Rendering ─────────────────────────────────────────────────────────────
@@ -730,7 +820,7 @@
                         <td><span class="badge" style="background:#1f1f2e; color:#fff;">${r.area}</span></td>
                         <td><span class="${trendClass}">${sign}${r.change.toFixed(1)}%</span></td>
                         <td><strong>${r.max} dB</strong></td>
-                        <td style="text-align:center;"><button class="copy-btn" style="padding:4px 8px;" onclick="openTrendGraph('${r.id}')">📈</button></td>
+                        <td class="spark-cell" onclick="openTrendGraph('${r.id}')">${createSparkline(r.history)}</td>
                     `;
                     tbody.appendChild(tr);
                 }
@@ -767,6 +857,8 @@
                 </div>
             `;
 
+            renderDailySummaryBar(counts);
+
             const insight = document.getElementById('insightBox');
             if (counts.extreme > 0) {
                 insight.innerHTML = `🚨 <strong>AKUT:</strong> ${counts.extreme} mätare klassad som <strong>Akut Huvudledning</strong> — åtgärd krävs omgående!`;
@@ -794,6 +886,7 @@
                 JSON.parse(localStorage.getItem('lacksok_fav_v3')     || '[]').forEach(id      => interestingIds.add(id));
                 JSON.parse(localStorage.getItem('lacksok_pro_cats')   || '[]').forEach(([k,v]) => userCategories.set(k, v));
                 JSON.parse(localStorage.getItem('lacksok_pro_hidden') || '[]').forEach(id      => ignoredIds.add(id));
+                JSON.parse(localStorage.getItem('lacksok_geocache')   || '[]').forEach(([k,v]) => geocache.set(k, v));
             } catch(e) {}
         }
 
@@ -987,7 +1080,6 @@
         document.getElementById('areaFilter').onchange = e => { currentAreaFilter = e.target.value; displayResults(); };
 
         document.getElementById('closeModalBtn').onclick = () => { document.getElementById('graphModal').style.display = 'none'; };
-        window.onclick = e => { if (e.target === document.getElementById('graphModal')) document.getElementById('graphModal').style.display = 'none'; };
 
         document.getElementById('clearBtn').onclick = () => {
             uploadedFiles = []; currentResults = [];
@@ -997,6 +1089,146 @@
             document.getElementById('results').style.display = 'none';
             document.getElementById('fileInput').value = '';
         };
+
+        // ── Sparkline ─────────────────────────────────────────────────────────────
+        function createSparkline(history, w = 80, h = 32) {
+            if (!history || history.length < 2) {
+                return `<svg width="${w}" height="${h}"><line x1="${w*.1}" y1="${h/2}" x2="${w*.9}" y2="${h/2}" stroke="#444" stroke-width="1" stroke-dasharray="3,2"/></svg>`;
+            }
+            const vals = history.map(x => x.value);
+            const mn = Math.min(...vals), mx = Math.max(...vals), rng = mx - mn || 1;
+            const pad = 4;
+            const pts = vals.map((v, i) => {
+                const px = pad + (i / (vals.length - 1)) * (w - 2 * pad);
+                const py = (h - pad) - ((v - mn) / rng) * (h - 2 * pad);
+                return `${px.toFixed(1)},${py.toFixed(1)}`;
+            }).join(' ');
+            const last = vals[vals.length - 1], prev = vals[vals.length - 2];
+            const col = last > prev + 2 ? '#f87171' : (last < prev - 2 ? '#34d399' : '#60a5fa');
+            const ep = pts.split(' ').pop(), [ex, ey] = ep.split(',');
+            return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;overflow:visible"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${ex}" cy="${ey}" r="3.5" fill="${col}"/></svg>`;
+        }
+
+        // ── Geocoding (Nominatim, 1 req/s, localStorage cache) ───────────────────
+        function saveGeoCache() {
+            try { localStorage.setItem('lacksok_geocache', JSON.stringify([...geocache.entries()])); } catch(e) {}
+        }
+
+        async function geocodeAddress(addr) {
+            const key = extractCleanAddressOnly(addr) + ', Botkyrka, Sverige';
+            if (geocache.has(key)) return geocache.get(key);
+            try {
+                await new Promise(r => setTimeout(r, 1150));
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(key)}&limit=1&countrycodes=se`, {
+                    headers: { 'User-Agent': 'LacksokPro/2.0 (Botkyrka VA-avdelning)' }
+                });
+                const data = await res.json();
+                const coords = data && data[0] ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) } : null;
+                geocache.set(key, coords);
+                saveGeoCache();
+                return coords;
+            } catch(e) {
+                geocache.set(key, null);
+                return null;
+            }
+        }
+
+        // ── Karta (Leaflet) ───────────────────────────────────────────────────────
+        document.getElementById('mapBtn').onclick = showMap;
+
+        async function showMap() {
+            if (!currentResults.length) {
+                document.getElementById('mapStatusText').textContent = 'Kör analys först.';
+                document.getElementById('mapModal').style.display = 'flex';
+                return;
+            }
+            document.getElementById('mapModal').style.display = 'flex';
+            await new Promise(r => setTimeout(r, 60));
+
+            if (!leafletMap) {
+                leafletMap = L.map('leafletMap').setView([59.25, 17.85], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                    maxZoom: 19
+                }).addTo(leafletMap);
+            } else {
+                mapMarkers.forEach(mk => leafletMap.removeLayer(mk));
+                mapMarkers = [];
+            }
+            leafletMap.invalidateSize();
+
+            const toPlot = currentResults.filter(r => !HIDDEN_CATS.has(r.category) && !ignoredIds.has(r.id));
+            const statusEl = document.getElementById('mapStatusText');
+
+            const cached = toPlot.filter(r => geocache.has(extractCleanAddressOnly(r.adress) + ', Botkyrka, Sverige'));
+            const uncached = toPlot.filter(r => !geocache.has(extractCleanAddressOnly(r.adress) + ', Botkyrka, Sverige'));
+            statusEl.textContent = `Laddar karta… ${cached.length} cachade, ${uncached.length} att geokoda (${uncached.length}s)`;
+
+            let done = 0;
+            for (const r of toPlot) {
+                const coords = await geocodeAddress(r.adress);
+                done++;
+                statusEl.textContent = `Geokoderar… ${done}/${toPlot.length}`;
+                if (coords) {
+                    const cat = categories[r.category] || categories.normal;
+                    const mk = L.circleMarker([coords.lat, coords.lng], {
+                        radius: 11, fillColor: cat.bg, color: '#fff',
+                        weight: 2.5, opacity: 1, fillOpacity: 0.88
+                    });
+                    const lastVal = r.history?.length ? r.history[r.history.length - 1].value : r.max;
+                    mk.bindPopup(`<div style="min-width:180px;"><strong style="font-size:14px;">${extractCleanAddressOnly(r.adress)}</strong><br><span style="color:${cat.bg};font-weight:700;">${cat.symbol} ${cat.label}</span><br>Senaste: <strong>${lastVal} dB</strong> | Max: <strong>${r.max} dB</strong><br><small style="color:#888;">${r.serienummer}</small>${r.memo ? `<br><span style="color:#2dd4bf;font-size:11px;">${r.memo}</span>` : ''}</div>`);
+                    mk.addTo(leafletMap);
+                    mapMarkers.push(mk);
+                }
+            }
+            statusEl.textContent = `✅ ${mapMarkers.length} av ${toPlot.length} mätare kartlagda`;
+            if (mapMarkers.length > 0) {
+                leafletMap.fitBounds(L.featureGroup(mapMarkers).getBounds().pad(0.18));
+            }
+        }
+
+        window.onclick = e => {
+            if (e.target === document.getElementById('graphModal')) document.getElementById('graphModal').style.display = 'none';
+            if (e.target === document.getElementById('mapModal'))   document.getElementById('mapModal').style.display = 'none';
+        };
+
+        // ── Dagssammanfattning ────────────────────────────────────────────────────
+        function saveDailySnapshot() {
+            if (!currentResults.length) return;
+            const snap = { date: new Date().toISOString().slice(0, 10) };
+            Object.keys(categories).forEach(k => snap[k] = 0);
+            currentResults.forEach(r => { if (snap[r.category] !== undefined) snap[r.category]++; });
+            try { localStorage.setItem('lacksok_daily_snapshot', JSON.stringify(snap)); } catch(e) {}
+        }
+
+        function getDailySnapshot() {
+            try { return JSON.parse(localStorage.getItem('lacksok_daily_snapshot') || 'null'); } catch(e) { return null; }
+        }
+
+        function renderDailySummaryBar(counts) {
+            const snap = getDailySnapshot();
+            const bar = document.getElementById('dailySummaryBar');
+            if (!snap || snap.date === new Date().toISOString().slice(0, 10)) { bar.style.display = 'none'; return; }
+
+            const diff = (key) => {
+                const d = (counts[key] || 0) - (snap[key] || 0);
+                if (d > 0) return `<span class="d-up">↑ +${d}</span>`;
+                if (d < 0) return `<span class="d-dn">↓ ${d}</span>`;
+                return `<span class="d-eq">±0</span>`;
+            };
+
+            bar.style.display = 'flex';
+            bar.innerHTML = `
+                <span class="daily-bar-label">📊 vs igår:</span>
+                <span class="daily-delta">🔴 Aktiva läckor: <strong>${(counts.extreme||0)+(counts.aktiv_lacka||0)}</strong> ${diff('extreme')} ${diff('aktiv_lacka')}</span>
+                <span class="daily-delta">🟠 Misstänkta: <strong>${counts.misstankt||0}</strong> ${diff('misstankt')}</span>
+                <span class="daily-delta">🟣 Säsong: <strong>${counts.ny_matare||0}</strong> ${diff('ny_matare')}</span>
+                <span class="daily-date">Senaste snapshot: ${snap.date}</span>
+            `;
+        }
+
+        // ── Utskrift ──────────────────────────────────────────────────────────────
+        document.getElementById('printBtn').onclick = () => window.print();
 
         // Ladda sparade val från föregående session
         loadPersistedState();

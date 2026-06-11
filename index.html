@@ -3,92 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma – Läcksök Pro v4.1</title>
+    <title>Karma – Läcksök Pro v5.0</title>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.mjs" type="module" id="pdfScript"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root {
-            --bg:      #08080b;
-            --card:    #111115;
-            --hover:   #18181f;
-            --border:  #1e1e28;
-            --muted:   #6b6b7b;
-            --text:    #f0f0f5;
-            --green:   #1db954;
-            --green2:  #1ed760;
-            --red:     #ef4444;
-            --orange:  #f97316;
-            --yellow:  #eab308;
-            --blue:    #38bdf8;
-            --purple:  #c084fc;
-            --teal:    #10b981;
-            --r: 12px;
+            --bg:     #08080b;
+            --card:   #111115;
+            --hover:  #18181f;
+            --border: #1e1e28;
+            --muted:  #6b6b7b;
+            --text:   #f0f0f5;
+            --green:  #1db954;
+            --red:    #ef4444;
+            --orange: #f97316;
+            --yellow: #eab308;
+            --blue:   #38bdf8;
+            --purple: #c084fc;
+            --teal:   #10b981;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-        code { font-family: 'SF Mono', 'Fira Code', monospace; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+            padding-bottom: 50px;
+        }
 
         /* ── TOPBAR ─────────────────────────────────────────────────── */
-        .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--card); position: sticky; top: 0; z-index: 100; gap: 16px; }
-        .topbar-brand { display: flex; align-items: center; gap: 12px; }
-        .topbar-brand h1 { font-size: 17px; font-weight: 800; letter-spacing: -0.3px; background: linear-gradient(90deg,#fff,#888); -webkit-background-clip:text; -webkit-text-fill-color:transparent; white-space: nowrap; }
-        .formula-chip { font-family: monospace; font-size: 12px; font-weight: 700; background: #1a2a1a; border: 1px solid #1db95444; color: var(--green); padding: 4px 10px; border-radius: 6px; white-space: nowrap; }
-        .topbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .topbar {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 10px 20px; border-bottom: 1px solid var(--border);
+            background: var(--card); position: sticky; top: 0; z-index: 100;
+        }
+        .brand { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+        .brand h1 {
+            font-size: 15px; font-weight: 800; white-space: nowrap;
+            background: linear-gradient(90deg,#fff,#888);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .formula-chip {
+            font-family: monospace; font-size: 11px; font-weight: 700;
+            background: #1a2a1a; border: 1px solid #1db95444; color: var(--green);
+            padding: 2px 7px; border-radius: 5px;
+        }
+        .v-badge {
+            font-size: 10px; font-weight: 800; background: var(--green);
+            color: #000; padding: 2px 6px; border-radius: 4px;
+        }
+        .subtitle {
+            font-size: 10px; color: var(--muted);
+            display: none;
+        }
+        @media (min-width: 960px) { .subtitle { display: inline; } }
+        .topbar-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
 
         /* ── BUTTONS ─────────────────────────────────────────────────── */
-        .btn { border: none; padding: 8px 18px; font-size: 12px; font-weight: 700; border-radius: 50px; cursor: pointer; transition: opacity 0.15s, transform 0.1s; white-space: nowrap; }
-        .btn:hover { opacity: 0.88; transform: scale(1.02); }
-        .btn-primary  { background: var(--green); color: #000; }
-        .btn-secondary{ background: transparent; border: 1px solid #333; color: var(--text); }
-        .btn-secondary:hover { background: var(--hover); }
-        .btn-danger   { background: #3a1010; border: 1px solid #7f1d1d; color: #fca5a5; }
-        .btn-icon     { padding: 8px 12px; }
+        .btn {
+            border: none; padding: 7px 13px; font-size: 11px; font-weight: 700;
+            border-radius: 50px; cursor: pointer; transition: opacity .15s, transform .1s;
+            white-space: nowrap;
+        }
+        .btn:hover { opacity: .85; transform: scale(1.02); }
+        .btn-green  { background: var(--green); color: #000; }
+        .btn-morning{ background: #2d1f00; border: 1px solid var(--orange); color: var(--orange); }
+        .btn-morning:hover { background: #3d2a00; }
+        .btn-map    { background: #0d2f45; border: 1px solid var(--blue); color: var(--blue); }
+        .btn-map:hover { background: #133d58; }
+        .btn-ghost  { background: transparent; border: 1px solid #333; color: var(--text); }
+        .btn-ghost:hover { background: var(--hover); }
+        .btn-danger { background: #280808; border: 1px solid #7f1d1d; color: #fca5a5; }
 
         /* ── FILE BAR ────────────────────────────────────────────────── */
-        .file-bar { background: #0c0c10; border-bottom: 1px solid var(--border); padding: 10px 24px; display: flex; flex-direction: column; gap: 8px; }
-        .file-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-        .file-chip  { background: var(--hover); border: 1px solid var(--border); color: var(--muted); font-size: 11px; padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 4px; }
-        .prog-track { background: #1a1a22; border-radius: 20px; height: 5px; overflow: hidden; width: 100%; }
-        .prog-fill  { background: var(--green); height: 5px; border-radius: 20px; transition: width 0.3s; width: 0%; }
-        .prog-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+        .file-bar {
+            background: #090910; border-bottom: 1px solid var(--border);
+            padding: 7px 20px; display: flex; flex-direction: column; gap: 5px;
+        }
+        .file-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+        .file-chip {
+            background: var(--hover); border: 1px solid var(--border); color: var(--muted);
+            font-size: 10px; padding: 2px 7px; border-radius: 4px;
+        }
+        .prog-track { background: #1a1a22; border-radius: 20px; height: 4px; overflow: hidden; }
+        .prog-fill  { background: var(--green); height: 4px; border-radius: 20px; transition: width .3s; width: 0%; }
+        .prog-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
 
         /* ── CONTROL BAR ─────────────────────────────────────────────── */
-        .control-bar { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; background: var(--card); }
-        .stat-row { display: flex; flex-wrap: wrap; gap: 10px; }
-        .stat-chip { background: var(--hover); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 16px; cursor: pointer; transition: border-color 0.15s; display: flex; flex-direction: column; gap: 2px; min-width: 100px; }
+        .control-bar {
+            padding: 10px 20px; border-bottom: 1px solid var(--border);
+            background: var(--card); display: flex; flex-direction: column; gap: 8px;
+        }
+        .stat-row { display: flex; flex-wrap: wrap; gap: 7px; }
+        .stat-chip {
+            background: var(--hover); border: 1px solid var(--border); border-radius: 9px;
+            padding: 7px 12px; cursor: pointer; transition: border-color .15s;
+            display: flex; flex-direction: column; gap: 1px; min-width: 85px;
+        }
         .stat-chip:hover { border-color: #444; }
         .stat-chip.active { border-color: var(--green); background: #0f1f10; }
-        .stat-chip .n { font-size: 22px; font-weight: 800; line-height: 1; }
-        .stat-chip .l { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+        .stat-chip .n { font-size: 18px; font-weight: 800; line-height: 1; }
+        .stat-chip .l { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
         .stat-chip.c-red    { border-left: 3px solid var(--red);    }
         .stat-chip.c-orange { border-left: 3px solid var(--orange); }
         .stat-chip.c-yellow { border-left: 3px solid var(--yellow); }
-        .stat-chip.c-teal   { border-left: 3px solid var(--teal);   }
-        .stat-chip.c-white  { border-left: 3px solid #fff;          }
+        .stat-chip.c-white  { border-left: 3px solid #555;          }
 
-        .filter-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .area-pills { display: flex; flex-wrap: wrap; gap: 6px; }
-        .pill { background: var(--hover); border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 50px; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.15s; }
+        .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .area-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+        .pill {
+            background: var(--hover); border: 1px solid var(--border); color: var(--muted);
+            padding: 4px 11px; border-radius: 50px; font-size: 11px; font-weight: 700;
+            cursor: pointer; transition: .15s;
+        }
         .pill:hover { color: var(--text); border-color: #555; }
         .pill.active { background: var(--green); color: #000; border-color: var(--green); }
-        .search-group { display: flex; gap: 8px; margin-left: auto; }
-        .search-input { background: var(--hover); border: 1px solid var(--border); color: var(--text); padding: 7px 16px; border-radius: 50px; font-size: 12px; width: 220px; outline: none; }
+        .search-group { display: flex; gap: 6px; margin-left: auto; }
+        .search-input {
+            background: var(--hover); border: 1px solid var(--border); color: var(--text);
+            padding: 5px 13px; border-radius: 50px; font-size: 11px; width: 190px; outline: none;
+        }
         .search-input::placeholder { color: var(--muted); }
-        .cat-select { background: var(--hover); border: 1px solid var(--border); color: var(--text); padding: 7px 14px; border-radius: 50px; font-size: 12px; cursor: pointer; outline: none; }
+        .cat-select {
+            background: var(--hover); border: 1px solid var(--border); color: var(--text);
+            padding: 5px 10px; border-radius: 50px; font-size: 11px; cursor: pointer; outline: none;
+        }
 
         /* ── TABLE ───────────────────────────────────────────────────── */
-        .table-wrap { padding: 0 24px 40px; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        thead th { color: var(--muted); font-size: 10px; text-transform: uppercase; padding: 10px 12px; border-bottom: 2px solid var(--border); font-weight: 800; letter-spacing: 0.5px; cursor: pointer; user-select: none; white-space: nowrap; }
+        .table-wrap { padding: 0 20px 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        thead th {
+            color: var(--muted); font-size: 9px; text-transform: uppercase;
+            padding: 7px 9px; border-bottom: 2px solid var(--border);
+            font-weight: 800; letter-spacing: .5px; cursor: pointer;
+            user-select: none; white-space: nowrap;
+        }
         thead th:hover { color: var(--text); }
+        thead th.no-sort { cursor: default; }
         thead th.sort-asc::after  { content: ' ▲'; color: var(--green); }
         thead th.sort-desc::after { content: ' ▼'; color: var(--green); }
-        td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
-        tr:hover td { background: rgba(255,255,255,0.015); }
+        thead th.th-avv { color: var(--green); font-weight: 900; font-size: 10px; }
+        td {
+            padding: 7px 9px; border-bottom: 1px solid var(--border);
+            font-size: 11px; vertical-align: middle;
+        }
+        tr:hover td { background: rgba(255,255,255,.015); }
         tr:last-child td { border-bottom: none; }
+        tr.hidden-row { opacity: .3; }
 
         .row-aktiv_lacka td:first-child { border-left: 3px solid var(--red);    }
         .row-kund_lacka  td:first-child { border-left: 3px solid var(--orange); }
@@ -96,48 +159,114 @@
         .row-lagad       td:first-child { border-left: 3px solid var(--teal);   }
         .row-varmepanna  td:first-child { border-left: 3px solid var(--blue);   }
         .row-storning    td:first-child { border-left: 3px solid var(--purple); }
-        .row-normal      td:first-child { border-left: 3px solid #333;          }
+        .row-normal      td:first-child { border-left: 3px solid #2a2a35;       }
 
-        .addr { font-weight: 700; font-size: 13px; }
-        .memo { font-size: 10px; color: #2dd4bf; background: #0f2020; border: 1px solid #1a3030; padding: 2px 6px; border-radius: 4px; margin-top: 3px; display: inline-block; }
-        .badge-area { background: #1a1a28; color: #888; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
-        .cat-sel { background: #14141a; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 11px; outline: none; cursor: pointer; }
-        .copy-btn { background: #1a1a24; border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; transition: 0.15s; }
+        .icon-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 15px; padding: 1px 3px; opacity: .3; transition: opacity .15s;
+            line-height: 1; display: inline-block;
+        }
+        .icon-btn:hover, .icon-btn.on { opacity: 1; }
+        .addr { font-weight: 700; font-size: 12px; }
+        .memo { font-size: 9px; color: #2dd4bf; background: #0a1e1e; border: 1px solid #163030; padding: 1px 5px; border-radius: 3px; margin-top: 2px; display: inline-block; }
+        .badge-area { background: #1a1a28; color: #777; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
+        .cat-sel { background: #14141a; color: var(--text); border: 1px solid var(--border); border-radius: 5px; padding: 3px 5px; font-size: 10px; outline: none; cursor: pointer; }
+        .copy-btn { background: #1a1a24; border: 1px solid var(--border); color: var(--muted); padding: 2px 7px; border-radius: 4px; font-size: 10px; cursor: pointer; transition: .15s; }
         .copy-btn:hover { background: var(--green); color: #000; border-color: var(--green); }
 
-        .ratio-x  { color: var(--red);    font-weight: 800; font-size: 13px; }
-        .ratio-h  { color: var(--orange); font-weight: 700; }
-        .ratio-m  { color: var(--yellow); font-weight: 600; }
-        .ratio-l  { color: var(--muted); }
+        .ratio-x { color: var(--red);    font-weight: 800; font-size: 13px; }
+        .ratio-h { color: var(--orange); font-weight: 700; }
+        .ratio-m { color: var(--yellow); font-weight: 600; }
+        .ratio-l { color: var(--muted); }
 
-        .empty-state { padding: 60px 24px; text-align: center; color: var(--muted); }
-        .empty-state .big { font-size: 48px; margin-bottom: 12px; }
-        .empty-state p { font-size: 14px; }
+        .empty-state { padding: 60px 20px; text-align: center; color: var(--muted); }
+        .empty-state .big { font-size: 44px; margin-bottom: 10px; }
+        .empty-state p { font-size: 13px; line-height: 1.7; }
 
-        /* ── MODAL ───────────────────────────────────────────────────── */
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 500; align-items: center; justify-content: center; padding: 24px; }
+        /* ── FOOTER ──────────────────────────────────────────────────── */
+        .footer {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
+            background: var(--card); border-top: 1px solid var(--border);
+            padding: 8px 20px; display: flex; align-items: center; gap: 14px;
+            font-size: 11px; color: var(--muted);
+        }
+        .show-hidden-btn {
+            background: var(--hover); border: 1px solid var(--border); color: var(--muted);
+            padding: 2px 9px; border-radius: 4px; font-size: 10px; cursor: pointer;
+        }
+        .show-hidden-btn:hover, .show-hidden-btn.on {
+            border-color: var(--blue); color: var(--blue); background: #0d2030;
+        }
+        .footer-right { margin-left: auto; font-size: 9px; color: #2a2a35; }
+
+        /* ── MAP OVERLAY ─────────────────────────────────────────────── */
+        .map-overlay {
+            display: none; position: fixed; inset: 0; z-index: 300;
+            flex-direction: column; background: var(--card);
+        }
+        .map-overlay.open { display: flex; }
+        .map-topbar {
+            flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+            padding: 9px 20px; border-bottom: 1px solid var(--border);
+        }
+        .map-topbar h3 { font-size: 13px; font-weight: 800; }
+        .map-status { font-size: 10px; color: var(--muted); }
+        #mapContainer { flex: 1; min-height: 0; }
+        #leafletMap { width: 100%; height: 100%; }
+
+        /* ── TREND MODAL ─────────────────────────────────────────────── */
+        .overlay {
+            display: none; position: fixed; inset: 0; z-index: 500;
+            background: rgba(0,0,0,.8); backdrop-filter: blur(6px);
+            align-items: center; justify-content: center; padding: 20px;
+        }
         .overlay.open { display: flex; }
-        .modal { background: #0f0f15; border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 720px; padding: 24px; position: relative; }
-        .modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-        .modal-hdr h3 { font-size: 15px; font-weight: 800; }
-        .close-btn { background: transparent; border: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; }
+        .modal {
+            background: #0f0f15; border: 1px solid var(--border); border-radius: 14px;
+            width: 100%; max-width: 680px; padding: 20px; position: relative;
+        }
+        .modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .modal-hdr h3 { font-size: 14px; font-weight: 800; }
+        .close-btn { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; }
         .close-btn:hover { color: var(--text); }
-        .chart-wrap { height: 300px; position: relative; }
+        .chart-wrap { height: 270px; position: relative; }
+
+        /* ── PRINT ───────────────────────────────────────────────────── */
+        @media print {
+            .topbar, .file-bar, .control-bar, .footer,
+            .overlay, .map-overlay { display: none !important; }
+            body { background: #fff; color: #000; padding-bottom: 0; }
+            .table-wrap { padding: 0; }
+            table { font-size: 10px; }
+            thead th { background: #f0f0f0; color: #333; border-color: #ccc; }
+            td { border-color: #e5e5e5; }
+            .badge-area { background: #eee; color: #555; }
+            .addr { color: #000; }
+            .cat-sel, .copy-btn, .icon-btn { display: none !important; }
+            .ratio-x, .ratio-h, .ratio-m { color: #000; }
+            .row-aktiv_lacka td:first-child { border-left: 3px solid #cc0000; }
+            .row-kund_lacka  td:first-child { border-left: 3px solid #cc6600; }
+            .row-misstankt   td:first-child { border-left: 3px solid #999900; }
+        }
     </style>
 </head>
 <body>
 
 <!-- ── TOPBAR ────────────────────────────────────────────────────── -->
 <div class="topbar">
-    <div class="topbar-brand">
+    <div class="brand">
         <h1>◆ KARMA LÄCKSÖK PRO</h1>
         <span class="formula-chip">=(E/F)−1</span>
-        <span style="font-size:10px;color:var(--muted);display:none;" id="versionLabel">v4.1</span>
+        <span class="v-badge">v5.0</span>
+        <span class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · v5.0</span>
     </div>
-    <div class="topbar-actions">
-        <button class="btn btn-primary" id="uploadBtn">📁 Ladda filer</button>
-        <button class="btn btn-secondary" id="exportBtn">📥 Exportera</button>
-        <button class="btn btn-danger btn-icon" id="clearBtn" title="Rensa allt">🗑️</button>
+    <div class="topbar-btns">
+        <button class="btn btn-green"   id="uploadBtn">📁 Välj Mätarfiler (Excel/CSV/PDF)</button>
+        <button class="btn btn-morning" id="morningBtn">🌅 Kör Morgonanalys</button>
+        <button class="btn btn-map"     id="mapBtn">🗺️ Visa Karta</button>
+        <button class="btn btn-ghost"   id="exportBtn">📥 Exportera Rapport</button>
+        <button class="btn btn-ghost"   id="printBtn">🖨️ Skriv ut</button>
+        <button class="btn btn-danger"  id="clearBtn">🗑️ Nollställ</button>
         <input type="file" id="fileInput" multiple style="display:none;" accept=".xlsx,.xls,.csv,.pdf">
     </div>
 </div>
@@ -180,30 +309,47 @@
     </div>
 </div>
 
-<!-- ── TABLE ────────────────────────────────────────────────────── -->
+<!-- ── TABLE ─────────────────────────────────────────────────────── -->
 <div id="tableWrap">
     <div class="empty-state" id="emptyState">
         <div class="big">📂</div>
-        <p>Ladda upp Excel- eller PDF-filer med Kamstrup-mätardata.<br>Analysen körs automatiskt och sorterar på <strong>(E/F)−1</strong>.</p>
+        <p>Ladda upp Excel- eller PDF-filer med Kamstrup-mätardata.<br>
+        Analysen körs automatiskt och sorterar på <strong>(E/F)−1</strong>.</p>
     </div>
     <div class="table-wrap" id="tableContainer" style="display:none;">
         <table>
-            <thead>
-                <tr>
-                    <th data-col="adress">Adress</th>
-                    <th data-col="id">Serienummer</th>
-                    <th data-col="area">Område</th>
-                    <th data-col="lastVal" style="text-align:right;">E · Senaste</th>
-                    <th data-col="avgVal"  style="text-align:right;">F · Genomsnitt</th>
-                    <th data-col="ratio"   style="text-align:right;">(E/F)−1</th>
-                    <th>Händelse</th>
-                    <th>Kategori</th>
-                    <th style="text-align:center;width:44px;"></th>
-                </tr>
-            </thead>
+            <thead><tr>
+                <th class="no-sort" style="width:34px;">Märk</th>
+                <th class="no-sort" style="width:34px;">Dölj</th>
+                <th class="no-sort">Klassificering</th>
+                <th data-col="adress">Adress / Fastighet</th>
+                <th class="no-sort" style="width:56px;">Urklipp</th>
+                <th data-col="id">Mätarnummer</th>
+                <th data-col="area">Kommundel</th>
+                <th data-col="ratio" class="th-avv" style="text-align:right;">AVVIKELSE (E/F−1)</th>
+                <th data-col="maxVal" style="text-align:right;">Maxavläsning</th>
+                <th class="no-sort" style="text-align:center;width:44px;">Trend</th>
+            </tr></thead>
             <tbody id="tableBody"></tbody>
         </table>
     </div>
+</div>
+
+<!-- ── FOOTER ────────────────────────────────────────────────────── -->
+<div class="footer" id="footer" style="display:none;">
+    <span>Gömda — Störningar, Värmepumpar, LEAK-larm &amp; Lagade (<span id="hiddenCount">0</span> st dolda)</span>
+    <button class="show-hidden-btn" id="showHiddenBtn">Visa dolda</button>
+    <div class="footer-right">=(E/F)−1 · Karma v5.0</div>
+</div>
+
+<!-- ── MAP OVERLAY ───────────────────────────────────────────────── -->
+<div class="map-overlay" id="mapOverlay">
+    <div class="map-topbar">
+        <h3>🗺️ Karta – Mätarpositioner</h3>
+        <span class="map-status" id="mapStatus"></span>
+        <button class="btn btn-ghost" id="closeMapBtn" style="margin-left:auto;">✕ Stäng karta</button>
+    </div>
+    <div id="mapContainer"><div id="leafletMap"></div></div>
 </div>
 
 <!-- ── TREND MODAL ───────────────────────────────────────────────── -->
@@ -218,41 +364,46 @@
 </div>
 
 <script>
-// ── STATE ──────────────────────────────────────────────────────────────────
-let uploadedFiles  = [];
-let currentResults = [];
-let savedCategories = JSON.parse(localStorage.getItem('lacksok_cats') || '{}');
+// ── STATE ─────────────────────────────────────────────────────────────────
+let uploadedFiles   = [];
+let currentResults  = [];
+let savedCategories = JSON.parse(localStorage.getItem('lacksok_cats')   || '{}');
+let markedIds       = new Set(JSON.parse(localStorage.getItem('lacksok_marks')  || '[]'));
+let hiddenIds       = new Set(JSON.parse(localStorage.getItem('lacksok_hidden') || '[]'));
+let geoCache        = JSON.parse(localStorage.getItem('lacksok_geo')    || '{}');
+let showHidden      = false;
 let sortCol = 'ratio';
 let sortDir = 'desc';
 let areaFilter = 'alla';
 let catFilter  = 'alla';
 let chartInst  = null;
+let leafMap    = null;
 let pdfLib     = null;
 
-// Load PDF.js dynamically (ES module)
-import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.mjs').then(m => {
-    pdfLib = m;
-    pdfLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.mjs';
-}).catch(() => { /* PDF support unavailable */ });
+import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.mjs')
+    .then(m => {
+        pdfLib = m;
+        pdfLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.mjs';
+    }).catch(() => {});
 
-// ── KÄNDA FÄLTÄRENDEN ──────────────────────────────────────────────────────
+// ── KUNSKAPSBAS ───────────────────────────────────────────────────────────
 const KB = {
     "ALICE TEGNÉRS VÄG 23":  { cat:"varmepanna",  memo:"🔥 Värmepanna – bekräftat." },
     "ALICE TEGNERSVÄG 23":   { cat:"varmepanna",  memo:"🔥 Värmepanna – bekräftat." },
-    "BROÄNGSVÄGEN 22":       { cat:"lagad",        memo:"✅ Lagad – historisk läcka." },
-    "VATTRAVÄGEN 8":         { cat:"aktiv_lacka",  memo:"🚨 Aktivt – driften undersöker." },
-    "LAXVÄGEN 8":            { cat:"aktiv_lacka",  memo:"📋 Kunds sida. Skickat till Jimmy." },
-    "MALMSJÖVÄGEN 25":       { cat:"aktiv_lacka",  memo:"✔ Kunds sida – KUND INFORMERAD." },
-    "LINDHOVSVÄGEN 3":       { cat:"aktiv_lacka",  memo:"📋 Gemensam servis 3/5/7." },
-    "LINDHOVSVÄGEN 5":       { cat:"aktiv_lacka",  memo:"📋 Gemensam servis 3/5/7." },
-    "LINDHOVSVÄGEN 7":       { cat:"aktiv_lacka",  memo:"📋 Gemensam servis 3/5/7." },
-    "NIBBLEBACKEN 40":       { cat:"aktiv_lacka",  memo:"🚨 VÅR SIDA (KOMMUNEN)." },
-    "DALKÄRRSVÄGEN 11":      { cat:"lagad",        memo:"✅ Lagad – servisledning." },
-    "ENGWALLS VÄG 13":       { cat:"lagad",        memo:"✅ Lagad – SV till kund." },
-    "STORVRETSVÄGEN 97":     { cat:"lagad",        memo:"✅ Lagad – huvudledning." },
-    "LÖVHOLMENVÄGEN 15":     { cat:"lagad",        memo:"✅ Lagad – huvudledning." },
-    "JAKTVÄGEN 2":           { cat:"lagad",        memo:"✅ Lagad – huvudledning." }
+    "BROÄNGSVÄGEN 22":       { cat:"lagad",       memo:"✅ Lagad – historisk läcka." },
+    "VATTRAVÄGEN 8":         { cat:"aktiv_lacka", memo:"🚨 Aktivt – driften undersöker." },
+    "LAXVÄGEN 8":            { cat:"aktiv_lacka", memo:"📋 Kunds sida. Skickat till Jimmy." },
+    "MALMSJÖVÄGEN 25":       { cat:"aktiv_lacka", memo:"✔ Kunds sida – KUND INFORMERAD." },
+    "LINDHOVSVÄGEN 3":       { cat:"aktiv_lacka", memo:"📋 Gemensam servis 3/5/7." },
+    "LINDHOVSVÄGEN 5":       { cat:"aktiv_lacka", memo:"📋 Gemensam servis 3/5/7." },
+    "LINDHOVSVÄGEN 7":       { cat:"aktiv_lacka", memo:"📋 Gemensam servis 3/5/7." },
+    "NIBBLEBACKEN 40":       { cat:"aktiv_lacka", memo:"🚨 VÅR SIDA (KOMMUNEN)." },
+    "DALKÄRRSVÄGEN 11":      { cat:"lagad",       memo:"✅ Lagad – servisledning." },
+    "ENGWALLS VÄG 13":       { cat:"lagad",       memo:"✅ Lagad – SV till kund." },
+    "STORVRETSVÄGEN 97":     { cat:"lagad",       memo:"✅ Lagad – huvudledning." },
+    "LÖVHOLMENVÄGEN 15":     { cat:"lagad",       memo:"✅ Lagad – huvudledning." },
+    "JAKTVÄGEN 2":           { cat:"lagad",       memo:"✅ Lagad – huvudledning." }
 };
 
 const CATS = {
@@ -265,8 +416,14 @@ const CATS = {
     normal:      { label:'Normal',         sym:'⚪', cl:'c-white'   }
 };
 
-// ── HJÄLPFUNKTIONER ────────────────────────────────────────────────────────
-const cleanAddr = a => (!a ? '' : a.toString().replace(/[\r\n]+/g,' ')
+const CAT_MAP_COLOR = {
+    aktiv_lacka:'#ef4444', kund_lacka:'#f97316', misstankt:'#eab308',
+    lagad:'#10b981', varmepanna:'#38bdf8', storning:'#c084fc', normal:'#555'
+};
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+const cleanAddr = a => (!a ? '' : a.toString()
+    .replace(/[\r\n]+/g,' ')
     .replace(/\b(TUMBA|TULLINGE|NORSBORG|UTTRAN|GRÖDINGE|\d{3}\s?\d{2})\b/gi,'')
     .trim().replace(/\s+/g,' ').toUpperCase());
 
@@ -287,7 +444,7 @@ const fmtRatio = (r, avg) => {
     if (avg <= 0) return { text:'—', cls:'ratio-l' };
     const p = Math.round(r * 100);
     const s = (p > 0 ? '+' : '') + p + '%';
-    return { text: s, cls: r>5?'ratio-x': r>1?'ratio-h': r>0.3?'ratio-m':'ratio-l' };
+    return { text:s, cls: r>5?'ratio-x': r>1?'ratio-h': r>0.3?'ratio-m':'ratio-l' };
 };
 
 const fileDateFromName = (name, mod) => {
@@ -295,22 +452,22 @@ const fileDateFromName = (name, mod) => {
     return m ? new Date(m[1], m[2]-1, m[3]) : new Date(mod);
 };
 
-// ── KLASSIFICERING ─────────────────────────────────────────────────────────
+// ── KLASSIFICERING ────────────────────────────────────────────────────────
 function classify(ratio, infokod, cleanKey, serial) {
     if (savedCategories[serial]) return savedCategories[serial];
     const kb = KB[cleanKey];
     if (kb) return kb.cat;
     const info = (infokod||'').toUpperCase();
-    if (info.includes('LÄCK') || info.includes('LEAK'))                       return 'aktiv_lacka';
+    if (info.includes('LÄCK') || info.includes('LEAK'))                     return 'aktiv_lacka';
     if (info.includes('EJ FASTSTÄLLT') || info.includes('ANNAT BRUS') ||
-        info.includes('BRUS') || info.includes('STÖRN'))                      return 'storning';
+        info.includes('BRUS') || info.includes('STÖRN'))                    return 'storning';
     if (ratio > 5)   return 'aktiv_lacka';
     if (ratio > 1)   return 'misstankt';
     if (ratio > 0.3) return 'kund_lacka';
     return 'normal';
 }
 
-// ── EXCEL / CSV PARSER ─────────────────────────────────────────────────────
+// ── EXCEL / CSV PARSER ────────────────────────────────────────────────────
 function parseExcel(file) {
     return new Promise((res, rej) => {
         const rdr = new FileReader();
@@ -326,7 +483,7 @@ function parseExcel(file) {
                     if (j.includes('adress') && j.includes('serienummer')) { hdrIdx = i; break; }
                 }
                 const hdr = raw[hdrIdx].map(h=>(h||'').toString().toLowerCase().trim());
-                const fc  = (terms, fb) => { for(const t of terms){ const i=hdr.findIndex(h=>h.includes(t)); if(i!==-1)return i; } return fb; };
+                const fc  = (terms, fb) => { for (const t of terms) { const i = hdr.findIndex(h=>h.includes(t)); if (i!==-1) return i; } return fb; };
 
                 const cA = fc(['adress','plats'], 2);
                 const cS = fc(['serienummer','mätarnummer'], 3);
@@ -343,9 +500,12 @@ function parseExcel(file) {
                     const adr = (row[cA]||'').toString().trim();
                     if (!id || !adr) continue;
                     if (isNaN(Number(id)) && id.toLowerCase().includes('nummer')) continue;
-                    out.push({ id, adress:adr, value:toNum(row[cE]), avgVal:toNum(row[cF]),
-                        maxVal:toNum(row[cG])||toNum(row[cE]), infokod:(row[cI]||'').toString().trim(),
-                        area:getArea(adr), fileDate:fd });
+                    out.push({
+                        id, adress:adr, value:toNum(row[cE]), avgVal:toNum(row[cF]),
+                        maxVal:toNum(row[cG])||toNum(row[cE]),
+                        infokod:(row[cI]||'').toString().trim(),
+                        area:getArea(adr), fileDate:fd
+                    });
                 }
                 res(out);
             } catch(err) { rej(err); }
@@ -354,17 +514,13 @@ function parseExcel(file) {
     });
 }
 
-// ── PDF PARSER (positions-baserad) ─────────────────────────────────────────
-// Läser Kamstrup PDF-exporter genom att gruppera textelement på x/y-positioner
-// och matcha kolumner mot rubrikradens x-koordinater.
+// ── PDF PARSER (positions-baserad) ────────────────────────────────────────
 async function parsePDF(file) {
     if (!pdfLib) return [];
     try {
         const buf = await file.arrayBuffer();
         const pdf = await pdfLib.getDocument({ data: buf }).promise;
         const fd  = fileDateFromName(file.name, file.lastModified);
-
-        // Samla alla textelement med position
         const allItems = [];
         for (let p = 1; p <= pdf.numPages; p++) {
             const page    = await pdf.getPage(p);
@@ -378,8 +534,6 @@ async function parsePDF(file) {
                 });
             });
         }
-
-        // Gruppera i rader baserat på y-position (tolerans 4px)
         const rowMap = new Map();
         allItems.forEach(it => {
             const key = Math.round(it.y / 4) * 4;
@@ -390,21 +544,19 @@ async function parsePDF(file) {
             .map(cells => cells.sort((a,b)=>a.x-b.x))
             .sort((a,b) => a[0].y - b[0].y);
 
-        // Hitta rubrikrad och kartlägg kolumn-x-positioner
         let hdrIdx = -1, cols = {};
         for (let i = 0; i < Math.min(40, rows.length); i++) {
-            const texts = rows[i].map(c=>c.text.toLowerCase());
-            const joined = texts.join('|');
+            const joined = rows[i].map(c=>c.text.toLowerCase()).join('|');
             if (joined.includes('adress') && joined.includes('serienummer')) {
                 hdrIdx = i;
                 rows[i].forEach(c => {
                     const t = c.text.toLowerCase();
-                    if (t.includes('adress'))            cols.addr   = c.x;
-                    if (t.includes('serienummer'))       cols.serial = c.x;
-                    if (t === 'senaste värde' || t.includes('senaste värde')) cols.lastV  = c.x;
-                    if (t.includes('genomsnitt'))        cols.avgV   = c.x;
-                    if (t === 'maxvärde' || t === 'max') cols.maxV   = c.x;
-                    if (t.includes('aktiva') || t.includes('infokod')) cols.info = c.x;
+                    if (t.includes('adress'))                               cols.addr   = c.x;
+                    if (t.includes('serienummer'))                          cols.serial = c.x;
+                    if (t === 'senaste värde' || t.includes('senaste värde')) cols.lastV = c.x;
+                    if (t.includes('genomsnitt'))                           cols.avgV   = c.x;
+                    if (t === 'maxvärde' || t === 'max')                   cols.maxV   = c.x;
+                    if (t.includes('aktiva') || t.includes('infokod'))     cols.info   = c.x;
                 });
                 break;
             }
@@ -421,7 +573,6 @@ async function parsePDF(file) {
             const serial = getC(cells, cols.serial).replace(/\s/g,'');
             const addr   = getC(cells, cols.addr);
             if (!serial || !/^\d{6,12}$/.test(serial) || !addr || addr.length < 4) continue;
-
             out.push({
                 id: serial, adress: addr,
                 value:   toNum(getC(cells, cols.lastV)),
@@ -436,7 +587,7 @@ async function parsePDF(file) {
     } catch { return []; }
 }
 
-// ── FILHANTERING + AUTO-ANALYS ─────────────────────────────────────────────
+// ── FILHANTERING ──────────────────────────────────────────────────────────
 async function handleFiles(files) {
     const arr   = Array.from(files);
     const BATCH = 5;
@@ -444,13 +595,12 @@ async function handleFiles(files) {
     const pgFill = document.getElementById('progFill');
     const pgLbl  = document.getElementById('progLabel');
 
+    document.getElementById('fileBar').style.display = 'block';
     if (arr.length > 1) {
         pgWrap.style.display = 'block';
-        pgFill.style.width = '0%';
-        pgLbl.textContent = `Läser 0 av ${arr.length} filer…`;
+        pgFill.style.width   = '0%';
+        pgLbl.textContent    = `Läser 0 av ${arr.length} filer…`;
     }
-
-    document.getElementById('fileBar').style.display = 'block';
 
     for (let i = 0; i < arr.length; i += BATCH) {
         await Promise.allSettled(arr.slice(i, i+BATCH).map(async f => {
@@ -466,19 +616,19 @@ async function handleFiles(files) {
         await new Promise(r => setTimeout(r, 30));
     }
 
-    setTimeout(() => { pgWrap.style.display = 'none'; }, 1200);
+    setTimeout(() => { pgWrap.style.display = 'none'; }, 1000);
     updateFileChips();
-    runAnalysis(); // ← auto-analys direkt
+    runAnalysis();
 }
 
 function updateFileChips() {
     const el = document.getElementById('fileChips');
     el.innerHTML = uploadedFiles.map(f =>
         `<div class="file-chip">📄 ${f.name}</div>`
-    ).join('') || '<span style="color:var(--muted);font-size:11px;">Inga filer</span>';
+    ).join('') || '<span style="color:var(--muted);font-size:10px;">Inga filer</span>';
 }
 
-// ── ANALYS ─────────────────────────────────────────────────────────────────
+// ── ANALYS ────────────────────────────────────────────────────────────────
 function runAnalysis() {
     if (!uploadedFiles.length) return;
     const map = new Map();
@@ -492,7 +642,7 @@ function runAnalysis() {
             const ds  = m.fileDate.toISOString().slice(0,10);
             if (!cur.history.some(h=>h.date===ds)) cur.history.push({ date:ds, v:m.value });
             cur.value  = m.value;
-            if (m.avgVal > 0) cur.avgVal = m.avgVal;
+            if (m.avgVal > 0)             cur.avgVal = m.avgVal;
             if (m.maxVal > (cur.maxVal||0)) cur.maxVal = m.maxVal;
             if (m.infokod) cur.infokod = m.infokod;
             cur.adress = m.adress; cur.area = m.area;
@@ -514,13 +664,14 @@ function runAnalysis() {
     }
 
     applySort();
-    document.getElementById('controlBar').style.display  = 'block';
-    document.getElementById('emptyState').style.display  = 'none';
+    document.getElementById('controlBar').style.display     = 'block';
+    document.getElementById('emptyState').style.display     = 'none';
     document.getElementById('tableContainer').style.display = 'block';
+    document.getElementById('footer').style.display         = 'flex';
     renderTable();
 }
 
-// ── SORTERING ──────────────────────────────────────────────────────────────
+// ── SORTERING ─────────────────────────────────────────────────────────────
 function applySort() {
     const d = sortDir === 'asc' ? 1 : -1;
     currentResults.sort((a,b) => {
@@ -537,68 +688,108 @@ function setSort(col) {
     renderTable();
 }
 
-// ── RENDERA TABELL ─────────────────────────────────────────────────────────
+// ── RENDERA TABELL ────────────────────────────────────────────────────────
 function renderTable() {
     const q     = document.getElementById('searchInput').value.toLowerCase().trim();
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
 
-    // Uppdatera sorteringspilar
     document.querySelectorAll('thead th[data-col]').forEach(th => {
         th.classList.remove('sort-asc','sort-desc');
         if (th.dataset.col === sortCol) th.classList.add('sort-'+sortDir);
     });
 
-    let shown = 0;
+    let totalHidden = 0;
+
     currentResults.forEach(r => {
+        const isHidden = hiddenIds.has(r.id);
+        if (isHidden) totalHidden++;
         if (areaFilter !== 'alla' && r.area !== areaFilter)     return;
         if (catFilter  !== 'alla' && r.category !== catFilter)  return;
         if (q && !r.adress.toLowerCase().includes(q) && !r.id.includes(q)) return;
-        shown++;
+        if (isHidden && !showHidden) return;
 
         const { text: ratioTxt, cls: ratioCls } = fmtRatio(r.ratio, r.avgVal);
         let opts = '';
         for (const [k,v] of Object.entries(CATS))
             opts += `<option value="${k}" ${r.category===k?'selected':''}>${v.sym} ${v.label}</option>`;
 
+        const isMarked = markedIds.has(r.id);
         const tr = document.createElement('tr');
-        tr.className = `row-${r.category}`;
+        tr.className = `row-${r.category}${isHidden ? ' hidden-row' : ''}`;
+
         tr.innerHTML = `
+            <td style="text-align:center;padding:5px 3px;">
+                <button class="icon-btn mark-btn${isMarked?' on':''}" title="${isMarked?'Ta bort markering':'Markera'}">
+                    ${isMarked?'⭐':'☆'}
+                </button>
+            </td>
+            <td style="text-align:center;padding:5px 3px;">
+                <button class="icon-btn hide-btn${isHidden?' on':''}" title="${isHidden?'Visa':'Dölj'}">
+                    ${isHidden?'🙈':'👁️'}
+                </button>
+            </td>
+            <td><select class="cat-sel">${opts}</select></td>
             <td>
                 <div class="addr">${r.adress}</div>
                 ${r.memo ? `<div class="memo">${r.memo}</div>` : ''}
             </td>
-            <td><code>${r.id}</code></td>
+            <td><button class="copy-btn" title="Kopiera adress">📋</button></td>
+            <td><code style="font-size:10px;">${r.id}</code></td>
             <td><span class="badge-area">${r.area}</span></td>
-            <td style="text-align:right;font-weight:700;">${r.lastVal||'—'}</td>
-            <td style="text-align:right;color:var(--muted);">${r.avgVal > 0 ? r.avgVal : '—'}</td>
             <td style="text-align:right;"><span class="${ratioCls}">${ratioTxt}</span></td>
-            <td style="font-size:10px;color:var(--muted);max-width:120px;">${r.infokod||'—'}</td>
-            <td><select class="cat-sel">${opts}</select></td>
+            <td style="text-align:right;color:var(--muted);">${r.maxVal||'—'}</td>
             <td style="text-align:center;">
-                <button class="copy-btn trend-btn" title="Visa trend">📈</button>
+                <button class="icon-btn trend-btn" title="Visa tidslinje">📈</button>
             </td>
         `;
 
-        tr.querySelector('select').addEventListener('change', function() {
+        tr.querySelector('.cat-sel').addEventListener('change', function() {
             r.category = this.value;
             savedCategories[r.id] = this.value;
             localStorage.setItem('lacksok_cats', JSON.stringify(savedCategories));
-            tr.className = `row-${r.category}`;
+            tr.className = `row-${r.category}${hiddenIds.has(r.id)?' hidden-row':''}`;
             renderStats();
+        });
+
+        tr.querySelector('.copy-btn').addEventListener('click', () => {
+            navigator.clipboard.writeText(r.adress).catch(() => {
+                const ta = Object.assign(document.createElement('textarea'), { value: r.adress });
+                document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+            });
+            const b = tr.querySelector('.copy-btn');
+            b.textContent = '✅';
+            setTimeout(() => { b.textContent = '📋'; }, 1500);
+        });
+
+        tr.querySelector('.mark-btn').addEventListener('click', () => {
+            markedIds.has(r.id) ? markedIds.delete(r.id) : markedIds.add(r.id);
+            localStorage.setItem('lacksok_marks', JSON.stringify([...markedIds]));
+            renderTable();
+        });
+
+        tr.querySelector('.hide-btn').addEventListener('click', () => {
+            hiddenIds.has(r.id) ? hiddenIds.delete(r.id) : hiddenIds.add(r.id);
+            localStorage.setItem('lacksok_hidden', JSON.stringify([...hiddenIds]));
+            renderTable();
         });
 
         tr.querySelector('.trend-btn').addEventListener('click', () => openTrend(r));
         tbody.appendChild(tr);
     });
 
-    renderStats(shown);
+    renderStats();
+    document.getElementById('hiddenCount').textContent = totalHidden;
+    const shBtn = document.getElementById('showHiddenBtn');
+    shBtn.textContent = showHidden ? 'Dölj dolda' : 'Visa dolda';
+    shBtn.classList.toggle('on', showHidden);
 }
 
-// ── STATISTIK ──────────────────────────────────────────────────────────────
-function renderStats(shown) {
+// ── STATISTIK ─────────────────────────────────────────────────────────────
+function renderStats() {
     const c = { total:0, aktiv:0, kund:0, misstankt:0 };
     currentResults.forEach(r => {
+        if (hiddenIds.has(r.id) && !showHidden) return;
         c.total++;
         if (r.category==='aktiv_lacka') c.aktiv++;
         if (r.category==='kund_lacka')  c.kund++;
@@ -611,9 +802,9 @@ function renderStats(shown) {
          </div>`;
 
     document.getElementById('statRow').innerHTML =
-        chip('Totalt mätare', c.total,     'c-white',  'alla')       +
-        chip('Aktiva läckor', c.aktiv,     'c-red',    'aktiv_lacka')+
-        chip('Kundleckage',   c.kund,      'c-orange', 'kund_lacka') +
+        chip('Totalt mätare', c.total,     'c-white',  'alla')        +
+        chip('Aktiva läckor', c.aktiv,     'c-red',    'aktiv_lacka') +
+        chip('Kundleckage',   c.kund,      'c-orange', 'kund_lacka')  +
         chip('Misstänkta',    c.misstankt, 'c-yellow', 'misstankt');
 
     document.querySelectorAll('.stat-chip').forEach(el => {
@@ -625,65 +816,160 @@ function renderStats(shown) {
     });
 }
 
-// ── TRENDGRAF ──────────────────────────────────────────────────────────────
+// ── TRENDGRAF ─────────────────────────────────────────────────────────────
 function openTrend(r) {
     document.getElementById('modalTitle').textContent = `Tidslinje — ${cleanAddr(r.adress)}`;
     document.getElementById('trendOverlay').classList.add('open');
-
     if (chartInst) chartInst.destroy();
     chartInst = new Chart(document.getElementById('trendChart').getContext('2d'), {
         type: 'line',
         data: {
             labels: r.history.map(h=>h.date),
-            datasets:[{
-                label:'Senaste värde',
+            datasets: [{
+                label: 'Senaste värde',
                 data: r.history.map(h=>h.v),
-                borderColor:'#1db954', backgroundColor:'rgba(29,185,84,0.06)',
-                fill:true, tension:0.3, pointRadius:4
+                borderColor: '#1db954', backgroundColor: 'rgba(29,185,84,.07)',
+                fill: true, tension: 0.3, pointRadius: 4
             }]
         },
-        options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ min:0 } } }
+        options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ min:0 } } }
     });
 }
 
-// ── EXPORT ─────────────────────────────────────────────────────────────────
+// ── MORGONANALYS ──────────────────────────────────────────────────────────
+function morningAnalysis() {
+    if (!uploadedFiles.length) { document.getElementById('fileInput').click(); return; }
+    areaFilter = 'alla'; catFilter = 'alla'; sortCol = 'ratio'; sortDir = 'desc';
+    document.getElementById('catFilter').value = 'alla';
+    document.querySelectorAll('.pill').forEach(p => p.classList.toggle('active', p.dataset.area === 'alla'));
+    runAnalysis();
+    document.getElementById('tableContainer').scrollIntoView({ behavior:'smooth' });
+}
+
+// ── KARTA ─────────────────────────────────────────────────────────────────
+async function geocode(addr, area) {
+    const key = addr + '|' + area;
+    if (geoCache[key]) return geoCache[key];
+    try {
+        const q   = encodeURIComponent(cleanAddr(addr) + (area !== 'ÖVRIGT' ? ' ' + area : '') + ' Botkyrka Sverige');
+        const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`;
+        const arr = await fetch(url).then(r => r.json());
+        if (arr && arr.length > 0) {
+            const coord = { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) };
+            geoCache[key] = coord;
+            localStorage.setItem('lacksok_geo', JSON.stringify(geoCache));
+            return coord;
+        }
+    } catch {}
+    return null;
+}
+
+async function openMap() {
+    if (typeof L === 'undefined') {
+        alert('Kartbiblioteket laddades inte. Kontrollera nätverksanslutning.');
+        return;
+    }
+    document.getElementById('mapOverlay').classList.add('open');
+
+    if (!leafMap) {
+        leafMap = L.map('leafletMap').setView([59.22, 17.85], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors', maxZoom: 19
+        }).addTo(leafMap);
+    }
+    setTimeout(() => leafMap.invalidateSize(), 80);
+
+    // Clear old markers
+    leafMap.eachLayer(l => { if (l instanceof L.CircleMarker) leafMap.removeLayer(l); });
+
+    const visible  = currentResults.filter(r => !hiddenIds.has(r.id) || showHidden);
+    const statusEl = document.getElementById('mapStatus');
+    statusEl.textContent = `Geokodning av ${visible.length} adresser…`;
+    let placed = 0;
+
+    for (let i = 0; i < visible.length; i++) {
+        const r = visible[i];
+        const coord = await geocode(r.adress, r.area);
+        if (coord) {
+            const color = CAT_MAP_COLOR[r.category] || '#555';
+            const { text: ratioTxt } = fmtRatio(r.ratio, r.avgVal);
+            L.circleMarker([coord.lat, coord.lng], {
+                radius: r.category === 'aktiv_lacka' ? 10 : 7,
+                fillColor: color, color: '#fff', weight: 1.5,
+                opacity: .9, fillOpacity: .85
+            })
+            .bindPopup(
+                `<strong>${r.adress}</strong><br>` +
+                `${CATS[r.category].sym} ${CATS[r.category].label}<br>` +
+                `Avvikelse: <strong>${ratioTxt}</strong><br>` +
+                `<code style="font-size:10px;">${r.id}</code>`
+            )
+            .addTo(leafMap);
+            placed++;
+        }
+        statusEl.textContent = `${i+1}/${visible.length} • ${placed} placerade`;
+        await new Promise(resolve => setTimeout(resolve, 1100));
+    }
+    statusEl.textContent = `✓ ${placed} av ${visible.length} mätare på kartan`;
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────
 function exportReport() {
-    if (!currentResults.length) { alert('Ingen data – kör analysen först.'); return; }
-    const rows = currentResults.map(r => ({
-        'Adress':           r.adress,
-        'Serienummer':      r.id,
-        'Område':           r.area,
-        'Senaste (E)':      r.lastVal,
-        'Genomsnitt (F)':   r.avgVal||'',
-        '(E/F)−1 %':       r.avgVal>0 ? `${(r.ratio*100).toFixed(1)}%` : '—',
-        'Aktiva händelser': r.infokod,
-        'Kategori':         `${CATS[r.category]?.sym} ${CATS[r.category]?.label}`,
-        'Notering':         r.memo
-    }));
+    if (!currentResults.length) { alert('Ingen data att exportera.'); return; }
+    const rows = currentResults
+        .filter(r => !hiddenIds.has(r.id) || showHidden)
+        .map(r => ({
+            'Adress':           r.adress,
+            'Serienummer':      r.id,
+            'Kommundel':        r.area,
+            'Senaste (E)':      r.lastVal,
+            'Genomsnitt (F)':   r.avgVal || '',
+            'Avvikelse %':      r.avgVal > 0 ? `${(r.ratio*100).toFixed(1)}%` : '—',
+            'Maxavläsning':     r.maxVal,
+            'Aktiva händelser': r.infokod,
+            'Kategori':         `${CATS[r.category]?.sym} ${CATS[r.category]?.label}`,
+            'Notering':         r.memo,
+            'Markerad':         markedIds.has(r.id) ? '⭐' : ''
+        }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Läcksök');
     XLSX.writeFile(wb, `lacksok-${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
-// ── EVENT LISTENERS ────────────────────────────────────────────────────────
+// ── EVENT LISTENERS ───────────────────────────────────────────────────────
 document.getElementById('uploadBtn').onclick  = () => document.getElementById('fileInput').click();
 document.getElementById('fileInput').onchange = e  => handleFiles(e.target.files);
+document.getElementById('morningBtn').onclick = () => morningAnalysis();
+document.getElementById('mapBtn').onclick     = () => openMap();
 document.getElementById('exportBtn').onclick  = () => exportReport();
+document.getElementById('printBtn').onclick   = () => window.print();
 document.getElementById('clearBtn').onclick   = () => {
-    uploadedFiles=[]; currentResults=[];
+    uploadedFiles = []; currentResults = [];
     updateFileChips();
-    document.getElementById('fileBar').style.display     = 'none';
-    document.getElementById('controlBar').style.display  = 'none';
-    document.getElementById('emptyState').style.display  = 'block';
+    document.getElementById('fileBar').style.display        = 'none';
+    document.getElementById('controlBar').style.display     = 'none';
+    document.getElementById('emptyState').style.display     = 'block';
     document.getElementById('tableContainer').style.display = 'none';
+    document.getElementById('footer').style.display         = 'none';
+};
+
+document.getElementById('showHiddenBtn').onclick = () => {
+    showHidden = !showHidden;
+    renderTable();
 };
 
 document.getElementById('searchInput').oninput = () => renderTable();
-document.getElementById('catFilter').onchange  = e => { catFilter = e.target.value; renderTable(); };
-document.getElementById('closeModal').onclick   = () => document.getElementById('trendOverlay').classList.remove('open');
+document.getElementById('catFilter').onchange  = e  => { catFilter = e.target.value; renderTable(); };
+
+document.getElementById('closeModal').onclick = () =>
+    document.getElementById('trendOverlay').classList.remove('open');
 document.getElementById('trendOverlay').addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
 });
+
+document.getElementById('closeMapBtn').onclick = () => {
+    document.getElementById('mapOverlay').classList.remove('open');
+};
 
 document.querySelectorAll('.pill').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
@@ -695,6 +981,13 @@ document.querySelectorAll('.pill').forEach(b => b.addEventListener('click', () =
 document.querySelectorAll('thead th[data-col]').forEach(th =>
     th.addEventListener('click', () => setSort(th.dataset.col))
 );
+
+// Drag & drop
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
 </script>
 </body>
 </html>

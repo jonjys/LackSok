@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksök Pro v4.0 (Fullständig)</title>
-    
+    <title>Karma - Läcksök Pro v5.0</title>
+
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root {
@@ -23,132 +22,213 @@
             --primary: #1db954;
             --primary-hover: #1ed760;
             --border-color: #22222a;
-            
-            --clr-extreme: #dc2626;       
-            --clr-aktiv-lacka: #f87171;   
-            --clr-misstankt: #f97316;       
-            --clr-leak: #eab308;           
-            --clr-storing: #38bdf8;        
-            --clr-ny-matare: #c084fc;      
+            --focus-outline: #22c55e;
+            --clr-extreme: #dc2626;
+            --clr-aktiv-lacka: #f87171;
+            --clr-misstankt: #f97316;
+            --clr-leak: #eab308;
+            --clr-storing: #38bdf8;
+            --clr-ny-matare: #c084fc;
+            --clr-heatpump: #f59e0b;
             --clr-lagad: #10b981;
             --clr-normal: #27272a;
             --clr-heatpump: #f59e0b;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg-main); color: var(--text-main); padding: 24px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-main); color: var(--text-main); padding: 32px; line-height: 1.5; }
 
-        .app-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; }
-        .app-title-area h1 { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #ffffff 0%, #a0a0ab 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .app-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
+        .app-title-area h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #ffffff 0%, #a0a0ab 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .app-title-area .subtitle { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
 
-        .upload-section { background-color: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid var(--border-color); }
+        .upload-section { background-color: var(--bg-card); border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid var(--border-color); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
         .btn-group { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 
-        button { background-color: var(--primary); color: #ffffff; border: none; padding: 10px 22px; font-size: 13px; font-weight: 700; border-radius: 50px; cursor: pointer; transition: transform 0.15s ease; }
-        button:hover { transform: scale(1.02); background-color: var(--primary-hover); }
+        button { background-color: var(--primary); color: #ffffff; border: none; padding: 11px 24px; font-size: 14px; font-weight: 700; border-radius: 50px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; user-select: none; transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s; }
+        button:hover { transform: scale(1.03); background-color: var(--primary-hover); }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
         button.secondary { background-color: transparent; border: 1px solid var(--text-muted); color: var(--text-main); }
-        button.secondary:hover { background-color: rgba(255, 255, 255, 0.06); }
+        button.secondary:hover { background-color: rgba(255,255,255,0.06); border-color: #ffffff; }
         button.danger { background-color: #5f1a1a; border: 1px solid #991b1b; }
+        button.danger:hover { background-color: #991b1b; }
 
-        .accordion-trigger { background: #161620; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 16px; border-radius: 8px; font-size: 13px; margin-top: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: fit-content; gap: 12px; }
-        .file-grid-container { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-        .file-grid-container.open { max-height: 300px; overflow-y: auto; margin-top: 12px; }
-        .file-grid-compact { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #09090d; border-radius: 8px; }
-        .file-chip-compact { display: inline-flex; align-items: center; background: #161620; font-size: 12px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); color: var(--text-muted); }
+        .accordion-trigger { background: #181822; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-top: 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: fit-content; gap: 12px; user-select: none; transition: background 0.2s; }
+        .accordion-trigger:hover { background: #222230; }
+        .file-grid-container { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
+        .file-grid-container.open { max-height: 400px; overflow-y: auto; margin-top: 14px; }
+        .file-grid-compact { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px; background: #09090d; border-radius: 8px; border: 1px solid var(--border-color); }
+        .file-chip-compact { display: inline-flex; align-items: center; background: #161620; color: var(--text-main); font-size: 12px; font-weight: 500; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border-color); gap: 8px; }
+        .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+        .chip-date { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+        .remove-file-x { color: #ef4444; cursor: pointer; font-size: 16px; padding: 0 4px; font-weight: 800; }
+        .remove-file-x:hover { color: #f87171; }
 
         .progress-container { background: #1a1a22; border-radius: 8px; margin-top: 16px; padding: 12px; }
         .progress-bar-bg { background: #2a2a32; border-radius: 20px; height: 8px; overflow: hidden; }
         .progress-fill { background: var(--primary); width: 0%; height: 8px; border-radius: 20px; transition: width 0.3s ease; }
         .progress-text { font-size: 12px; color: var(--text-muted); margin-top: 8px; text-align: center; }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background-color: var(--bg-card); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; transition: border-color 0.2s; }
-        .stat-card.active { border: 2px solid var(--primary); }
-        .stat-card .num { font-size: 28px; font-weight: 800; }
-        .stat-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-top: 2px; }
-        .stat-card.color-total { border-left: 4px solid var(--text-main); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .stat-card { background-color: var(--bg-card); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; user-select: none; transition: background 0.2s, transform 0.15s, border-color 0.2s; }
+        .stat-card:hover { background-color: var(--bg-card-hover); transform: translateY(-2px); }
+        .stat-card.active { border: 2px solid var(--primary); background: rgba(29,185,84,0.04); }
+        .stat-card .num { font-size: 30px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.03em; }
+        .stat-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+        .stat-card.color-total    { border-left: 4px solid var(--text-main); }
         .stat-card.color-aktiv-lacka { border-left: 4px solid var(--clr-aktiv-lacka); }
         .stat-card.color-misstankt { border-left: 4px solid var(--clr-misstankt); }
-        .stat-card.color-heatpump { border-left: 4px solid var(--clr-heatpump); }
-        .stat-card.color-noise { border-left: 4px solid var(--clr-storing); }
+        .stat-card.color-heatpump  { border-left: 4px solid var(--clr-heatpump); }
+        .stat-card.color-noise     { border-left: 4px solid var(--clr-storing); }
 
-        .insight-box { padding: 14px 18px; border-radius: 8px; font-size: 13px; margin-bottom: 24px; border-left: 4px solid var(--primary); background-color: var(--bg-card); color: var(--text-muted); }
+        .daily-bar { background: linear-gradient(135deg,#0c1118,#111827); border: 1px solid #1e3a5f; border-radius: 10px; padding: 12px 20px; margin-bottom: 18px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; font-size: 13px; }
+        .daily-bar-label { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+        .daily-delta { display: inline-flex; align-items: center; gap: 5px; }
+        .d-up { color: #f87171; font-weight: 800; }
+        .d-dn { color: #34d399; font-weight: 800; }
+        .d-eq { color: #a0a0ab; }
+        .daily-date { margin-left: auto; color: #555; font-size: 11px; }
+
+        .insight-box { padding: 16px 20px; border-radius: 10px; font-size: 14px; margin-bottom: 32px; border-left: 4px solid var(--primary); background-color: var(--bg-card); line-height: 1.6; }
         .insight-box strong { color: #fff; }
 
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
-        .search-input { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 10px 20px; border-radius: 50px; width: 280px; font-size: 13px; outline: none; }
-        .filter-select { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 10px 20px; border-radius: 50px; font-size: 13px; cursor: pointer; outline: none; }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 14px; flex-wrap: wrap; }
+        .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: 100%; }
+        .search-input { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 11px 22px; border-radius: 50px; width: 300px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+        .search-input:focus { border-color: var(--focus-outline); }
+        .filter-select { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 11px 22px; border-radius: 50px; font-size: 14px; outline: none; cursor: pointer; }
 
-        .section-title { font-size: 16px; font-weight: 800; margin: 28px 0 12px 0; display: flex; align-items: center; gap: 8px; }
-        .results-container { background-color: var(--bg-card); border-radius: 12px; padding: 16px; border: 1px solid var(--border-color); overflow-x: auto; margin-bottom: 24px; }
-
+        .section-title { font-size: 17px; font-weight: 800; margin: 36px 0 14px 0; display: flex; align-items: center; gap: 10px; letter-spacing: -0.01em; }
+        .results-container { background-color: var(--bg-card); border-radius: 12px; padding: 18px; border: 1px solid var(--border-color); overflow-x: auto; box-shadow: 0 6px 24px rgba(0,0,0,0.3); margin-bottom: 32px; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; padding: 12px; border-bottom: 2px solid var(--border-color); font-weight: 700; }
-        td { padding: 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; vertical-align: middle; }
-        tr:hover td { background-color: rgba(255, 255, 255, 0.01); }
+        th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; padding: 14px 12px; border-bottom: 2px solid var(--border-color); cursor: pointer; user-select: none; transition: color 0.2s; }
+        th:hover { color: #ffffff; }
+        th.active-sort { color: var(--primary); }
+        td { padding: 14px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background-color: rgba(255,255,255,0.015); }
 
-        .row-extreme td:first-child { border-left: 4px solid var(--clr-extreme); }
-        .row-aktiv_lacka td:first-child { border-left: 4px solid var(--clr-aktiv-lacka); }
-        .row-misstankt td:first-child { border-left: 4px solid var(--clr-misstankt); }
-        .row-storing td:first-child { border-left: 4px solid var(--clr-storing); }
-        .row-leak_code td:first-child { border-left: 4px solid var(--clr-leak); }
-        .row-ny_matare td:first-child { border-left: 4px solid var(--clr-ny-matare); }
-        .row-lagad td:first-child { border-left: 4px solid var(--clr-lagad); }
-        .row-normal td:first-child { border-left: 4px solid var(--clr-normal); }
-        .row-heatpump td:first-child { border-left: 4px solid var(--clr-heatpump); }
+        .row-extreme td:first-child     { border-left: 4px solid var(--clr-extreme); }
+        .row-aktiv_lacka td:first-child  { border-left: 4px solid var(--clr-aktiv-lacka); }
+        .row-ny_matare td:first-child    { border-left: 4px solid var(--clr-ny-matare); }
+        .row-misstankt td:first-child    { border-left: 4px solid var(--clr-misstankt); }
+        .row-leak_code td:first-child    { border-left: 4px solid var(--clr-leak); }
+        .row-storing td:first-child      { border-left: 4px solid var(--clr-storing); }
+        .row-heatpump td:first-child     { border-left: 4px solid var(--clr-heatpump); }
+        .row-lagad td:first-child        { border-left: 4px solid var(--clr-lagad); }
+        .row-normal td:first-child       { border-left: 4px solid var(--clr-normal); }
 
         .table-adress-text { font-weight: 700; font-size: 14px; color: #ffffff; }
-        .field-memo-tag { display: inline-block; background: #181824; border: 1px solid #2e2e42; color: #2dd4bf; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; font-weight: 600; }
-        .copy-btn { background: #1c1c24; border: 1px solid var(--border-color); color: var(--text-muted); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
-        .copy-btn:hover { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+        .field-memo-tag { display: inline-block; background: #14141e; border: 1px solid #2e2e3e; color: #2dd4bf; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 5px; margin-top: 5px; max-width: 460px; line-height: 1.4; }
+        .copy-btn { background: #1c1c24; border: 1px solid var(--border-color); color: var(--text-muted); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .copy-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; display: inline-block; }
+        .category-select-compact { background: #161620; color: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 600; outline: none; cursor: pointer; }
+        .action-btn { background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 6px; user-select: none; transition: transform 0.1s; }
+        .action-btn:hover { transform: scale(1.2); }
+        .trend-up { color: #f87171; font-weight: 800; }
+        .trend-down { color: #34d399; font-weight: 600; }
 
-        .category-select-compact { background: #161620; color: #ffffff; border: 1px solid var(--border-color); border-radius: 6px; padding: 4px 8px; font-size: 12px; outline: none; cursor: pointer; }
-        .noise-accordion-box { background: #08080c; border: 1px dashed var(--border-color); border-radius: 12px; padding: 16px; margin-top: 24px; }
+        .noise-accordion-box { background: #0d0d11; border: 1px dashed #2e2e3e; border-radius: 12px; padding: 20px; margin-top: 36px; }
 
-        .graph-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 1000; justify-content: center; align-items: center; }
-        .graph-modal-content { background: #121216; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 750px; padding: 24px; position: relative; }
-        .close-modal-btn { position: absolute; top: 14px; right: 18px; font-size: 22px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+        /* ── Sparklines ──────────────────────────────────────────────────────── */
+        .spark-cell { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .spark-cell:hover polyline { stroke-width: 2.5; }
+
+        /* ── Graph modal ─────────────────────────────────────────────────────── */
+        .graph-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .graph-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 700px; padding: 24px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        .close-modal-btn { position: absolute; top: 14px; right: 18px; font-size: 24px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+        .close-modal-btn:hover { color: #fff; }
+
+        /* ── Map modal ───────────────────────────────────────────────────────── */
+        .map-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
+        .map-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 1060px; height: 640px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        #leafletMap { flex: 1; border-radius: 10px; min-height: 0; }
+        .map-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+        .map-legend-item { display: flex; align-items: center; gap: 6px; }
+        .map-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+        /* ── Mobile ──────────────────────────────────────────────────────────── */
+        @media (max-width: 768px) {
+            body { padding: 14px; }
+            .app-header { flex-direction: column; gap: 10px; }
+            .app-title-area h1 { font-size: 22px; }
+            .btn-group { flex-direction: column; }
+            .btn-group button { justify-content: center; padding: 14px 20px; font-size: 15px; border-radius: 12px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-card .num { font-size: 24px; }
+            .stat-card { padding: 12px; }
+            .search-input, .filter-select { width: 100%; }
+            .toolbar-left { flex-direction: column; align-items: stretch; }
+            .results-container { padding: 6px; }
+            th, td { padding: 9px 6px; font-size: 12px; }
+            .section-title { font-size: 14px; }
+            .map-modal-content { height: 90vh; }
+        }
+
+        /* ── Print ───────────────────────────────────────────────────────────── */
+        @media print {
+            body { background: #fff; color: #000; padding: 18px; }
+            .upload-section, .toolbar, .file-grid-container, .accordion-trigger,
+            .noise-accordion-box, .graph-modal, .map-modal, .progress-container,
+            .action-btn, .copy-btn, .category-select-compact,
+            #exportBtn, #clearBtn, #mapBtn, #printBtn { display: none !important; }
+            .app-header { border-bottom: 2px solid #000; margin-bottom: 14px; }
+            .app-title-area h1 { -webkit-text-fill-color: #000; font-size: 22px; background: none; color: #000; }
+            .stat-card { background: #fff; border: 1px solid #ccc; }
+            .stat-card .num, .stat-card .label { color: #000; }
+            .results-container { box-shadow: none; border: 1px solid #ccc; background: #fff; }
+            table { font-size: 11px; }
+            th { color: #333; border-bottom: 2px solid #000; }
+            td { border-bottom: 1px solid #ddd; color: #000; }
+            tr { page-break-inside: avoid; }
+            .badge { background: #eee !important; color: #000 !important; border: 1px solid #ccc; }
+            .section-title { color: #000; font-size: 14px; }
+            .insight-box { border: 1px solid #ccc; background: #f9f9f9; color: #000; }
+            .daily-bar { background: #f9f9f9; border: 1px solid #ccc; color: #000; }
+            @page { margin: 1.5cm; }
+        }
     </style>
 </head>
 <body>
 
     <div class="app-header">
         <div class="app-title-area">
-            <h1>Karma - Läcksök Pro v4.0</h1>
-            <div class="subtitle">PDF-stöd • Batch-bearbetning • Värmepumpsdetektering • Fjärrvärmestörning</div>
+            <h1>Karma - Läcksök Pro</h1>
+            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · v5.0</div>
         </div>
     </div>
 
     <div class="upload-section">
         <div class="btn-group">
-            <button id="uploadBtn">📁 Läs in mätarfiler (Excel/CSV/PDF)</button>
-            <button id="analyzeBtn" class="secondary">⚡ Kör Full Tidsanalys</button>
+            <button id="uploadBtn">📁 Välj Mätarfiler (Excel/CSV/PDF)</button>
+            <button id="analyzeBtn" class="secondary">⚡ Kör Morgonanalys</button>
+            <button id="mapBtn" class="secondary">🗺️ Visa Karta</button>
             <button id="exportBtn" class="secondary">📥 Exportera Rapport</button>
-            <button id="clearBtn" class="secondary danger">🗑️ Rensa allt</button>
-            <input type="file" id="fileInput" multiple style="display: none;" accept=".xlsx, .xls, .csv, .pdf">
+            <button id="printBtn" class="secondary">🖨️ Skriv ut</button>
+            <button id="clearBtn" class="secondary danger">🗑️ Nollställ</button>
+            <input type="file" id="fileInput" multiple style="display:none;" accept=".xlsx,.xls,.csv,.pdf">
         </div>
-        
         <div class="accordion-trigger" id="accordionTrigger">
-            <span>📂 Valda filer (<span id="fileCountText">0</span> st)</span> <span id="arrowIndicator">▸</span>
+            <span>📂 Visa ackumulerade datafiler (<span id="fileCountText">0</span> st inlästa)</span>
+            <span id="arrowIndicator">▸</span>
         </div>
         <div class="file-grid-container" id="fileGridContainer">
             <div class="file-grid-compact" id="fileList">
-                <span style="color:var(--text-muted); font-size:12px;">Inga filer laddade än.</span>
+                <span style="color:var(--text-muted);font-size:12px;">Inga filer laddade än.</span>
             </div>
         </div>
-        
-        <div id="progressContainer" style="display: none;" class="progress-container">
-            <div class="progress-bar-bg">
-                <div id="progressFill" class="progress-fill"></div>
-            </div>
+        <div id="progressContainer" style="display:none;" class="progress-container">
+            <div class="progress-bar-bg"><div id="progressFill" class="progress-fill"></div></div>
             <div id="progressText" class="progress-text">0 filer bearbetade</div>
         </div>
     </div>
 
-    <div id="results" style="display: none;">
+    <div id="results" style="display:none;">
         <div class="stats-grid" id="statsGrid"></div>
+        <div id="dailySummaryBar" style="display:none;" class="daily-bar"></div>
         <div class="insight-box" id="insightBox"></div>
 
         <div class="toolbar">
@@ -166,15 +246,16 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width:50px; text-align:center;">Stjärna</th>
-                        <th>Klassificering</th>
-                        <th>Adress / Fastighet</th>
-                        <th style="text-align:center;">Kopiera</th>
-                        <th>Mätarnummer</th>
-                        <th>Område</th>
-                        <th>Senaste Brus</th>
-                        <th>Maxvärde</th>
-                        <th style="text-align:center;">Trend</th>
+                        <th style="width:50px;text-align:center;">Märk</th>
+                        <th style="width:50px;text-align:center;">Dölj</th>
+                        <th style="width:140px;">Klassificering</th>
+                        <th id="th-adress">Adress / Fastighet ↕</th>
+                        <th style="width:90px;text-align:center;">Urklipp</th>
+                        <th id="th-serienummer">Mätarnummer ↕</th>
+                        <th id="th-area">Kommundel ↕</th>
+                        <th id="th-change" class="active-sort">Avvikelse (E/F-1) ↕</th>
+                        <th id="th-max">Maxavläsning ↕</th>
+                        <th style="width:80px;text-align:center;">Trend</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
@@ -182,19 +263,20 @@
         </div>
 
         <div class="noise-accordion-box">
-            <div class="accordion-trigger" id="noiseAccordionTrigger" style="margin-top:0; width:100%; background:transparent; border:none; padding:0;">
-                <span>⚙️ Normal Bakgrund, Brus & Historiskt Lagade Ärenden (<span id="noiseCountText">0</span> st)</span> <span id="noiseArrowIndicator">▸</span>
+            <div class="accordion-trigger" id="noiseAccordionTrigger" style="margin-top:0;width:100%;background:transparent;border:none;padding:0;">
+                <span>⚙️ Gömda — Störningar, Värmepumpar, LEAK-larm & Lagade (<span id="noiseCountText">0</span> st dolda)</span>
+                <span id="noiseArrowIndicator">▸</span>
             </div>
             <div class="file-grid-container" id="noiseGridContainer">
-                <div class="results-container" style="background:#09090d; margin-top:12px; border-color:#1a1a24;">
+                <div class="results-container" style="background:#09090d;margin-top:14px;border-color:#222230;padding:10px;">
                     <table>
                         <thead>
                             <tr>
-                                <th>Klassa om</th>
+                                <th style="width:140px;">Flytta/Klassa</th>
                                 <th>Adress / Fastighet</th>
                                 <th>Mätarnummer</th>
                                 <th>Senaste / Max</th>
-                                <th>Status</th>
+                                <th>Systemkommentar</th>
                             </tr>
                         </thead>
                         <tbody id="noiseTableBody"></tbody>
@@ -204,401 +286,590 @@
         </div>
     </div>
 
+    <div class="map-modal" id="mapModal">
+        <div class="map-modal-content">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                <h3 style="font-size:17px;font-weight:800;">🗺️ Mätarkarta — Botkyrka distributionsnät</h3>
+                <button class="close-modal-btn" style="position:static;" onclick="document.getElementById('mapModal').style.display='none'">&times;</button>
+            </div>
+            <div id="mapStatusText" style="font-size:12px;color:var(--text-muted);flex-shrink:0;">Kör analys och öppna kartan för att geokoda mätare.</div>
+            <div id="leafletMap"></div>
+            <div class="map-legend">
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#dc2626;"></div>Akut Huvudledning</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#f87171;"></div>Aktiv läcka</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#f97316;"></div>Misstänkt</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#c084fc;"></div>Säsongsanalys</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#f59e0b;"></div>Värmepump</div>
+                <div class="map-legend-item"><div class="map-legend-dot" style="background:#38bdf8;"></div>Störning</div>
+            </div>
+        </div>
+    </div>
+
     <div class="graph-modal" id="graphModal">
         <div class="graph-modal-content">
             <button class="close-modal-btn" id="closeModalBtn">&times;</button>
-            <h3 id="modalTitle" style="font-size:18px; font-weight:800;">Brustrend över tid</h3>
-            <div style="width:100%; height:320px; position:relative; margin-top:16px;">
+            <h3 id="modalTitle" style="margin-bottom:12px;font-size:18px;font-weight:800;">Brustrend över tid</h3>
+            <div style="width:100%;height:300px;position:relative;">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
     </div>
 
     <script>
-        let uploadedFiles = [];
-        let currentResults = [];
-        let interestingIds = new Set();
-        let userCategories = new Map();
-        let activeChartInstance = null;
-        let currentAreaFilter = 'all';
-        let currentCategoryFilter = 'all';
+        // PDF.js worker
+        if (window['pdfjs-dist/build/pdf']) {
+            window['pdfjs-dist/build/pdf'].GlobalWorkerOptions.workerSrc =
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
 
-        const staticKnowledgeBase = {
-            "LAXVÄGEN 8": { cat: "aktiv_lacka", memo: "📋 Kunds sida (LEAK). Skickat till Jimmy." },
-            "MALMSJÖVÄGEN 25": { cat: "aktiv_lacka", memo: "✔ Kunds sida (LEAK) - KUND INFORMERAD." },
-            "VATTRAVÄGEN 8": { cat: "aktiv_lacka", memo: "📋 Driften undersöker läckans läge." },
-            "LINDHOVSVÄGEN 3": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "LINDHOVSVÄGEN 5": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "LINDHOVSVÄGEN 7": { cat: "aktiv_lacka", memo: "📋 Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "NIBBLEBACKEN 40": { cat: "extreme", memo: "🚨 AKTIV LÄCKA PÅ VÅR SIDA (KOMMUNEN)." },
-            "DALKÄRRSVÄGEN 11": { cat: "lagad", memo: "🟢 LAGAD - Läcka på kundens servisledning." },
-            "ENGWALLS VÄG 13": { cat: "lagad", memo: "🟢 LAGAD - Konstaterad läcka på SV till kund." },
-            "BROÄNGSVÄGEN 22": { cat: "lagad", memo: "🟢 LAGAD - Historisk läcka åtgärdad." },
-            "STORVRETSVÄGEN 97": { cat: "lagad", memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
-            "LÖVHOLMENVÄGEN 15": { cat: "lagad", memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
-            "JAKTVÄGEN 2": { cat: "lagad", memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." }
+        // ── Global state ──────────────────────────────────────────────────────────
+        let uploadedFiles    = [];
+        let currentResults   = [];
+        let ignoredIds       = new Set();
+        let interestingIds   = new Set();
+        let userCategories   = new Map();
+        let activeChartInstance = null;
+        let currentSort      = { column: 'change', direction: 'desc' };
+        let currentAreaFilter     = 'all';
+        let currentCategoryFilter = 'all';
+        let geocache   = new Map();
+        let leafletMap = null;
+        let mapMarkers = [];
+
+        const BOTTOM_PANEL_CATS = new Set(['storing', 'heatpump', 'leak_code', 'lagad']);
+        const HIDDEN_CATS       = new Set(['normal']);
+
+        // ── Kunskapsbas (merged) ──────────────────────────────────────────────────
+        const fieldKnowledgeBase = {
+            "GRANBACKEN 2":        { cat: "aktiv_lacka", memo: "🚨 FLÖDESEXPLOSION! Bruset sköt upp spikrakt till 73 dB i juni. Åk ut direkt!" },
+            "HÖGBRINKSVÄGEN":      { cat: "storing",     memo: "🔊 Industri/Pumpstörning: Hoppar extremt (upp till 275 dB)." },
+            "ÖDLEVÄGEN 15A":       { cat: "aktiv_lacka", memo: "⚠️ Läcka på servis! Gemensam servis 11/13/15A/15B. 15A varnar mest." },
+            "KASTANJEVÄGEN 14":    { cat: "leak_code",   memo: "📋 Kunds sida (LEAK). Skickat till Jimmy. Kund ej informerad." },
+            "LAXVÄGEN 8":          { cat: "leak_code",   memo: "📋 Kunds sida (LEAK). Skickat till Jimmy." },
+            "LINDHOVSVÄGEN 3":     { cat: "leak_code",   memo: "📋 Kunds sida (LEAK) - Gemensam servis 3/5/7. Skickat till Jimmy." },
+            "LINDHOVSVÄGEN 5":     { cat: "leak_code",   memo: "📋 Kunds sida (LEAK) - Gemensam servis 3/5/7. Skickat till Jimmy." },
+            "LINDHOVSVÄGEN 7":     { cat: "leak_code",   memo: "📋 Kunds sida (LEAK) - Gemensam servis 3/5/7. Skickat till Jimmy." },
+            "MALMSJÖVÄGEN 25":     { cat: "leak_code",   memo: "✔ Kunds sida (LEAK) - KUND INFORMERAD." },
+            "VATTRAVÄGEN 8":       { cat: "leak_code",   memo: "✔ Kunds sida (LEAK) - KUND INFORMERAD." },
+            "NIBBLEBACKEN 40":     { cat: "extreme",     memo: "🚨 KONSTATERAD LÄCKA PÅ VÅR SIDA (Kommunens ledning)." },
+            "BJÖRKVÄNDAN 7":       { cat: "normal",      memo: "👌 Provstängd & läcklyssnad: Inga servisläckor." },
+            "UGGLEVÄGEN 24":       { cat: "normal",      memo: "👌 Provstängd & läcklyssnad: Inga servisläckor." },
+            "UGGLEVÄGEN 169":      { cat: "normal",      memo: "👌 Provstängd & läcklyssnad: Inga servisläckor." },
+            "UDDVÄGEN 5":          { cat: "storing",     memo: "🔍 Ljud hörs men ingenting på servisen vid provstängning." },
+            "FALKVÄGEN 3":         { cat: "storing",     memo: "🔊 Inga läckljud. Värmepannan stör mätaren konstant." },
+            "ÅSVÄGEN 7":           { cat: "normal",      memo: "👌 Provstängd & läcklyssnad: Ok." },
+            "VIAD 1":              { cat: "leak_code",   memo: "📞 Efter mätare: Kontakta fastighetsägare/förening." },
+            "NORRBYVRETSVÄGEN 18": { cat: "leak_code",   memo: "📞 Efter mätare: Kontakta förening?" },
+            "DALKÄRRSVÄGEN 11":    { cat: "lagad",       memo: "🟢 LAGAD - Läcka på kundens servisledning." },
+            "ENGWALLS VÄG 13":     { cat: "lagad",       memo: "🟢 LAGAD - Konstaterad läcka på SV till kund." },
+            "BROÄNGSVÄGEN 22":     { cat: "lagad",       memo: "🟢 LAGAD - Historisk läcka åtgärdad." },
+            "STORVRETSVÄGEN 97":   { cat: "lagad",       memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
+            "LÖVHOLMENVÄGEN 15":   { cat: "lagad",       memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
+            "JAKTVÄGEN 2":         { cat: "lagad",       memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." }
         };
 
         const categories = {
-            extreme: { label: 'Akut Huvudledning / Vår Sida', bg: '#dc2626', color: '#fff', symbol: '🚨' },
-            aktiv_lacka: { label: 'Aktiv läcka (Servis)', bg: '#f87171', color: '#000', symbol: '🔴' },
-            misstankt: { label: 'Misstänkt / Ihållande ökning', bg: '#f97316', color: '#fff', symbol: '🟠' },
-            ny_matare: { label: 'Säsongsanalys / Stegring', bg: '#c084fc', color: '#fff', symbol: '🟣' },
-            leak_code: { label: 'Mätarflagga (LEAK)', bg: '#eab308', color: '#000', symbol: '🟡' },
-            storing: { label: 'Störning / Pump / Fjärrvärme', bg: '#38bdf8', color: '#fff', symbol: '🔵' },
-            lagad: { label: 'Historiskt lagad / Klar', bg: '#10b981', color: '#fff', symbol: '🟢' },
-            heatpump: { label: '🔥 Värmepump (Normal säsong)', bg: '#f59e0b', color: '#fff', symbol: '🔥' },
-            normal: { label: 'Normal bakgrund', bg: '#27272a', color: '#bbb', symbol: '⚪' }
+            extreme:     { label: 'Akut Huvudledning',         bg: '#dc2626', color: '#fff', symbol: '🚨' },
+            aktiv_lacka: { label: 'Aktiv läcka (Servis)',       bg: '#f87171', color: '#000', symbol: '🔴' },
+            misstankt:   { label: 'Misstänkt / Läcklyssna',    bg: '#f97316', color: '#fff', symbol: '🟠' },
+            ny_matare:   { label: 'Säsongsanalys krävs',        bg: '#c084fc', color: '#fff', symbol: '🟣' },
+            leak_code:   { label: 'Efter mätare (LEAK)',        bg: '#eab308', color: '#000', symbol: '🟡' },
+            storing:     { label: 'Störning / Pump',            bg: '#38bdf8', color: '#fff', symbol: '🔵' },
+            heatpump:    { label: 'Värmepump (säsong)',         bg: '#f59e0b', color: '#fff', symbol: '🔥' },
+            lagad:       { label: 'Markerad lagad',             bg: '#10b981', color: '#fff', symbol: '🟢' },
+            normal:      { label: 'Normal bakgrund',            bg: '#27272a', color: '#bbb', symbol: '⚪' }
         };
 
-        function cleanAddressText(addr) {
-            if (!addr) return "";
-            let txt = addr.toString().replace(/[\r\n]+/g, " ");
-            return txt.replace(/\b(TUMBA|TULLINGE|NORSBORG|UTTRAN|\d{3}\s?\d{2})\b/gi, "").trim().replace(/\s+/g, " ").toUpperCase();
+        // ── DOM accordion ─────────────────────────────────────────────────────────
+        document.getElementById('accordionTrigger').onclick = () => {
+            document.getElementById('fileGridContainer').classList.toggle('open');
+            document.getElementById('arrowIndicator').innerText =
+                document.getElementById('fileGridContainer').classList.contains('open') ? '▾' : '▸';
+        };
+        document.getElementById('noiseAccordionTrigger').onclick = () => {
+            document.getElementById('noiseGridContainer').classList.toggle('open');
+            document.getElementById('noiseArrowIndicator').innerText =
+                document.getElementById('noiseGridContainer').classList.contains('open') ? '▾' : '▸';
+        };
+
+        // ── Hjälpfunktioner ───────────────────────────────────────────────────────
+        function extractDateFromFilename(name) {
+            const m = name.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
+            return m ? new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])) : null;
         }
 
-        // ========== PDF-PARSNING ==========
-        async function parsePDF(file, fileDate) {
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                let fullText = '';
-                const maxPages = Math.min(pdf.numPages, 15);
-                
-                for (let i = 1; i <= maxPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    fullText += textContent.items.map(item => item.str).join(' ') + '\n';
-                }
-                
-                const results = [];
-                const lines = fullText.split(/\n|\r|\.\s|,\s/);
-                
-                for (let line of lines) {
-                    const addressMatch = line.match(/([A-ZÅÄÖ][A-ZÅÄÖ\s]+(VÄGEN?|GATAN?|BACKEN|VÄG|STIGEN|PLAN|TORGET?)\s+\d+\s*[A-ZÅÄÖ]*)/i);
-                    const serialMatch = line.match(/\b(\d{7,9})\b/);
-                    const valueMatch = line.match(/(\d{2,3})\s*(dB|BRUS|m³)?/i);
-                    
-                    if (addressMatch && valueMatch && valueMatch[1] >= 0 && valueMatch[1] <= 500) {
-                        const address = addressMatch[1].trim();
-                        const serial = serialMatch ? serialMatch[1] : address;
-                        const noiseValue = parseInt(valueMatch[1]);
-                        
-                        results.push({
-                            id: serial,
-                            adress: address,
-                            value: noiseValue,
-                            maxVal: noiseValue,
-                            avgVal: noiseValue,
-                            infokod: "",
-                            atgardad: "",
-                            kommentar: "",
-                            area: address.toUpperCase().includes('TULLINGE') ? 'TULLINGE' : 
-                                   (address.toUpperCase().includes('TUMBA') ? 'TUMBA' : 'ÖVRIGT'),
-                            fileDate: fileDate
-                        });
-                    }
-                }
-                return results;
-            } catch (err) {
-                console.warn("PDF-fel:", file.name, err);
-                return [];
-            }
+        function parseSwedishDate(day, monthStr, year) {
+            const map = { jan:0, feb:1, mar:2, apr:3, maj:4, jun:5, jul:6, aug:7, sep:8, okt:9, nov:10, dec:11 };
+            const mo = map[monthStr.toLowerCase().slice(0,3)];
+            return mo !== undefined ? new Date(parseInt(year), mo, parseInt(day)) : null;
         }
 
-        // ========== EXCEL/CSV-PARSNING ==========
-        function parseExcel(file, fileDate) {
+        function formatShortDate(d) { return d.toISOString().slice(0,10); }
+
+        function cleanStreetName(addr) {
+            if (!addr) return 'OKÄND GATA';
+            return addr.split(/\d+/)[0].trim().toUpperCase();
+        }
+
+        function identifyArea(addrStr, rawArea) {
+            const t = (addrStr + ' ' + rawArea).toUpperCase();
+            if (t.includes('TULLINGE')) return 'TULLINGE';
+            if (t.includes('TUMBA'))    return 'TUMBA';
+            if (t.includes('NORSBORG')) return 'NORSBORG';
+            if (t.includes('FITTJA'))   return 'FITTJA';
+            if (t.includes('UTTRAN'))   return 'UTTRAN';
+            if (t.includes('GRÖDINGE')) return 'GRÖDINGE';
+            return 'ÖVRIGT';
+        }
+
+        function extractCleanAddressOnly(fullAddr) {
+            if (!fullAddr) return '';
+            return fullAddr
+                .replace(/\b(TUMBA|TULLINGE|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\d{3}\s?\d{2})\b/gi, '')
+                .trim().replace(/\s+/g, ' ').toUpperCase();
+        }
+
+        function avg(readings) {
+            return readings.reduce((s, h) => s + h.value, 0) / readings.length;
+        }
+
+        // ── Excel-parser ──────────────────────────────────────────────────────────
+        function parseExcelFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = e => {
                     try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-                        let results = [];
-
-                        jsonData.forEach(row => {
-                            let id = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'];
-                            let address = row['Adress'] || row['Plats'] || row['address'];
-                            let noiseStr = row['Senaste värde'] || row['Senaste avläsning'] || row['Brus'] || '0';
-                            let value = parseFloat(noiseStr.toString().replace(/[^0-9.]/g, '')) || 0;
-                            let maxVal = parseFloat(row['Maxvärde'] || value);
-                            let avgVal = parseFloat(row['Genomsnittsvärde'] || value);
-                            let infokod = row['Infokod'] || row['Aktiva händelser'] || '';
-                            let atgardad = row['Åtgärdad den'] || '';
-                            let kommentar = row['Kommentar'] || '';
-
-                            if (id && address) {
-                                let cleanAddr = address.toString().trim();
-                                let area = cleanAddr.toUpperCase().includes('TULLINGE') ? 'TULLINGE' : 
-                                          (cleanAddr.toUpperCase().includes('TUMBA') ? 'TUMBA' : 'ÖVRIGT');
-                                
-                                results.push({
+                        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+                        const meters = [];
+                        let fileReadingDate = null;
+                        rows.forEach(row => {
+                            const id      = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'] || row['Device ID'];
+                            const address = row['Adress'] || row['Plats'] || row['address'] || row['Mätarplats'];
+                            // E = Senaste värde (aktuellt ALD-brus)
+                            const rawE    = row['Senaste värde'] || row['Brus'] || row['value'] || '0';
+                            const value   = parseInt(rawE.toString().replace(/[^0-9]/g, '')) || 0;
+                            // F = Genomsnittsvärde (Kamstrups historiska snitt — nyckelkolumn!)
+                            const rawF    = row['Genomsnittsvärde'] || row['Medelvärde'] || '0';
+                            const avgVal  = parseInt(rawF.toString().replace(/[^0-9]/g, '')) || 0;
+                            // G = Maxvärde
+                            const rawG    = row['Maxvärde'] || row['Max'] || '0';
+                            const maxVal  = parseInt(rawG.toString().replace(/[^0-9]/g, '')) || value;
+                            // H = Infokod,  I = Aktiva händelser
+                            const infokod = [row['Infokod'], row['Aktiva händelser'], row['Felkod'], row['Status']].filter(Boolean).join(' ').trim();
+                            const rawArea = row['Område'] || row['Ort'] || '';
+                            // D = Senaste avläsning — extrahera datum
+                            const readingDateStr = row['Senaste avläsning'] || '';
+                            if (!fileReadingDate && readingDateStr) {
+                                const m = readingDateStr.toString().match(/(\d{4})-(\d{2})-(\d{2})/);
+                                if (m) fileReadingDate = new Date(+m[1], +m[2]-1, +m[3]);
+                            }
+                            if (id) {
+                                meters.push({
                                     id: id.toString().trim(),
-                                    adress: cleanAddr,
-                                    value: value,
-                                    maxVal: isNaN(maxVal) ? value : maxVal,
-                                    avgVal: isNaN(avgVal) ? value : avgVal,
-                                    infokod: infokod.toString().trim(),
-                                    atgardad: atgardad,
-                                    kommentar: kommentar,
-                                    area: area,
-                                    fileDate: fileDate
+                                    adress: address ? address.toString().trim() : 'Saknar adress',
+                                    serienummer: id.toString().trim(),
+                                    value,
+                                    avgVal,
+                                    maxVal,
+                                    infokod,
+                                    area: identifyArea(address ? address.toString() : '', rawArea.toString()),
+                                    street: cleanStreetName(address)
                                 });
                             }
                         });
-                        resolve(results);
-                    } catch (err) { reject(err); }
+                        resolve({ meters, fileReadingDate });
+                    } catch(err) { reject(err); }
                 };
                 reader.onerror = () => reject(new Error("Fil kunde inte läsas"));
                 reader.readAsArrayBuffer(file);
             });
         }
 
-        // ========== BATCH-BEARBETNING MED PROGRESS ==========
-        async function handleFiles(files) {
-            const filesArray = Array.from(files);
-            const BATCH_SIZE = 5;
-            let totalProcessed = 0;
-            
-            // Visa progress-container
-            const progressContainer = document.getElementById('progressContainer');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            progressContainer.style.display = 'block';
-            progressFill.style.width = '0%';
-            progressText.innerText = `0 av ${filesArray.length} filer bearbetade...`;
-            
-            for (let i = 0; i < filesArray.length; i += BATCH_SIZE) {
-                const batch = filesArray.slice(i, i + BATCH_SIZE);
-                const batchPromises = batch.map(async (file) => {
-                    try {
-                        const fileDate = new Date(file.lastModified);
-                        const ext = file.name.split('.').pop().toLowerCase();
-                        let data = [];
-                        
-                        if (ext === 'pdf') {
-                            data = await parsePDF(file, fileDate);
-                        } else {
-                            data = await parseExcel(file, fileDate);
-                        }
-                        
-                        if (data.length > 0) {
-                            uploadedFiles.push({ name: file.name, date: file.lastModified, data: data });
-                        }
-                    } catch (err) {
-                        console.warn(`Kunde inte läsa ${file.name}:`, err);
-                    }
-                });
-                
-                await Promise.allSettled(batchPromises);
-                totalProcessed = Math.min(i + BATCH_SIZE, filesArray.length);
-                const percent = (totalProcessed / filesArray.length) * 100;
-                progressFill.style.width = `${percent}%`;
-                progressText.innerText = `${totalProcessed} av ${filesArray.length} filer bearbetade...`;
-                
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-            
-            setTimeout(() => {
-                progressContainer.style.display = 'none';
-            }, 1500);
-            
-            updateFileList();
-        }
+        // ── PDF-parser (Kamstrup "Filtrerade mätare") ─────────────────────────────
+        function parsePDFFile(file, onProgress) {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+                    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                    const meters = [];
+                    let reportDate = null;
 
-        function updateFileList() {
-            document.getElementById('fileCountText').innerText = uploadedFiles.length;
-            const grid = document.getElementById('fileList');
-            grid.innerHTML = '';
-            if (uploadedFiles.length === 0) {
-                grid.innerHTML = '<span style="color:var(--text-muted); font-size:12px;">Inga filer laddade än.</span>';
-                return;
-            }
-            uploadedFiles.forEach(f => {
-                const chip = document.createElement('div');
-                chip.className = 'file-chip-compact';
-                chip.innerHTML = `<span>📄 ${f.name}</span>`;
-                grid.appendChild(chip);
+                    for (let pg = 1; pg <= pdf.numPages; pg++) {
+                        if (onProgress) onProgress(pg, pdf.numPages);
+                        const tc = await (await pdf.getPage(pg)).getTextContent();
+                        const items = tc.items.filter(i => i.str.trim()).map(i => ({ str: i.str.trim(), x: i.transform[4], y: i.transform[5] }));
+                        const rows = groupPDFRows(items, 4);
+                        let pendingCity = null;
+
+                        for (const row of rows) {
+                            const joined = row.map(i => i.str).join(' ');
+                            if (!reportDate) {
+                                const dm = joined.match(/Rapport utfärdad den (\d{1,2})\s+(\w+)\s+(\d{4})/i);
+                                if (dm) reportDate = parseSwedishDate(dm[1], dm[2], dm[3]);
+                            }
+                            if (row.some(i => i.str === 'Serienummer' || i.str === 'Adress')) { pendingCity = null; continue; }
+                            if (/Rapport utfärdad|Sida \d+|Filtrerade mätare/i.test(joined) && row.length <= 5) { pendingCity = null; continue; }
+
+                            const snItem = row.find(i => /^\d{7,10}$/.test(i.str));
+                            if (snItem) {
+                                const m = buildMeterFromPDFRow(row, snItem, pendingCity);
+                                if (m) meters.push(m);
+                                pendingCity = null;
+                            } else {
+                                const hasCityOrPostal = /(TULLINGE|TUMBA|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\b\d{5}\b)/i.test(joined);
+                                if (hasCityOrPostal && !/\d{4}-\d{2}-\d{2}/.test(joined) && row.filter(i => i.str.length > 2).length <= 3) {
+                                    pendingCity = row.filter(i => /[A-ZÅÄÖ]/i.test(i.str)).map(i => i.str).join(' ');
+                                } else { pendingCity = null; }
+                            }
+                        }
+                    }
+                    resolve({ meters, reportDate });
+                } catch(err) { reject(err); }
             });
         }
 
-        // ========== FULLSTÄNDIG TIDSSERIEANALYS ==========
+        function groupPDFRows(items, tol) {
+            if (!items.length) return [];
+            items.sort((a, b) => b.y - a.y || a.x - b.x);
+            const rows = [];
+            let cur = [items[0]], curY = items[0].y;
+            for (let i = 1; i < items.length; i++) {
+                if (Math.abs(items[i].y - curY) <= tol) { cur.push(items[i]); }
+                else { rows.push([...cur].sort((a, b) => a.x - b.x)); cur = [items[i]]; curY = items[i].y; }
+            }
+            if (cur.length) rows.push([...cur].sort((a, b) => a.x - b.x));
+            return rows;
+        }
+
+        function buildMeterFromPDFRow(row, snItem, pendingCity) {
+            const addrItems = row.filter(i => i.x < snItem.x - 5 && i.x > 20 && /[A-ZÅÄÖ\d]/i.test(i.str));
+            let adress = addrItems.map(i => i.str).join(' ').trim();
+            if (pendingCity) adress = adress ? adress + ' ' + pendingCity : pendingCity;
+            if (!adress) return null;
+            const afterSN = row.filter(i => i.x > snItem.x + 10).sort((a, b) => a.x - b.x);
+            let senasteVarde = 0, infokod = '', dateFound = false, numCount = 0;
+            for (const item of afterSN) {
+                const t = item.str;
+                if (/^\d{4}-\d{2}-\d{2}/.test(t)) { dateFound = true; continue; }
+                if (/^\d{1,2}:\d{2}$/.test(t)) continue;
+                if (dateFound) {
+                    if (/^\d+$/.test(t)) { numCount++; if (numCount === 1) senasteVarde = parseInt(t); }
+                    else if (t.length > 1) { infokod = infokod ? infokod + ' ' + t : t; }
+                }
+            }
+            return { id: snItem.str, adress, serienummer: snItem.str, value: senasteVarde, infokod: infokod.trim(), area: identifyArea(adress, ''), street: cleanStreetName(adress) };
+        }
+
+        // ── Värmepumpsdetektor ────────────────────────────────────────────────────
+        // Detekterar: högt brus höst/vinter → lågt vår/sommar → högt igen nästa höst
+        function isHeatpump(history) {
+            if (!history || history.length < 3) return false;
+
+            // Bygg månadsmedelvärden
+            const byMonth = {};
+            for (const h of history) {
+                const mo = new Date(h.date || h.dateStr).getMonth(); // 0-11
+                if (!byMonth[mo]) byMonth[mo] = [];
+                byMonth[mo].push(h.value);
+            }
+            const mAvg = mo => byMonth[mo] ? byMonth[mo].reduce((a,b)=>a+b,0)/byMonth[mo].length : null;
+
+            // Kalla månader = okt-apr (9,10,11,0,1,2,3), Varma = maj-sep (4,5,6,7,8)
+            const COLD = [9,10,11,0,1,2,3], WARM = [4,5,6,7,8];
+            const coldVals = COLD.map(mAvg).filter(v=>v!==null);
+            const warmVals = WARM.map(mAvg).filter(v=>v!==null);
+
+            if (coldVals.length === 0) return false;
+
+            // Mönster 1: Vi har BOTH varm och kall säsong — jämför direkt
+            if (warmVals.length >= 1) {
+                const coldA = coldVals.reduce((a,b)=>a+b,0)/coldVals.length;
+                const warmA = warmVals.reduce((a,b)=>a+b,0)/warmVals.length;
+                // Vinter minst 1.8x varmare, sommar lugn (<30), vinter förhöjt (>15)
+                return warmA < 30 && coldA > warmA * 1.8 && coldA > 15;
+            }
+
+            // Mönster 2: Bara vinterdata — kolla om det finns en tydlig säsongsstegring/nedgång
+            // Sortera historien kronologiskt och leta efter V-kurva (höst→vinter→vår) eller stigande höst
+            if (history.length >= 4) {
+                const sorted = [...history].sort((a,b)=>a.date-b.date);
+                // Kolla om sista 2 mätningarna stiger relativt de 2 första (höst-uppgång)
+                const firstTwo = sorted.slice(0,2).map(h=>h.value);
+                const lastTwo  = sorted.slice(-2).map(h=>h.value);
+                const firstA   = firstTwo.reduce((a,b)=>a+b,0)/2;
+                const lastA    = lastTwo.reduce((a,b)=>a+b,0)/2;
+                const allMod   = sorted.every(h=>h.value < 80); // inget extremvärde
+                // Stiger från tidig höst mot vinter och värdena är måttliga → trolig värmepump
+                if (allMod && lastA > firstA * 1.5 && lastA > 20) return true;
+            }
+
+            return false;
+        }
+
+        // ── Smart-classify ────────────────────────────────────────────────────────
+        function smartClassify(meter) {
+            const R = (cat, reason) => ({ cat, reason });
+            const cleanAddr = extractCleanAddressOnly(meter.adress);
+            if (fieldKnowledgeBase[cleanAddr]) return R(fieldKnowledgeBase[cleanAddr].cat, 'knowledge_base');
+
+            const info = (meter.infokod || '').toLowerCase();
+            if (info.includes('burst') || info.includes('rörbrott')) return R('extreme',   'burst');
+            if (info.includes('dry'))                                  return R('normal',    'dry');
+            if (info.includes('reverse'))                              return R('storing',   'reverse');
+            if (info.includes('leak') || info.includes('läckage'))    return R('leak_code', 'leak_alarm');
+
+            const hist = meter.history;
+            if (!hist || hist.length < 2) {
+                const h    = hist?.length ? hist[hist.length - 1] : { value: 0, avgVal: 0 };
+                const v    = h.value;
+                const aVal = h.avgVal || 0;
+                // Use Kamstrup ratio (E/F-1) when avgVal is available — single-file primary signal
+                if (aVal > 0) {
+                    const ratio = v / aVal;
+                    if (ratio >= 15)  return R('aktiv_lacka',  'high_ratio');
+                    if (ratio >= 4)   return R('misstankt',    'elevated_ratio');
+                    if (ratio >= 1.8) return R('ny_matare',    'single_reading');
+                }
+                if (v >= 25) return R('ny_matare', 'single_reading');
+                return R('normal', 'single_reading');
+            }
+
+            const history = [...hist].sort((a, b) => a.date - b.date);
+            const n = history.length;
+            const currentNoise  = history[n - 1].value;
+            const currentAvgVal = history[n - 1].avgVal || 0;
+            const currentRatio  = currentAvgVal > 0 ? currentNoise / currentAvgVal : 0;
+            const maxHistorical = Math.max(...history.map(h => Math.max(h.value, h.maxVal || 0)));
+
+            const WINTER = new Set([10, 11, 0, 1, 2]);
+            const SUMMER = new Set([4, 5, 6, 7, 8]);
+            const winterR = history.filter(h => WINTER.has(new Date(h.date).getMonth()));
+            const summerR = history.filter(h => SUMMER.has(new Date(h.date).getMonth()));
+            const winterAvg = winterR.length >= 2 ? avg(winterR) : null;
+            const summerAvg = summerR.length >= 2 ? avg(summerR) : null;
+
+            const last3 = history.slice(-3);
+            const isStableHigh = last3.length === 3 && (() => {
+                const vals = last3.map(h => h.value);
+                const mean = vals.reduce((a, b) => a + b, 0) / 3;
+                const maxDev = Math.max(...vals.map(v => Math.abs(v - mean)));
+                return mean > 18 && (mean > 0 ? maxDev / mean : 1) < 0.30;
+            })();
+
+            // Ratio-override: om Kamstrup-snitt finns och ratio är extrem → direkt klassning
+            if (currentRatio >= 15) return R('aktiv_lacka',  'high_ratio');
+            if (currentRatio >= 4 && !history.every(h => h.value >= 15)) return R('misstankt', 'elevated_ratio');
+
+            if (hist.length < 5) {
+                const alwaysHigh = history.every(h => h.value >= 18);
+                if (currentNoise >= 28) return alwaysHigh ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
+                if (currentNoise >= 18) return R('ny_matare', 'elevated');
+                return R('normal', 'ok');
+            }
+
+            // 1. Reparation
+            if (history.slice(-4).every(h => h.value <= 22)) {
+                return maxHistorical >= 50 ? R('lagad', 'repaired') : R('normal', 'ok');
+            }
+
+            // 2. Värmepump (säsong) — separat kategori
+            if (isHeatpump(history)) return R('heatpump', 'heat_pump_seasonal');
+
+            // 3. Värmepump (säsongsmedelvärden, finare detektion)
+            if (winterAvg !== null && summerAvg !== null) {
+                const seasonRatio = summerAvg > 0 ? winterAvg / summerAvg : 0;
+                // Vinter minst 1.8x sommar, sommar lugn, vinter förhöjt — oavsett nivå
+                if (summerAvg < 30 && seasonRatio > 1.8 && winterAvg > 15) return R('heatpump', 'heat_pump');
+                // Stabilt konstant (ej säsong) → störning
+                if (seasonRatio > 0.7 && seasonRatio < 1.4 && isStableHigh) return R('storing', 'heat_pump_constant');
+            }
+
+            // 4. Fjärrvärmestörning
+            const hasUncertainCode = info.includes('ej fastställt') || info.includes('annat brus');
+            if (hasUncertainCode && isStableHigh) return R('storing', 'district_heating');
+
+            // 5. Industridetektering
+            if (meter.area === 'TULLINGE' && isStableHigh && maxHistorical > 80) return R('storing', 'industrial');
+
+            // 6. Ihållande stegring
+            const olderPeriod = history.slice(0, -3);
+            if (olderPeriod.every(h => h.value <= 12) && history.slice(-3).every(h => h.value >= 18)) {
+                return R('misstankt', 'persistent_rise');
+            }
+
+            // 7. Konstant högt = störning, inte ny läcka
+            if (currentNoise >= 28) {
+                return history.every(h => h.value >= 18) ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
+            }
+            if (currentNoise >= 16) return R('ny_matare', 'elevated');
+            return R('normal', 'ok');
+        }
+
+        // ── Analys-runner ─────────────────────────────────────────────────────────
         function runAnalysis() {
-            if (uploadedFiles.length === 0) return;
-            let finalMap = new Map();
-
+            if (!uploadedFiles.length) return;
             uploadedFiles.sort((a, b) => a.date - b.date);
+            currentResults = [];
+            const metersMap = new Map();
 
-            uploadedFiles.forEach(f => {
-                f.data.forEach(m => {
-                    if (!finalMap.has(m.id)) {
-                        finalMap.set(m.id, {
-                            id: m.id, adress: m.adress, area: m.area,
-                            infokod: m.infokod, atgardad: m.atgardad,
-                            kommentar: m.kommentar, history: []
-                        });
+            uploadedFiles.forEach(file => {
+                const dateStr = formatShortDate(file.date);
+                file.meters.forEach(m => {
+                    if (!metersMap.has(m.id)) {
+                        metersMap.set(m.id, { id: m.id, adress: m.adress, serienummer: m.serienummer, area: m.area, street: m.street, infokod: m.infokod, history: [] });
                     }
-                    let current = finalMap.get(m.id);
-                    let dStr = m.fileDate.toISOString().slice(0, 10);
-                    
-                    if (!current.history.some(h => h.dateStr === dStr)) {
-                        current.history.push({ dateStr: dStr, value: m.value, maxVal: m.maxVal, avgVal: m.avgVal });
-                    }
-                    if (m.atgardad && m.atgardad !== "-") current.atgardad = m.atgardad;
-                    if (m.kommentar) current.kommentar = m.kommentar;
+                    metersMap.get(m.id).history.push({ date: file.date, dateStr, value: m.value, avgVal: m.avgVal || 0, maxVal: m.maxVal || m.value });
+                    // Always use latest infokod / address
+                    if (m.infokod) metersMap.get(m.id).infokod = m.infokod;
                 });
             });
 
-            currentResults = [];
-            for (let [id, m] of finalMap) {
-                m.history.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
-                
-                let latestReading = m.history[m.history.length - 1];
-                let firstReading = m.history[0];
-                
-                let currentNoise = latestReading.value;
-                let maxHistorical = Math.max(...m.history.map(h => h.maxVal));
-                
-                let cleanKey = cleanAddressText(m.adress);
-                let finalCategory = userCategories.get(m.id) || smartClassify(m, currentNoise, maxHistorical, cleanKey);
-                
-                let memo = m.kommentar ? `💬 ${m.kommentar}` : "";
-                if (staticKnowledgeBase[cleanKey]) memo = staticKnowledgeBase[cleanKey].memo;
+            for (const [, m] of metersMap) {
+                const history   = [...m.history].sort((a, b) => a.date - b.date);
+                const first     = history[0], last = history[history.length - 1];
+                // Primary change metric: ratio from Kamstrup avg (E/F-1), fallback to multi-file diff
+                const lastRatio = last.avgVal > 0 ? (last.value / last.avgVal) - 1 : null;
+                const totalChange = lastRatio !== null
+                    ? lastRatio * 100
+                    : (first.value > 0 ? ((last.value / first.value) - 1) * 100 : last.value * 100);
+                const maxValue    = Math.max(...history.map(h => Math.max(h.value, h.maxVal || 0)));
 
+                const classified  = smartClassify(m);
+                const finalCat    = userCategories.has(m.id) ? { cat: userCategories.get(m.id), reason: 'manual' } : classified;
+
+                const WINTER = new Set([10, 11, 0, 1, 2]);
+                const SUMMER = new Set([4, 5, 6, 7, 8]);
+                const wR = history.filter(h => WINTER.has(new Date(h.date).getMonth()));
+                const sR = history.filter(h => SUMMER.has(new Date(h.date).getMonth()));
+
+                const cleanAddr = extractCleanAddressOnly(m.adress);
                 currentResults.push({
-                    id: m.id,
-                    adress: m.adress.replace(/[\r\n]+/g, " "),
-                    serienummer: m.id,
-                    area: m.area,
-                    currentNoise: currentNoise,
-                    maxHistorical: maxHistorical,
-                    category: finalCategory,
-                    history: m.history,
-                    memo: memo,
-                    infokod: m.infokod
+                    id: m.id, adress: m.adress, serienummer: m.serienummer,
+                    area: m.area, street: m.street, history,
+                    infokod: m.infokod,
+                    change: totalChange, max: maxValue,
+                    category: finalCat.cat,
+                    reason: finalCat.reason,
+                    winterAvg: wR.length >= 2 ? Math.round(avg(wR)) : null,
+                    summerAvg: sR.length >= 2 ? Math.round(avg(sR)) : null,
+                    memo: fieldKnowledgeBase[cleanAddr]?.memo || ''
                 });
             }
 
             document.getElementById('results').style.display = 'block';
             displayResults();
+            saveDailySnapshot();
         }
 
-        // ========== VÄRMEPUMPSDETEKTERING (HJÄLPFUNKTION) ==========
-        function isHeatpump(history) {
-            if (!history || history.length < 4) return false;
-            
-            let winterValues = [], summerValues = [];
-            for (let h of history) {
-                const date = new Date(h.dateStr);
-                if (isNaN(date.getTime())) continue;
-                const month = date.getMonth() + 1;
-                if ([11, 12, 1, 2, 3].includes(month)) winterValues.push(h.value);
-                if ([5, 6, 7, 8, 9].includes(month)) summerValues.push(h.value);
+        // ── Bottenpanel-kommentarer ───────────────────────────────────────────────
+        function getBottomComment(r) {
+            if (r.category === 'lagad') return `✅ Historiskt lagad — Max: <strong>${r.max} dB</strong>. Konsekvent tyst de senaste 4 mätningarna.`;
+            if (r.category === 'heatpump') {
+                const s = r.summerAvg && r.winterAvg ? ` (vinter: ${r.winterAvg} / sommar: ${r.summerAvg})` : '';
+                const sub = r.reason === 'heat_pump_seasonal' ? 'Höst→Vinter-stegring' : 'Säsongsmönster';
+                return `🔥 Värmepump — ${sub} detekterat${s}. Inget läckage, normal säsongsvariation.`;
             }
-            
-            if (winterValues.length < 2 || summerValues.length < 2) return false;
-            
-            const winterAvg = winterValues.reduce((a,b)=>a+b,0) / winterValues.length;
-            const summerAvg = summerValues.reduce((a,b)=>a+b,0) / summerValues.length;
-            
-            // Sommarmedel under 60 OCH vinter minst 1.5x högre OCH vinter över 40
-            return (summerAvg < 60 && winterAvg > summerAvg * 1.5 && winterAvg > 40);
+            if (r.category === 'leak_code') {
+                const sub = r.reason === 'reverse' ? 'Bakåtflöde (REVERSE)' : r.reason === 'dry' ? 'Tom mätare (DRY)' : `LEAK-larm${r.infokod ? ` (${r.infokod})` : ''}`;
+                return `🟡 ${sub} — Troligtvis abonnentens sida.`;
+            }
+            if (r.category === 'storing') {
+                if (r.reason === 'heat_pump_constant') return `🔥 Värmepump (konstant) — Stabilt högt hela året, säsongsmönster möjligt.`;
+                if (r.reason === 'district_heating')   return `🏭 Fjärrvärmestörning — Stabil nivå + "Ej fastställt"-kod. Inget läckage.`;
+                if (r.reason === 'industrial')         return `🏭 Industriprocess — Tullinge-zone, stabilt högt. Kontrollera med kund.`;
+                if (r.reason === 'reverse')            return `↩️ Bakåtflöde (REVERSE) — Kontrollera installation.`;
+                if (r.reason === 'always_high')        return `🔵 Konstant bakgrundsbrus — Aldrig tyst i historiken. Ej ny läcka.`;
+                return `🔵 Störning/pump — Fluktuerande brus, ej klassbar som aktiv läcka.`;
+            }
+            return '';
         }
 
-        // ========== HIERARKISK SMART-CLASSIFY ==========
-        function smartClassify(meter, currentNoise, maxHistorical, cleanKey) {
-            // Regel 1: Direkt matchning mot kända fältärenden
-            if (staticKnowledgeBase[cleanKey]) return staticKnowledgeBase[cleanKey].cat;
-
-            // Regel 2: Kamstrups egna klarmarkeringar
-            if (meter.atgardad && meter.atgardad !== "-") return 'lagad';
-            if (meter.kommentar && meter.kommentar.toLowerCase().includes('åtgärdad')) return 'lagad';
-
-            // Regel 3: Är mätaren helt tyst just nu men har haft extrema toppar? -> Historiskt lagad
-            if (currentNoise <= 22 && maxHistorical >= 45) return 'lagad';
-
-            // Regel 4: 🔥 VÄRMEPUMP - högt på vintern, lågt på sommaren (NY!)
-            if (isHeatpump(meter.history)) {
-                return 'heatpump';
-            }
-
-            // Regel 5: 🏭 FJÄRRVÄRMESTÖRNING - "Ej fastställt" i Infokod
-            if (meter.infokod && (meter.infokod.includes("Ej fastställt") || meter.infokod.includes("Annat brus"))) {
-                if (currentNoise >= 25) return 'storing';
-            }
-
-            // Regel 6: Aktiv och ihållande läcka (Hög dB nu)
-            if (currentNoise >= 35) return 'aktiv_lacka';
-
-            // Regel 7: Aktiv LEAK-infokod
-            if (meter.infokod && meter.infokod.toUpperCase().includes('LEAK')) return 'leak_code';
-
-            // Regel 8: Trender och stegringar
-            if (meter.history.length >= 3) {
-                let firstVals = meter.history.slice(0, 2).map(h => h.value);
-                let avgStart = firstVals.reduce((a,b)=>a+b, 0) / firstVals.length;
-                if (currentNoise >= avgStart + 12 && avgStart <= 15) {
-                    return 'misstankt';
-                }
-            }
-
-            if (currentNoise >= 16) return 'ny_matare';
-            return 'normal';
+        // ── Sparkline ─────────────────────────────────────────────────────────────
+        function createSparkline(history, w = 80, h = 32) {
+            if (!history || history.length < 2) return `<svg width="${w}" height="${h}"><line x1="${w*.1}" y1="${h/2}" x2="${w*.9}" y2="${h/2}" stroke="#444" stroke-width="1" stroke-dasharray="3,2"/></svg>`;
+            const vals = history.map(x => x.value);
+            const mn = Math.min(...vals), mx = Math.max(...vals), rng = mx - mn || 1;
+            const pad = 4;
+            const pts = vals.map((v, i) => {
+                const px = pad + (i / (vals.length - 1)) * (w - 2 * pad);
+                const py = (h - pad) - ((v - mn) / rng) * (h - 2 * pad);
+                return `${px.toFixed(1)},${py.toFixed(1)}`;
+            }).join(' ');
+            const last = vals[vals.length - 1], prev = vals[vals.length - 2];
+            const col = last > prev + 2 ? '#f87171' : (last < prev - 2 ? '#34d399' : '#60a5fa');
+            const ep = pts.split(' ').pop(), [ex, ey] = ep.split(',');
+            return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;overflow:visible"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${ex}" cy="${ey}" r="3.5" fill="${col}"/></svg>`;
         }
 
+        // ── Rendering ─────────────────────────────────────────────────────────────
         function displayResults() {
-            const query = document.getElementById('searchInput').value.toLowerCase().trim();
-            const tbody = document.getElementById('tableBody');
+            const query    = document.getElementById('searchInput').value.toLowerCase().trim();
+            const tbody    = document.getElementById('tableBody');
             const noiseTbody = document.getElementById('noiseTableBody');
             
             tbody.innerHTML = '';
             noiseTbody.innerHTML = '';
-            
-            currentResults.sort((a, b) => b.currentNoise - a.currentNoise);
 
-            let hiddenCount = 0;
+            currentResults.sort((a, b) => {
+                const va = a[currentSort.column], vb = b[currentSort.column];
+                if (typeof va === 'string') return currentSort.direction === 'desc' ? vb.localeCompare(va) : va.localeCompare(vb);
+                return currentSort.direction === 'desc' ? vb - va : va - vb;
+            });
+
+            let noiseCount = 0;
 
             currentResults.forEach(r => {
                 if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
                 if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
+                if (ignoredIds.has(r.id)) return;
+                if (HIDDEN_CATS.has(r.category)) return;
 
                 let catOptions = '';
-                for (let c in categories) {
+                for (const c in categories) {
                     catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol} ${categories[c].label}</option>`;
                 }
 
-                const isHidden = ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare', 'heatpump'].includes(r.category);
-
-                if (isHidden) {
-                    hiddenCount++;
+                if (BOTTOM_PANEL_CATS.has(r.category)) {
+                    noiseCount++;
+                    const lastH = r.history?.length ? r.history[r.history.length - 1] : null;
+                    const lastV = lastH ? lastH.value : r.max;
+                    const lastAvg = lastH?.avgVal || 0;
                     const tr = document.createElement('tr');
                     tr.className = `row-${r.category}`;
                     tr.innerHTML = `
-                        <td><select class="category-select-compact">${catOptions}</select></td>
-                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag" style="color:#10b981; border-color:#10b981;">${r.memo}</span>` : ''}</td>
+                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
+                        <td>
+                            <div class="table-adress-text">${r.adress}</div>
+                            ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
+                        </td>
                         <td><code>${r.serienummer}</code></td>
-                        <td><strong>${r.currentNoise} dB</strong> / ${r.maxHistorical} dB</td>
-                        <td><span class="badge" style="background:${categories[r.category].bg}; color:${categories[r.category].color}">${categories[r.category].label}</span></td>
+                        <td><strong>${lastV} dB</strong> / ${r.max} dB${lastAvg > 0 ? `<br><small style="color:#666;">snitt: ${lastAvg} dB</small>` : ''}</td>
+                        <td>${getBottomComment(r)}</td>
                     `;
-                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
                     noiseTbody.appendChild(tr);
                 } else {
                     if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
-                    
                     const tr = document.createElement('tr');
                     tr.className = `row-${r.category}`;
+                    const changeClass = r.change > 100 ? 'trend-up' : (r.change < 0 ? 'trend-down' : '');
+                    const changeStr = r.change >= 100
+                        ? `<span class="trend-up">×${(r.change/100+1).toFixed(1)} (${r.change.toFixed(0)}%)</span>`
+                        : `<span class="${changeClass}">${r.change > 0 ? '+' : ''}${r.change.toFixed(1)}%</span>`;
                     tr.innerHTML = `
-                        <td style="text-align:center;"><button class="star-btn" style="background:transparent; border:none; cursor:pointer;">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
-                        <td><select class="category-select-compact">${catOptions}</select></td>
-                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}</td>
-                        <td style="text-align:center;"><button class="copy-btn">📋 Kopiera</button></td>
+                        <td style="text-align:center;"><button class="action-btn" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
+                        <td style="text-align:center;"><button class="action-btn" onclick="toggleIgnore('${r.id}')">👁️</button></td>
+                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
+                        <td>
+                            <div class="table-adress-text">${r.adress}</div>
+                            ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
+                        </td>
+                        <td style="text-align:center;"><button class="copy-btn" onclick="copyToClipboard('${r.adress}', event)">📋 Kopiera</button></td>
                         <td><code>${r.serienummer}</code></td>
-                        <td><span class="badge" style="background:#1f1f2e; color:#fff;">${r.area}</span></td>
-                        <td><span style="color:#f87171; font-weight:bold;">${r.currentNoise} dB</span></td>
-                        <td><strong>${r.maxHistorical} dB</strong></td>
-                        <td style="text-align:center;"><button class="copy-btn" style="padding:4px 8px;">📈</button></td>
+                        <td><span class="badge" style="background:#1f1f2e;color:#fff;">${r.area}</span></td>
+                        <td>${changeStr}</td>
+                        <td><strong>${r.max} dB</strong></td>
+                        <td class="spark-cell" onclick="openTrendGraph('${r.id}')">${createSparkline(r.history)}</td>
                     `;
                     tr.querySelector('.star-btn').addEventListener('click', () => toggleInteresting(r.id));
                     tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
@@ -608,126 +879,349 @@
                 }
             });
 
-            document.getElementById('noiseCountText').innerText = hiddenCount;
-            updateStats();
+            document.getElementById('noiseCountText').innerText = noiseCount;
+            updateStatsAndInsights();
         }
 
-        function updateStats() {
-            let c = { total: 0, extreme: 0, aktiv_lacka: 0, misstankt: 0, heatpump: 0, hidden: 0 };
-            
-            currentResults.forEach(r => {
-                if (r.category === 'heatpump') c.heatpump++;
-                
-                if (['normal', 'storing', 'leak_code', 'lagad', 'ny_matare', 'heatpump'].includes(r.category)) {
-                    c.hidden++;
-                } else {
-                    c.total++;
-                    if (r.category === 'extreme') c.extreme++;
-                    if (r.category === 'aktiv_lacka') c.aktiv_lacka++;
-                    if (r.category === 'misstankt') c.misstankt++;
-                }
-            });
+        function updateStatsAndInsights() {
+            const counts = { extreme: 0, aktiv_lacka: 0, misstankt: 0, ny_matare: 0, storing: 0, heatpump: 0, leak_code: 0, lagad: 0, normal: 0 };
+            currentResults.forEach(r => { if (counts[r.category] !== undefined) counts[r.category]++; });
 
-            const grid = document.getElementById('statsGrid');
-            grid.innerHTML = `
-                <div class="stat-card color-total ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="filterCat('all')"><div class="num">${c.total}</div><div class="label">Aktiva larm</div></div>
-                <div class="stat-card color-aktiv-lacka ${currentCategoryFilter === 'aktiv_lacka' ? 'active' : ''}" onclick="filterCat('aktiv_lacka')"><div class="num">${c.aktiv_lacka + c.extreme}</div><div class="label">Konstaterade läckor</div></div>
-                <div class="stat-card color-misstankt ${currentCategoryFilter === 'misstankt' ? 'active' : ''}" onclick="filterCat('misstankt')"><div class="num">${c.misstankt}</div><div class="label">Ihållande stegringar</div></div>
-                <div class="stat-card color-heatpump" onclick="filterCat('heatpump')"><div class="num">${c.heatpump}</div><div class="label">🔥 Värmepumpar</div></div>
-                <div class="stat-card color-noise"><div class="num">${c.hidden}</div><div class="label">Undansorterade</div></div>
+            const sharpCount = counts.extreme + counts.aktiv_lacka + counts.misstankt + counts.ny_matare;
+            const activeLeaks = counts.extreme + counts.aktiv_lacka;
+            const hiddenCount = counts.storing + counts.heatpump + counts.leak_code + counts.lagad;
+
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card color-total ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="setCategoryFilter('all')">
+                    <div class="num">${sharpCount}</div><div class="label">Skarpa mätare</div>
+                </div>
+                <div class="stat-card color-aktiv-lacka ${['extreme','aktiv_lacka'].includes(currentCategoryFilter) ? 'active' : ''}" onclick="setCategoryFilter('aktiv_lacka')">
+                    <div class="num" style="color:var(--clr-aktiv-lacka)">${activeLeaks}</div><div class="label">Aktiva Läckor</div>
+                </div>
+                <div class="stat-card color-misstankt ${currentCategoryFilter === 'misstankt' ? 'active' : ''}" onclick="setCategoryFilter('misstankt')">
+                    <div class="num" style="color:var(--clr-misstankt)">${counts.misstankt}</div><div class="label">🟠 Misstänkta</div>
+                </div>
+                <div class="stat-card color-heatpump ${currentCategoryFilter === 'heatpump' ? 'active' : ''}" onclick="setCategoryFilter('heatpump')">
+                    <div class="num" style="color:var(--clr-heatpump)">${counts.heatpump}</div><div class="label">🔥 Värmepumpar</div>
+                </div>
+                <div class="stat-card color-noise">
+                    <div class="num" style="color:var(--clr-storing)">${hiddenCount}</div><div class="label">Dolda / Lagade</div>
+                </div>
             `;
-            
-            document.getElementById('insightBox').innerHTML = `💡 <strong>Analys klar för hela tidsperioden:</strong> Systemet har byggt en kronologisk tidslinje mätare för mätare. 🔥 Värmepumpar (högt vinter/lågt sommar) har sorterats bort automatiskt. 🏭 "Ej fastställt" flaggas som fjärrvärmestörning.`;
+
+            renderDailySummaryBar(counts);
+
+            const insight = document.getElementById('insightBox');
+            if (counts.extreme > 0) {
+                insight.innerHTML = `🚨 <strong>AKUT:</strong> ${counts.extreme} mätare klassad som <strong>Akut Huvudledning</strong> — åtgärd krävs omgående!`;
+                insight.style.borderColor = 'var(--clr-extreme)';
+            } else if (counts.aktiv_lacka > 0) {
+                insight.innerHTML = `🔴 <strong>Aktiva läckor:</strong> ${counts.aktiv_lacka} mätare med extremt hög avvikelse (E/F ratio ≥ 15×) — trolig servis- eller ledningsläcka. Prioritera fältkontroll!`;
+                insight.style.borderColor = 'var(--clr-aktiv-lacka)';
+            } else if (counts.misstankt > 0) {
+                insight.innerHTML = `🟠 <strong>Karma fält-tips:</strong> ${counts.misstankt} st <strong>Misstänkta / Ihållande stegringar</strong> — avvikelse E/F 4–15×. Prioritera fältkontroll. 🔥 ${counts.heatpump} värmepumpar automatiskt sorterade.`;
+                insight.style.borderColor = 'var(--clr-misstankt)';
+            } else {
+                insight.innerHTML = `💡 <strong>Systemstatus:</strong> Inga akuta signaler. 🔥 ${counts.heatpump} värmepumpar, ${hiddenCount} störningar/larm filtrerade nedan. Avvikelse = (Senaste värde / Kamstrup-snitt) − 1.`;
+                insight.style.borderColor = 'var(--primary)';
+            }
         }
 
-        function filterCat(cat) { currentCategoryFilter = cat; displayResults(); }
-        function changeCategory(id, newCat) { userCategories.set(id, newCat); let item = currentResults.find(r => r.id === id); if(item) item.category = newCat; displayResults(); }
-        function toggleInteresting(id) { if(interestingIds.has(id)) interestingIds.delete(id); else interestingIds.add(id); displayResults(); }
-        
-        function copyAddress(fullAddr, e) {
-            navigator.clipboard.writeText(cleanAddressText(fullAddr)).then(() => {
-                const btn = e.currentTarget || e.target;
-                btn.innerText = "Klar! ✔";
-                setTimeout(() => { btn.innerText = "📋 Kopiera"; }, 1200);
-            });
+        // ── localStorage persistence ──────────────────────────────────────────────
+        function persistState() {
+            try {
+                localStorage.setItem('lacksok_fav_v3',    JSON.stringify([...interestingIds]));
+                localStorage.setItem('lacksok_pro_cats',  JSON.stringify([...userCategories.entries()]));
+                localStorage.setItem('lacksok_pro_hidden', JSON.stringify([...ignoredIds]));
+            } catch(e) {}
         }
 
-        function exportReport() {
-            if (currentResults.length === 0) {
-                alert('Ingen data att exportera. Kör analysen först.');
+        function loadPersistedState() {
+            try {
+                JSON.parse(localStorage.getItem('lacksok_fav_v3')     || '[]').forEach(id      => interestingIds.add(id));
+                JSON.parse(localStorage.getItem('lacksok_pro_cats')   || '[]').forEach(([k,v]) => userCategories.set(k, v));
+                JSON.parse(localStorage.getItem('lacksok_pro_hidden') || '[]').forEach(id      => ignoredIds.add(id));
+                JSON.parse(localStorage.getItem('lacksok_geocache')   || '[]').forEach(([k,v]) => geocache.set(k, v));
+            } catch(e) {}
+        }
+
+        // ── Kategori / filter actions ─────────────────────────────────────────────
+        function setCategoryFilter(cat) { currentCategoryFilter = cat; displayResults(); }
+
+        function changeCategory(id, newCat) {
+            userCategories.set(id, newCat);
+            const r = currentResults.find(r => r.id === id);
+            if (r) { r.category = newCat; r.reason = 'manual'; }
+            persistState();
+            displayResults();
+        }
+
+        function toggleInteresting(id) {
+            interestingIds.has(id) ? interestingIds.delete(id) : interestingIds.add(id);
+            persistState(); displayResults();
+        }
+
+        function toggleIgnore(id) {
+            ignoredIds.add(id);
+            persistState(); displayResults();
+        }
+
+        // ── Filinläsning med progressbar ──────────────────────────────────────────
+        async function handleFiles(files) {
+            const allFiles = Array.from(files);
+            if (!allFiles.length) { document.getElementById('fileInput').value = ''; return; }
+
+            const progCont  = document.getElementById('progressContainer');
+            const progFill  = document.getElementById('progressFill');
+            const progText  = document.getElementById('progressText');
+            progCont.style.display = 'block';
+            progFill.style.width   = '0%';
+            progText.innerText     = `0 av ${allFiles.length} filer bearbetade...`;
+
+            const BATCH = 5;
+            let totalDone = 0;
+
+            for (let i = 0; i < allFiles.length; i += BATCH) {
+                const batch = allFiles.slice(i, i + BATCH);
+                await Promise.allSettled(batch.map(async file => {
+                    try {
+                        const ext = file.name.toLowerCase().split('.').pop();
+                        if (ext === 'pdf') {
+                            const r = await parsePDFFile(file, (pg, tot) => {
+                                progText.innerText = `PDF: sida ${pg}/${tot} — ${file.name}`;
+                            });
+                            const date = r.reportDate || extractDateFromFilename(file.name) || new Date(file.lastModified);
+                            if (r.meters.length && !uploadedFiles.some(f => f.name === file.name)) {
+                                uploadedFiles.push({ name: file.name, date, meters: r.meters });
+                            }
+                        } else {
+                            const r = await parseExcelFile(file);
+                            const date = r.fileReadingDate || extractDateFromFilename(file.name) || new Date(file.lastModified);
+                            if (r.meters.length && !uploadedFiles.some(f => f.name === file.name)) {
+                                uploadedFiles.push({ name: file.name, date, meters: r.meters });
+                            }
+                        }
+                    } catch(e) { console.warn('Fil kunde inte läsas:', file.name, e); }
+                }));
+                totalDone = Math.min(i + BATCH, allFiles.length);
+                progFill.style.width = `${(totalDone / allFiles.length) * 100}%`;
+                progText.innerText   = `${totalDone} av ${allFiles.length} filer bearbetade...`;
+                await new Promise(r => setTimeout(r, 30));
+            }
+
+            setTimeout(() => { progCont.style.display = 'none'; }, 1500);
+            updateFileList();
+            document.getElementById('fileInput').value = '';
+        }
+
+        function updateFileList() {
+            document.getElementById('fileCountText').innerText = uploadedFiles.length;
+            const grid = document.getElementById('fileList');
+            grid.innerHTML = '';
+            if (!uploadedFiles.length) {
+                grid.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">Inga filer laddade än.</span>';
                 return;
             }
-            const activeRows = currentResults
-                .filter(r => !['normal', 'storing', 'leak_code', 'lagad', 'ny_matare', 'heatpump'].includes(r.category))
-                .map(r => ({
-                    'Mätarnummer': r.serienummer,
-                    'Adress': r.adress,
-                    'Område': r.area,
-                    'Klassificering': categories[r.category].label,
-                    'Senaste Brus (dB)': r.currentNoise,
-                    'Maxvärde (dB)': r.maxHistorical,
-                    'Notering': r.memo || ''
-                }));
-            const hiddenRows = currentResults
-                .filter(r => ['normal', 'storing', 'leak_code', 'lagad', 'ny_matare', 'heatpump'].includes(r.category))
-                .map(r => ({
-                    'Mätarnummer': r.serienummer,
-                    'Adress': r.adress,
-                    'Område': r.area,
-                    'Klassificering': categories[r.category].label,
-                    'Senaste Brus (dB)': r.currentNoise,
-                    'Maxvärde (dB)': r.maxHistorical,
-                    'Notering': r.memo || ''
-                }));
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(activeRows), 'Aktiva ärenden');
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hiddenRows), 'Bakgrund & Lagade');
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hiddenRows.filter(r => r.Klassificering === '🔥 Värmepump (Normal säsong)')), 'Värmepumpar');
-            XLSX.writeFile(wb, `lacksok-rapport-${new Date().toISOString().slice(0, 10)}.xlsx`);
+            uploadedFiles.forEach((f, idx) => {
+                const chip = document.createElement('div');
+                chip.className = 'file-chip-compact';
+                chip.innerHTML = `<span class="chip-name">📄 ${f.name}</span><span class="chip-date">${formatShortDate(f.date)}</span><strong class="remove-file-x">×</strong>`;
+                chip.querySelector('.remove-file-x').onclick = e => {
+                    e.stopPropagation();
+                    uploadedFiles.splice(idx, 1);
+                    updateFileList();
+                };
+                grid.appendChild(chip);
+            });
         }
 
-        function openGraph(id) {
-            const meter = currentResults.find(r => r.id === id); if (!meter) return;
-            document.getElementById('modalTitle').innerText = `Tidslinje för ${cleanAddressText(meter.adress)}`;
+        // ── Urklipp ───────────────────────────────────────────────────────────────
+        function copyToClipboard(addr, event) {
+            navigator.clipboard.writeText(extractCleanAddressOnly(addr)).then(() => {
+                const btn = event.target;
+                const orig = btn.innerText;
+                btn.innerText = 'Kopierad! ✔';
+                btn.style.background = '#1db954';
+                btn.style.color = '#fff';
+                setTimeout(() => { btn.innerText = orig; btn.style.background = '#1c1c24'; btn.style.color = 'var(--text-muted)'; }, 1200);
+            });
+        }
+
+        // ── Trendgraf ─────────────────────────────────────────────────────────────
+        function openTrendGraph(id) {
+            const meter = currentResults.find(r => r.id === id);
+            if (!meter?.history?.length) return;
+            document.getElementById('modalTitle').innerText = `Brustrend för ${extractCleanAddressOnly(meter.adress)} (${meter.serienummer})`;
             document.getElementById('graphModal').style.display = 'flex';
-            
-            const labels = meter.history.map(h => h.dateStr);
-            const dataPoints = meter.history.map(h => h.value);
-            
             if (activeChartInstance) activeChartInstance.destroy();
             const ctx = document.getElementById('trendChart').getContext('2d');
             activeChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
-                    datasets: [{ label: 'Brus dB', data: dataPoints, borderColor: '#1db954', backgroundColor: 'rgba(29, 185, 84, 0.05)', fill: true, tension: 0.1 }]
+                    labels: meter.history.map(h => h.dateStr),
+                    datasets: [{ label: 'Brusnivå (dB)', data: meter.history.map(h => h.value), borderColor: '#1db954', backgroundColor: 'rgba(29,185,84,0.08)', borderWidth: 3, pointBackgroundColor: '#fff', pointRadius: 5, tension: 0.2 }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0 } } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' }, beginAtZero: true }, x: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' } } } }
             });
         }
 
-        // Event Listeners
-        document.getElementById('uploadBtn').onclick = () => document.getElementById('fileInput').click();
-        document.getElementById('fileInput').onchange = (e) => handleFiles(e.target.files);
+        // ── Sortering ─────────────────────────────────────────────────────────────
+        function triggerSort(col) {
+            if (currentSort.column === col) {
+                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentSort.column = col;
+                currentSort.direction = ['adress','serienummer','area'].includes(col) ? 'asc' : 'desc';
+            }
+            document.querySelectorAll('th').forEach(th => th.classList.remove('active-sort'));
+            document.getElementById(`th-${col}`)?.classList.add('active-sort');
+            displayResults();
+        }
+
+        // ── Export ────────────────────────────────────────────────────────────────
+        document.getElementById('exportBtn').onclick = () => {
+            if (!currentResults.length) return;
+            const mkRows = cat => currentResults.filter(r => r.category === cat || (cat === 'active' && ['extreme','aktiv_lacka','misstankt','ny_matare'].includes(r.category))).map(r => ({
+                'Mätarnummer': r.serienummer, 'Adress': extractCleanAddressOnly(r.adress), 'Kommundel': r.area,
+                'Högsta Brus (dB)': r.max, 'Förändring %': r.change.toFixed(1) + '%',
+                'Statusklass': categories[r.category]?.label || r.category, 'Fältkommentar': r.memo || ''
+            }));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mkRows('active')), 'Aktiva ärenden');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mkRows('heatpump')), 'Värmepumpar');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mkRows('lagad')), 'Lagade');
+            XLSX.writeFile(wb, `Karma_Lacksok_Rapport_${new Date().toISOString().slice(0,10)}.xlsx`);
+        };
+
+        // ── Geocoding (Nominatim, 1 req/s, localStorage cache) ───────────────────
+        function saveGeoCache() {
+            try { localStorage.setItem('lacksok_geocache', JSON.stringify([...geocache.entries()])); } catch(e) {}
+        }
+
+        async function geocodeAddress(addr) {
+            const key = extractCleanAddressOnly(addr) + ', Botkyrka, Sverige';
+            if (geocache.has(key)) return geocache.get(key);
+            try {
+                await new Promise(r => setTimeout(r, 1150));
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(key)}&limit=1&countrycodes=se`, { headers: { 'User-Agent': 'LacksokPro/5.0 (Botkyrka VA)' } });
+                const data = await res.json();
+                const coords = data && data[0] ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) } : null;
+                geocache.set(key, coords);
+                saveGeoCache();
+                return coords;
+            } catch(e) { geocache.set(key, null); return null; }
+        }
+
+        // ── Karta (Leaflet) ───────────────────────────────────────────────────────
+        document.getElementById('mapBtn').onclick = showMap;
+
+        async function showMap() {
+            if (!currentResults.length) {
+                document.getElementById('mapStatusText').textContent = 'Kör analys först.';
+                document.getElementById('mapModal').style.display = 'flex';
+                return;
+            }
+            document.getElementById('mapModal').style.display = 'flex';
+            await new Promise(r => setTimeout(r, 60));
+
+            if (!leafletMap) {
+                leafletMap = L.map('leafletMap').setView([59.25, 17.85], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19 }).addTo(leafletMap);
+            } else {
+                mapMarkers.forEach(mk => leafletMap.removeLayer(mk));
+                mapMarkers = [];
+            }
+            leafletMap.invalidateSize();
+
+            const toPlot = currentResults.filter(r => !HIDDEN_CATS.has(r.category) && !ignoredIds.has(r.id));
+            const statusEl = document.getElementById('mapStatusText');
+            const nUncached = toPlot.filter(r => !geocache.has(extractCleanAddressOnly(r.adress) + ', Botkyrka, Sverige')).length;
+            statusEl.textContent = `Laddar karta… ${nUncached} att geokoda (~${nUncached}s)`;
+
+            let done = 0;
+            for (const r of toPlot) {
+                const coords = await geocodeAddress(r.adress);
+                done++;
+                statusEl.textContent = `Geokoderar… ${done}/${toPlot.length}`;
+                if (coords) {
+                    const cat = categories[r.category] || categories.normal;
+                    const lastV = r.history?.length ? r.history[r.history.length - 1].value : r.max;
+                    const mk = L.circleMarker([coords.lat, coords.lng], { radius: 11, fillColor: cat.bg, color: '#fff', weight: 2.5, opacity: 1, fillOpacity: 0.88 });
+                    mk.bindPopup(`<div style="min-width:180px;"><strong style="font-size:14px;">${extractCleanAddressOnly(r.adress)}</strong><br><span style="color:${cat.bg};font-weight:700;">${cat.symbol} ${cat.label}</span><br>Senaste: <strong>${lastV} dB</strong> | Max: <strong>${r.max} dB</strong><br><small style="color:#888;">${r.serienummer}</small>${r.memo ? `<br><span style="color:#2dd4bf;font-size:11px;">${r.memo}</span>` : ''}</div>`);
+                    mk.addTo(leafletMap);
+                    mapMarkers.push(mk);
+                }
+            }
+            statusEl.textContent = `✅ ${mapMarkers.length} av ${toPlot.length} mätare kartlagda`;
+            if (mapMarkers.length > 0) leafletMap.fitBounds(L.featureGroup(mapMarkers).getBounds().pad(0.18));
+        }
+
+        // ── Dagssammanfattning ────────────────────────────────────────────────────
+        function saveDailySnapshot() {
+            if (!currentResults.length) return;
+            const snap = { date: new Date().toISOString().slice(0,10) };
+            Object.keys(categories).forEach(k => snap[k] = 0);
+            currentResults.forEach(r => { if (snap[r.category] !== undefined) snap[r.category]++; });
+            try { localStorage.setItem('lacksok_daily_snapshot', JSON.stringify(snap)); } catch(e) {}
+        }
+
+        function getDailySnapshot() {
+            try { return JSON.parse(localStorage.getItem('lacksok_daily_snapshot') || 'null'); } catch(e) { return null; }
+        }
+
+        function renderDailySummaryBar(counts) {
+            const snap = getDailySnapshot();
+            const bar  = document.getElementById('dailySummaryBar');
+            if (!snap || snap.date === new Date().toISOString().slice(0,10)) { bar.style.display = 'none'; return; }
+            const diff = key => {
+                const d = (counts[key] || 0) - (snap[key] || 0);
+                if (d > 0) return `<span class="d-up">↑ +${d}</span>`;
+                if (d < 0) return `<span class="d-dn">↓ ${d}</span>`;
+                return `<span class="d-eq">±0</span>`;
+            };
+            bar.style.display = 'flex';
+            bar.innerHTML = `
+                <span class="daily-bar-label">📊 vs igår:</span>
+                <span class="daily-delta">🔴 Aktiva: <strong>${(counts.extreme||0)+(counts.aktiv_lacka||0)}</strong> ${diff('extreme')} ${diff('aktiv_lacka')}</span>
+                <span class="daily-delta">🟠 Misstänkta: <strong>${counts.misstankt||0}</strong> ${diff('misstankt')}</span>
+                <span class="daily-delta">🔥 Värmepumpar: <strong>${counts.heatpump||0}</strong> ${diff('heatpump')}</span>
+                <span class="daily-date">Snapshot: ${snap.date}</span>
+            `;
+        }
+
+        // ── Utskrift ──────────────────────────────────────────────────────────────
+        document.getElementById('printBtn').onclick = () => window.print();
+
+        // ── Event listeners ───────────────────────────────────────────────────────
+        document.getElementById('th-adress').onclick      = () => triggerSort('adress');
+        document.getElementById('th-serienummer').onclick = () => triggerSort('serienummer');
+        document.getElementById('th-area').onclick        = () => triggerSort('area');
+        document.getElementById('th-change').onclick      = () => triggerSort('change');
+        document.getElementById('th-max').onclick         = () => triggerSort('max');
+
+        document.getElementById('uploadBtn').onclick  = () => document.getElementById('fileInput').click();
+        document.getElementById('fileInput').onchange = e => handleFiles(e.target.files);
         document.getElementById('analyzeBtn').onclick = () => runAnalysis();
         document.getElementById('exportBtn').onclick = () => exportReport();
         document.getElementById('searchInput').oninput = () => displayResults();
-        document.getElementById('areaFilter').onchange = (e) => { currentAreaFilter = e.target.value; displayResults(); };
-        document.getElementById('closeModalBtn').onclick = () => document.getElementById('graphModal').style.display = 'none';
-        document.getElementById('clearBtn').onclick = () => { uploadedFiles = []; currentResults = []; updateFileList(); document.getElementById('results').style.display = 'none'; };
+        document.getElementById('areaFilter').onchange = e => { currentAreaFilter = e.target.value; displayResults(); };
 
-        document.getElementById('accordionTrigger').onclick = () => {
-            document.getElementById('fileGridContainer').classList.toggle('open');
-            const isOpen = document.getElementById('fileGridContainer').classList.contains('open');
-            document.getElementById('arrowIndicator').textContent = isOpen ? '▾' : '▸';
+        document.getElementById('closeModalBtn').onclick = () => { document.getElementById('graphModal').style.display = 'none'; };
+        window.onclick = e => {
+            if (e.target === document.getElementById('graphModal')) document.getElementById('graphModal').style.display = 'none';
+            if (e.target === document.getElementById('mapModal'))   document.getElementById('mapModal').style.display = 'none';
         };
-        document.getElementById('noiseAccordionTrigger').onclick = () => {
-            document.getElementById('noiseGridContainer').classList.toggle('open');
-            const isOpen = document.getElementById('noiseGridContainer').classList.contains('open');
-            document.getElementById('noiseArrowIndicator').textContent = isOpen ? '▾' : '▸';
+
+        document.getElementById('clearBtn').onclick = () => {
+            uploadedFiles = []; currentResults = [];
+            ignoredIds.clear(); interestingIds.clear(); userCategories.clear();
+            persistState();
+            updateFileList();
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('fileInput').value = '';
         };
-        
-        window.filterCat = filterCat;
+
+        loadPersistedState();
     </script>
 </body>
 </html>

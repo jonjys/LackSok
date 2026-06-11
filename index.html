@@ -32,7 +32,6 @@
             --clr-heatpump: #f59e0b;
             --clr-lagad: #10b981;
             --clr-normal: #27272a;
-            --clr-heatpump: #f59e0b;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
@@ -131,18 +130,14 @@
         .trend-down { color: #34d399; font-weight: 600; }
 
         .noise-accordion-box { background: #0d0d11; border: 1px dashed #2e2e3e; border-radius: 12px; padding: 20px; margin-top: 36px; }
-
-        /* ── Sparklines ──────────────────────────────────────────────────────── */
         .spark-cell { display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .spark-cell:hover polyline { stroke-width: 2.5; }
 
-        /* ── Graph modal ─────────────────────────────────────────────────────── */
         .graph-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
         .graph-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 700px; padding: 24px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
         .close-modal-btn { position: absolute; top: 14px; right: 18px; font-size: 24px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
         .close-modal-btn:hover { color: #fff; }
 
-        /* ── Map modal ───────────────────────────────────────────────────────── */
         .map-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
         .map-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 1060px; height: 640px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
         #leafletMap { flex: 1; border-radius: 10px; min-height: 0; }
@@ -150,7 +145,6 @@
         .map-legend-item { display: flex; align-items: center; gap: 6px; }
         .map-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 
-        /* ── Mobile ──────────────────────────────────────────────────────────── */
         @media (max-width: 768px) {
             body { padding: 14px; }
             .app-header { flex-direction: column; gap: 10px; }
@@ -168,7 +162,6 @@
             .map-modal-content { height: 90vh; }
         }
 
-        /* ── Print ───────────────────────────────────────────────────────────── */
         @media print {
             body { background: #fff; color: #000; padding: 18px; }
             .upload-section, .toolbar, .file-grid-container, .accordion-trigger,
@@ -241,7 +234,7 @@
             </select>
         </div>
 
-        <div class="section-title">🎯 AKTIVA ÄRENDEN & IHÅLLANDE STEGRINGAR</div>
+        <div class="section-title">🎯 AKTIVA ÄRENDEN & IHÅLLANDE STEGRINGAR <span style="font-size:11px; color:var(--primary);">▼ SORTERAT: HÖGSTA MAXVÄRDET FÖRST</span></div>
         <div class="results-container">
             <table>
                 <thead>
@@ -253,8 +246,9 @@
                         <th style="width:90px;text-align:center;">Urklipp</th>
                         <th id="th-serienummer">Mätarnummer ↕</th>
                         <th id="th-area">Kommundel ↕</th>
-                        <th id="th-change" class="active-sort">Avvikelse (E/F-1) ↕</th>
-                        <th id="th-max">Maxavläsning ↕</th>
+                        <th id="th-change">Avvikelse (E/F-1) ↕</th>
+                        <th id="th-max" class="active-sort">🔽 MAXAVLÄSNING (dB) ↕</th>
+                        <th id="th-latest">📊 SENASTE VÄRDE ↕</th>
                         <th style="width:80px;text-align:center;">Trend</th>
                     </tr>
                 </thead>
@@ -316,10 +310,8 @@
     </div>
 
     <script>
-        // PDF.js worker
         if (window['pdfjs-dist/build/pdf']) {
-            window['pdfjs-dist/build/pdf'].GlobalWorkerOptions.workerSrc =
-                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            window['pdfjs-dist/build/pdf'].GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
 
         // ── Global state ──────────────────────────────────────────────────────────
@@ -329,7 +321,7 @@
         let interestingIds   = new Set();
         let userCategories   = new Map();
         let activeChartInstance = null;
-        let currentSort      = { column: 'change', direction: 'desc' };
+        let currentSort      = { column: 'max', direction: 'desc' };
         let currentAreaFilter     = 'all';
         let currentCategoryFilter = 'all';
         let geocache   = new Map();
@@ -339,7 +331,6 @@
         const BOTTOM_PANEL_CATS = new Set(['storing', 'heatpump', 'leak_code', 'lagad']);
         const HIDDEN_CATS       = new Set(['normal']);
 
-        // ── Kunskapsbas (merged) ──────────────────────────────────────────────────
         const fieldKnowledgeBase = {
             "GRANBACKEN 2":        { cat: "aktiv_lacka", memo: "🚨 FLÖDESEXPLOSION! Bruset sköt upp spikrakt till 73 dB i juni. Åk ut direkt!" },
             "HÖGBRINKSVÄGEN":      { cat: "storing",     memo: "🔊 Industri/Pumpstörning: Hoppar extremt (upp till 275 dB)." },
@@ -383,16 +374,13 @@
         // ── DOM accordion ─────────────────────────────────────────────────────────
         document.getElementById('accordionTrigger').onclick = () => {
             document.getElementById('fileGridContainer').classList.toggle('open');
-            document.getElementById('arrowIndicator').innerText =
-                document.getElementById('fileGridContainer').classList.contains('open') ? '▾' : '▸';
+            document.getElementById('arrowIndicator').innerText = document.getElementById('fileGridContainer').classList.contains('open') ? '▾' : '▸';
         };
         document.getElementById('noiseAccordionTrigger').onclick = () => {
             document.getElementById('noiseGridContainer').classList.toggle('open');
-            document.getElementById('noiseArrowIndicator').innerText =
-                document.getElementById('noiseGridContainer').classList.contains('open') ? '▾' : '▸';
+            document.getElementById('noiseArrowIndicator').innerText = document.getElementById('noiseGridContainer').classList.contains('open') ? '▾' : '▸';
         };
 
-        // ── Hjälpfunktioner ───────────────────────────────────────────────────────
         function extractDateFromFilename(name) {
             const m = name.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
             return m ? new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])) : null;
@@ -424,16 +412,13 @@
 
         function extractCleanAddressOnly(fullAddr) {
             if (!fullAddr) return '';
-            return fullAddr
-                .replace(/\b(TUMBA|TULLINGE|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\d{3}\s?\d{2})\b/gi, '')
-                .trim().replace(/\s+/g, ' ').toUpperCase();
+            return fullAddr.replace(/\b(TUMBA|TULLINGE|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\d{3}\s?\d{2})\b/gi, '').trim().replace(/\s+/g, ' ').toUpperCase();
         }
 
         function avg(readings) {
             return readings.reduce((s, h) => s + h.value, 0) / readings.length;
         }
 
-        // ── Excel-parser ──────────────────────────────────────────────────────────
         function parseExcelFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -446,19 +431,14 @@
                         rows.forEach(row => {
                             const id      = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'] || row['Device ID'];
                             const address = row['Adress'] || row['Plats'] || row['address'] || row['Mätarplats'];
-                            // E = Senaste värde (aktuellt ALD-brus)
                             const rawE    = row['Senaste värde'] || row['Brus'] || row['value'] || '0';
                             const value   = parseInt(rawE.toString().replace(/[^0-9]/g, '')) || 0;
-                            // F = Genomsnittsvärde (Kamstrups historiska snitt — nyckelkolumn!)
                             const rawF    = row['Genomsnittsvärde'] || row['Medelvärde'] || '0';
                             const avgVal  = parseInt(rawF.toString().replace(/[^0-9]/g, '')) || 0;
-                            // G = Maxvärde
                             const rawG    = row['Maxvärde'] || row['Max'] || '0';
                             const maxVal  = parseInt(rawG.toString().replace(/[^0-9]/g, '')) || value;
-                            // H = Infokod,  I = Aktiva händelser
                             const infokod = [row['Infokod'], row['Aktiva händelser'], row['Felkod'], row['Status']].filter(Boolean).join(' ').trim();
                             const rawArea = row['Område'] || row['Ort'] || '';
-                            // D = Senaste avläsning — extrahera datum
                             const readingDateStr = row['Senaste avläsning'] || '';
                             if (!fileReadingDate && readingDateStr) {
                                 const m = readingDateStr.toString().match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -486,7 +466,6 @@
             });
         }
 
-        // ── PDF-parser (Kamstrup "Filtrerade mätare") ─────────────────────────────
         function parsePDFFile(file, onProgress) {
             return new Promise(async (resolve, reject) => {
                 try {
@@ -494,14 +473,12 @@
                     const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
                     const meters = [];
                     let reportDate = null;
-
                     for (let pg = 1; pg <= pdf.numPages; pg++) {
                         if (onProgress) onProgress(pg, pdf.numPages);
                         const tc = await (await pdf.getPage(pg)).getTextContent();
                         const items = tc.items.filter(i => i.str.trim()).map(i => ({ str: i.str.trim(), x: i.transform[4], y: i.transform[5] }));
                         const rows = groupPDFRows(items, 4);
                         let pendingCity = null;
-
                         for (const row of rows) {
                             const joined = row.map(i => i.str).join(' ');
                             if (!reportDate) {
@@ -510,7 +487,6 @@
                             }
                             if (row.some(i => i.str === 'Serienummer' || i.str === 'Adress')) { pendingCity = null; continue; }
                             if (/Rapport utfärdad|Sida \d+|Filtrerade mätare/i.test(joined) && row.length <= 5) { pendingCity = null; continue; }
-
                             const snItem = row.find(i => /^\d{7,10}$/.test(i.str));
                             if (snItem) {
                                 const m = buildMeterFromPDFRow(row, snItem, pendingCity);
@@ -561,70 +537,50 @@
             return { id: snItem.str, adress, serienummer: snItem.str, value: senasteVarde, infokod: infokod.trim(), area: identifyArea(adress, ''), street: cleanStreetName(adress) };
         }
 
-        // ── Värmepumpsdetektor ────────────────────────────────────────────────────
-        // Detekterar: högt brus höst/vinter → lågt vår/sommar → högt igen nästa höst
         function isHeatpump(history) {
             if (!history || history.length < 3) return false;
-
-            // Bygg månadsmedelvärden
             const byMonth = {};
             for (const h of history) {
-                const mo = new Date(h.date || h.dateStr).getMonth(); // 0-11
+                const mo = new Date(h.date || h.dateStr).getMonth();
                 if (!byMonth[mo]) byMonth[mo] = [];
                 byMonth[mo].push(h.value);
             }
             const mAvg = mo => byMonth[mo] ? byMonth[mo].reduce((a,b)=>a+b,0)/byMonth[mo].length : null;
-
-            // Kalla månader = okt-apr (9,10,11,0,1,2,3), Varma = maj-sep (4,5,6,7,8)
             const COLD = [9,10,11,0,1,2,3], WARM = [4,5,6,7,8];
             const coldVals = COLD.map(mAvg).filter(v=>v!==null);
             const warmVals = WARM.map(mAvg).filter(v=>v!==null);
-
             if (coldVals.length === 0) return false;
-
-            // Mönster 1: Vi har BOTH varm och kall säsong — jämför direkt
             if (warmVals.length >= 1) {
                 const coldA = coldVals.reduce((a,b)=>a+b,0)/coldVals.length;
                 const warmA = warmVals.reduce((a,b)=>a+b,0)/warmVals.length;
-                // Vinter minst 1.8x varmare, sommar lugn (<30), vinter förhöjt (>15)
                 return warmA < 30 && coldA > warmA * 1.8 && coldA > 15;
             }
-
-            // Mönster 2: Bara vinterdata — kolla om det finns en tydlig säsongsstegring/nedgång
-            // Sortera historien kronologiskt och leta efter V-kurva (höst→vinter→vår) eller stigande höst
             if (history.length >= 4) {
                 const sorted = [...history].sort((a,b)=>a.date-b.date);
-                // Kolla om sista 2 mätningarna stiger relativt de 2 första (höst-uppgång)
                 const firstTwo = sorted.slice(0,2).map(h=>h.value);
                 const lastTwo  = sorted.slice(-2).map(h=>h.value);
                 const firstA   = firstTwo.reduce((a,b)=>a+b,0)/2;
                 const lastA    = lastTwo.reduce((a,b)=>a+b,0)/2;
-                const allMod   = sorted.every(h=>h.value < 80); // inget extremvärde
-                // Stiger från tidig höst mot vinter och värdena är måttliga → trolig värmepump
+                const allMod   = sorted.every(h=>h.value < 80);
                 if (allMod && lastA > firstA * 1.5 && lastA > 20) return true;
             }
-
             return false;
         }
 
-        // ── Smart-classify ────────────────────────────────────────────────────────
         function smartClassify(meter) {
             const R = (cat, reason) => ({ cat, reason });
             const cleanAddr = extractCleanAddressOnly(meter.adress);
             if (fieldKnowledgeBase[cleanAddr]) return R(fieldKnowledgeBase[cleanAddr].cat, 'knowledge_base');
-
             const info = (meter.infokod || '').toLowerCase();
             if (info.includes('burst') || info.includes('rörbrott')) return R('extreme',   'burst');
             if (info.includes('dry'))                                  return R('normal',    'dry');
             if (info.includes('reverse'))                              return R('storing',   'reverse');
             if (info.includes('leak') || info.includes('läckage'))    return R('leak_code', 'leak_alarm');
-
             const hist = meter.history;
             if (!hist || hist.length < 2) {
                 const h    = hist?.length ? hist[hist.length - 1] : { value: 0, avgVal: 0 };
                 const v    = h.value;
                 const aVal = h.avgVal || 0;
-                // Use Kamstrup ratio (E/F-1) when avgVal is available — single-file primary signal
                 if (aVal > 0) {
                     const ratio = v / aVal;
                     if (ratio >= 15)  return R('aktiv_lacka',  'high_ratio');
@@ -634,21 +590,18 @@
                 if (v >= 25) return R('ny_matare', 'single_reading');
                 return R('normal', 'single_reading');
             }
-
             const history = [...hist].sort((a, b) => a.date - b.date);
             const n = history.length;
             const currentNoise  = history[n - 1].value;
             const currentAvgVal = history[n - 1].avgVal || 0;
             const currentRatio  = currentAvgVal > 0 ? currentNoise / currentAvgVal : 0;
             const maxHistorical = Math.max(...history.map(h => Math.max(h.value, h.maxVal || 0)));
-
             const WINTER = new Set([10, 11, 0, 1, 2]);
             const SUMMER = new Set([4, 5, 6, 7, 8]);
             const winterR = history.filter(h => WINTER.has(new Date(h.date).getMonth()));
             const summerR = history.filter(h => SUMMER.has(new Date(h.date).getMonth()));
             const winterAvg = winterR.length >= 2 ? avg(winterR) : null;
             const summerAvg = summerR.length >= 2 ? avg(summerR) : null;
-
             const last3 = history.slice(-3);
             const isStableHigh = last3.length === 3 && (() => {
                 const vals = last3.map(h => h.value);
@@ -656,49 +609,30 @@
                 const maxDev = Math.max(...vals.map(v => Math.abs(v - mean)));
                 return mean > 18 && (mean > 0 ? maxDev / mean : 1) < 0.30;
             })();
-
-            // Ratio-override: om Kamstrup-snitt finns och ratio är extrem → direkt klassning
             if (currentRatio >= 15) return R('aktiv_lacka',  'high_ratio');
             if (currentRatio >= 4 && !history.every(h => h.value >= 15)) return R('misstankt', 'elevated_ratio');
-
             if (hist.length < 5) {
                 const alwaysHigh = history.every(h => h.value >= 18);
                 if (currentNoise >= 28) return alwaysHigh ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
                 if (currentNoise >= 18) return R('ny_matare', 'elevated');
                 return R('normal', 'ok');
             }
-
-            // 1. Reparation
             if (history.slice(-4).every(h => h.value <= 22)) {
                 return maxHistorical >= 50 ? R('lagad', 'repaired') : R('normal', 'ok');
             }
-
-            // 2. Värmepump (säsong) — separat kategori
             if (isHeatpump(history)) return R('heatpump', 'heat_pump_seasonal');
-
-            // 3. Värmepump (säsongsmedelvärden, finare detektion)
             if (winterAvg !== null && summerAvg !== null) {
                 const seasonRatio = summerAvg > 0 ? winterAvg / summerAvg : 0;
-                // Vinter minst 1.8x sommar, sommar lugn, vinter förhöjt — oavsett nivå
                 if (summerAvg < 30 && seasonRatio > 1.8 && winterAvg > 15) return R('heatpump', 'heat_pump');
-                // Stabilt konstant (ej säsong) → störning
                 if (seasonRatio > 0.7 && seasonRatio < 1.4 && isStableHigh) return R('storing', 'heat_pump_constant');
             }
-
-            // 4. Fjärrvärmestörning
             const hasUncertainCode = info.includes('ej fastställt') || info.includes('annat brus');
             if (hasUncertainCode && isStableHigh) return R('storing', 'district_heating');
-
-            // 5. Industridetektering
             if (meter.area === 'TULLINGE' && isStableHigh && maxHistorical > 80) return R('storing', 'industrial');
-
-            // 6. Ihållande stegring
             const olderPeriod = history.slice(0, -3);
             if (olderPeriod.every(h => h.value <= 12) && history.slice(-3).every(h => h.value >= 18)) {
                 return R('misstankt', 'persistent_rise');
             }
-
-            // 7. Konstant högt = störning, inte ny läcka
             if (currentNoise >= 28) {
                 return history.every(h => h.value >= 18) ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
             }
@@ -706,13 +640,11 @@
             return R('normal', 'ok');
         }
 
-        // ── Analys-runner ─────────────────────────────────────────────────────────
         function runAnalysis() {
             if (!uploadedFiles.length) return;
             uploadedFiles.sort((a, b) => a.date - b.date);
             currentResults = [];
             const metersMap = new Map();
-
             uploadedFiles.forEach(file => {
                 const dateStr = formatShortDate(file.date);
                 file.meters.forEach(m => {
@@ -720,29 +652,21 @@
                         metersMap.set(m.id, { id: m.id, adress: m.adress, serienummer: m.serienummer, area: m.area, street: m.street, infokod: m.infokod, history: [] });
                     }
                     metersMap.get(m.id).history.push({ date: file.date, dateStr, value: m.value, avgVal: m.avgVal || 0, maxVal: m.maxVal || m.value });
-                    // Always use latest infokod / address
                     if (m.infokod) metersMap.get(m.id).infokod = m.infokod;
                 });
             });
-
             for (const [, m] of metersMap) {
                 const history   = [...m.history].sort((a, b) => a.date - b.date);
                 const first     = history[0], last = history[history.length - 1];
-                // Primary change metric: ratio from Kamstrup avg (E/F-1), fallback to multi-file diff
                 const lastRatio = last.avgVal > 0 ? (last.value / last.avgVal) - 1 : null;
-                const totalChange = lastRatio !== null
-                    ? lastRatio * 100
-                    : (first.value > 0 ? ((last.value / first.value) - 1) * 100 : last.value * 100);
+                const totalChange = lastRatio !== null ? lastRatio * 100 : (first.value > 0 ? ((last.value / first.value) - 1) * 100 : last.value * 100);
                 const maxValue    = Math.max(...history.map(h => Math.max(h.value, h.maxVal || 0)));
-
                 const classified  = smartClassify(m);
                 const finalCat    = userCategories.has(m.id) ? { cat: userCategories.get(m.id), reason: 'manual' } : classified;
-
                 const WINTER = new Set([10, 11, 0, 1, 2]);
                 const SUMMER = new Set([4, 5, 6, 7, 8]);
                 const wR = history.filter(h => WINTER.has(new Date(h.date).getMonth()));
                 const sR = history.filter(h => SUMMER.has(new Date(h.date).getMonth()));
-
                 const cleanAddr = extractCleanAddressOnly(m.adress);
                 currentResults.push({
                     id: m.id, adress: m.adress, serienummer: m.serienummer,
@@ -756,13 +680,11 @@
                     memo: fieldKnowledgeBase[cleanAddr]?.memo || ''
                 });
             }
-
             document.getElementById('results').style.display = 'block';
             displayResults();
             saveDailySnapshot();
         }
 
-        // ── Bottenpanel-kommentarer ───────────────────────────────────────────────
         function getBottomComment(r) {
             if (r.category === 'lagad') return `✅ Historiskt lagad — Max: <strong>${r.max} dB</strong>. Konsekvent tyst de senaste 4 mätningarna.`;
             if (r.category === 'heatpump') {
@@ -785,7 +707,6 @@
             return '';
         }
 
-        // ── Sparkline ─────────────────────────────────────────────────────────────
         function createSparkline(history, w = 80, h = 32) {
             if (!history || history.length < 2) return `<svg width="${w}" height="${h}"><line x1="${w*.1}" y1="${h/2}" x2="${w*.9}" y2="${h/2}" stroke="#444" stroke-width="1" stroke-dasharray="3,2"/></svg>`;
             const vals = history.map(x => x.value);
@@ -802,18 +723,29 @@
             return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;overflow:visible"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${ex}" cy="${ey}" r="3.5" fill="${col}"/></svg>`;
         }
 
-        // ── Rendering ─────────────────────────────────────────────────────────────
         function displayResults() {
             const query    = document.getElementById('searchInput').value.toLowerCase().trim();
             const tbody    = document.getElementById('tableBody');
             const noiseTbody = document.getElementById('noiseTableBody');
-            
             tbody.innerHTML = '';
             noiseTbody.innerHTML = '';
 
+            // ── UPPDATERAD SORTERING (HÖGST → LÄGST som standard) ─────────────────
             currentResults.sort((a, b) => {
-                const va = a[currentSort.column], vb = b[currentSort.column];
-                if (typeof va === 'string') return currentSort.direction === 'desc' ? vb.localeCompare(va) : va.localeCompare(vb);
+                let va = a[currentSort.column];
+                let vb = b[currentSort.column];
+                if (currentSort.column === 'max') { va = a.max; vb = b.max; }
+                if (currentSort.column === 'latest') {
+                    const lastA = a.history?.length ? a.history[a.history.length - 1].value : 0;
+                    const lastB = b.history?.length ? b.history[b.history.length - 1].value : 0;
+                    va = lastA; vb = lastB;
+                }
+                if (currentSort.column === 'change') { va = a.change; vb = b.change; }
+                va = va ?? 0; vb = vb ?? 0;
+                if (typeof va === 'string') {
+                    const cmp = va.localeCompare(vb, 'sv');
+                    return currentSort.direction === 'desc' ? -cmp : cmp;
+                }
                 return currentSort.direction === 'desc' ? vb - va : va - vb;
             });
 
@@ -830,6 +762,8 @@
                     catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol} ${categories[c].label}</option>`;
                 }
 
+                const latestValue = r.history?.length ? r.history[r.history.length - 1].value : r.max;
+
                 if (BOTTOM_PANEL_CATS.has(r.category)) {
                     noiseCount++;
                     const lastH = r.history?.length ? r.history[r.history.length - 1] : null;
@@ -839,13 +773,10 @@
                     tr.className = `row-${r.category}`;
                     tr.innerHTML = `
                         <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
-                        <td>
-                            <div class="table-adress-text">${r.adress}</div>
-                            ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
-                        </td>
+                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}</td>
                         <td><code>${r.serienummer}</code></td>
                         <td><strong>${lastV} dB</strong> / ${r.max} dB${lastAvg > 0 ? `<br><small style="color:#666;">snitt: ${lastAvg} dB</small>` : ''}</td>
-                        <td>${getBottomComment(r)}</td>
+                        <td>${getBottomComment(r)}</div></td>
                     `;
                     noiseTbody.appendChild(tr);
                 } else {
@@ -853,28 +784,20 @@
                     const tr = document.createElement('tr');
                     tr.className = `row-${r.category}`;
                     const changeClass = r.change > 100 ? 'trend-up' : (r.change < 0 ? 'trend-down' : '');
-                    const changeStr = r.change >= 100
-                        ? `<span class="trend-up">×${(r.change/100+1).toFixed(1)} (${r.change.toFixed(0)}%)</span>`
-                        : `<span class="${changeClass}">${r.change > 0 ? '+' : ''}${r.change.toFixed(1)}%</span>`;
+                    const changeStr = r.change >= 100 ? `<span class="trend-up">×${(r.change/100+1).toFixed(1)} (${r.change.toFixed(0)}%)</span>` : `<span class="${changeClass}">${r.change > 0 ? '+' : ''}${r.change.toFixed(1)}%</span>`;
                     tr.innerHTML = `
                         <td style="text-align:center;"><button class="action-btn" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
                         <td style="text-align:center;"><button class="action-btn" onclick="toggleIgnore('${r.id}')">👁️</button></td>
                         <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
-                        <td>
-                            <div class="table-adress-text">${r.adress}</div>
-                            ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
-                        </td>
+                        <td><div class="table-adress-text">${r.adress}</div>${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}</td>
                         <td style="text-align:center;"><button class="copy-btn" onclick="copyToClipboard('${r.adress}', event)">📋 Kopiera</button></td>
                         <td><code>${r.serienummer}</code></td>
                         <td><span class="badge" style="background:#1f1f2e;color:#fff;">${r.area}</span></td>
                         <td>${changeStr}</td>
-                        <td><strong>${r.max} dB</strong></td>
+                        <td><strong style="font-size:16px;">${r.max} dB</strong></td>
+                        <td><strong>${latestValue} dB</strong></td>
                         <td class="spark-cell" onclick="openTrendGraph('${r.id}')">${createSparkline(r.history)}</td>
                     `;
-                    tr.querySelector('.star-btn').addEventListener('click', () => toggleInteresting(r.id));
-                    tr.querySelector('select').addEventListener('change', function() { changeCategory(r.id, this.value); });
-                    tr.querySelectorAll('.copy-btn')[0].addEventListener('click', (e) => copyAddress(r.adress, e));
-                    tr.querySelectorAll('.copy-btn')[1].addEventListener('click', () => openGraph(r.id));
                     tbody.appendChild(tr);
                 }
             });
@@ -886,11 +809,9 @@
         function updateStatsAndInsights() {
             const counts = { extreme: 0, aktiv_lacka: 0, misstankt: 0, ny_matare: 0, storing: 0, heatpump: 0, leak_code: 0, lagad: 0, normal: 0 };
             currentResults.forEach(r => { if (counts[r.category] !== undefined) counts[r.category]++; });
-
             const sharpCount = counts.extreme + counts.aktiv_lacka + counts.misstankt + counts.ny_matare;
             const activeLeaks = counts.extreme + counts.aktiv_lacka;
             const hiddenCount = counts.storing + counts.heatpump + counts.leak_code + counts.lagad;
-
             document.getElementById('statsGrid').innerHTML = `
                 <div class="stat-card color-total ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="setCategoryFilter('all')">
                     <div class="num">${sharpCount}</div><div class="label">Skarpa mätare</div>
@@ -908,26 +829,23 @@
                     <div class="num" style="color:var(--clr-storing)">${hiddenCount}</div><div class="label">Dolda / Lagade</div>
                 </div>
             `;
-
             renderDailySummaryBar(counts);
-
             const insight = document.getElementById('insightBox');
             if (counts.extreme > 0) {
-                insight.innerHTML = `🚨 <strong>AKUT:</strong> ${counts.extreme} mätare klassad som <strong>Akut Huvudledning</strong> — åtgärd krävs omgående!`;
+                insight.innerHTML = `🚨 <strong>AKUT:</strong> ${counts.extreme} mätare klassad som <strong>Akut Huvudledning</strong> — åtgärd krävs omgående! <span style="font-size:11px;">📌 SORTERAT: HÖGSTA MAXVÄRDET FÖRST</span>`;
                 insight.style.borderColor = 'var(--clr-extreme)';
             } else if (counts.aktiv_lacka > 0) {
-                insight.innerHTML = `🔴 <strong>Aktiva läckor:</strong> ${counts.aktiv_lacka} mätare med extremt hög avvikelse (E/F ratio ≥ 15×) — trolig servis- eller ledningsläcka. Prioritera fältkontroll!`;
+                insight.innerHTML = `🔴 <strong>Aktiva läckor:</strong> ${counts.aktiv_lacka} mätare med extremt hög avvikelse — prioritera fältkontroll! <span style="font-size:11px;">▼ SORTERAT: HÖGSTA VÄRDET FÖRST</span>`;
                 insight.style.borderColor = 'var(--clr-aktiv-lacka)';
             } else if (counts.misstankt > 0) {
-                insight.innerHTML = `🟠 <strong>Karma fält-tips:</strong> ${counts.misstankt} st <strong>Misstänkta / Ihållande stegringar</strong> — avvikelse E/F 4–15×. Prioritera fältkontroll. 🔥 ${counts.heatpump} värmepumpar automatiskt sorterade.`;
+                insight.innerHTML = `🟠 <strong>Karma fält-tips:</strong> ${counts.misstankt} st <strong>Misstänkta</strong> — avvikelse E/F 4–15×. 🔥 ${counts.heatpump} värmepumpar sorterade. <span style="font-size:11px;">▼ SORTERAT: HÖGSTA dB ÖVERST</span>`;
                 insight.style.borderColor = 'var(--clr-misstankt)';
             } else {
-                insight.innerHTML = `💡 <strong>Systemstatus:</strong> Inga akuta signaler. 🔥 ${counts.heatpump} värmepumpar, ${hiddenCount} störningar/larm filtrerade nedan. Avvikelse = (Senaste värde / Kamstrup-snitt) − 1.`;
+                insight.innerHTML = `💡 <strong>Systemstatus:</strong> Inga akuta signaler. 🔥 ${counts.heatpump} värmepumpar. <span style="font-size:11px;">▼ Sorterat på MAXAVLÄSNING (högst först)</span>`;
                 insight.style.borderColor = 'var(--primary)';
             }
         }
 
-        // ── localStorage persistence ──────────────────────────────────────────────
         function persistState() {
             try {
                 localStorage.setItem('lacksok_fav_v3',    JSON.stringify([...interestingIds]));
@@ -945,51 +863,43 @@
             } catch(e) {}
         }
 
-        // ── Kategori / filter actions ─────────────────────────────────────────────
         function setCategoryFilter(cat) { currentCategoryFilter = cat; displayResults(); }
+        function changeCategory(id, newCat) { userCategories.set(id, newCat); const r = currentResults.find(r => r.id === id); if (r) { r.category = newCat; r.reason = 'manual'; } persistState(); displayResults(); }
+        function toggleInteresting(id) { interestingIds.has(id) ? interestingIds.delete(id) : interestingIds.add(id); persistState(); displayResults(); }
+        function toggleIgnore(id) { ignoredIds.add(id); persistState(); displayResults(); }
 
-        function changeCategory(id, newCat) {
-            userCategories.set(id, newCat);
-            const r = currentResults.find(r => r.id === id);
-            if (r) { r.category = newCat; r.reason = 'manual'; }
-            persistState();
+        function triggerSort(col) {
+            if (currentSort.column === col) {
+                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentSort.column = col;
+                const numericCols = ['change', 'max', 'latest'];
+                currentSort.direction = numericCols.includes(col) ? 'desc' : 'asc';
+            }
+            document.querySelectorAll('th').forEach(th => th.classList.remove('active-sort'));
+            const activeTh = document.getElementById(`th-${col}`);
+            if (activeTh) activeTh.classList.add('active-sort');
             displayResults();
         }
 
-        function toggleInteresting(id) {
-            interestingIds.has(id) ? interestingIds.delete(id) : interestingIds.add(id);
-            persistState(); displayResults();
-        }
-
-        function toggleIgnore(id) {
-            ignoredIds.add(id);
-            persistState(); displayResults();
-        }
-
-        // ── Filinläsning med progressbar ──────────────────────────────────────────
         async function handleFiles(files) {
             const allFiles = Array.from(files);
             if (!allFiles.length) { document.getElementById('fileInput').value = ''; return; }
-
             const progCont  = document.getElementById('progressContainer');
             const progFill  = document.getElementById('progressFill');
             const progText  = document.getElementById('progressText');
             progCont.style.display = 'block';
             progFill.style.width   = '0%';
             progText.innerText     = `0 av ${allFiles.length} filer bearbetade...`;
-
             const BATCH = 5;
             let totalDone = 0;
-
             for (let i = 0; i < allFiles.length; i += BATCH) {
                 const batch = allFiles.slice(i, i + BATCH);
                 await Promise.allSettled(batch.map(async file => {
                     try {
                         const ext = file.name.toLowerCase().split('.').pop();
                         if (ext === 'pdf') {
-                            const r = await parsePDFFile(file, (pg, tot) => {
-                                progText.innerText = `PDF: sida ${pg}/${tot} — ${file.name}`;
-                            });
+                            const r = await parsePDFFile(file, (pg, tot) => { progText.innerText = `PDF: sida ${pg}/${tot} — ${file.name}`; });
                             const date = r.reportDate || extractDateFromFilename(file.name) || new Date(file.lastModified);
                             if (r.meters.length && !uploadedFiles.some(f => f.name === file.name)) {
                                 uploadedFiles.push({ name: file.name, date, meters: r.meters });
@@ -1008,7 +918,6 @@
                 progText.innerText   = `${totalDone} av ${allFiles.length} filer bearbetade...`;
                 await new Promise(r => setTimeout(r, 30));
             }
-
             setTimeout(() => { progCont.style.display = 'none'; }, 1500);
             updateFileList();
             document.getElementById('fileInput').value = '';
@@ -1035,7 +944,6 @@
             });
         }
 
-        // ── Urklipp ───────────────────────────────────────────────────────────────
         function copyToClipboard(addr, event) {
             navigator.clipboard.writeText(extractCleanAddressOnly(addr)).then(() => {
                 const btn = event.target;
@@ -1047,7 +955,6 @@
             });
         }
 
-        // ── Trendgraf ─────────────────────────────────────────────────────────────
         function openTrendGraph(id) {
             const meter = currentResults.find(r => r.id === id);
             if (!meter?.history?.length) return;
@@ -1065,20 +972,6 @@
             });
         }
 
-        // ── Sortering ─────────────────────────────────────────────────────────────
-        function triggerSort(col) {
-            if (currentSort.column === col) {
-                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
-            } else {
-                currentSort.column = col;
-                currentSort.direction = ['adress','serienummer','area'].includes(col) ? 'asc' : 'desc';
-            }
-            document.querySelectorAll('th').forEach(th => th.classList.remove('active-sort'));
-            document.getElementById(`th-${col}`)?.classList.add('active-sort');
-            displayResults();
-        }
-
-        // ── Export ────────────────────────────────────────────────────────────────
         document.getElementById('exportBtn').onclick = () => {
             if (!currentResults.length) return;
             const mkRows = cat => currentResults.filter(r => r.category === cat || (cat === 'active' && ['extreme','aktiv_lacka','misstankt','ny_matare'].includes(r.category))).map(r => ({
@@ -1093,11 +986,7 @@
             XLSX.writeFile(wb, `Karma_Lacksok_Rapport_${new Date().toISOString().slice(0,10)}.xlsx`);
         };
 
-        // ── Geocoding (Nominatim, 1 req/s, localStorage cache) ───────────────────
-        function saveGeoCache() {
-            try { localStorage.setItem('lacksok_geocache', JSON.stringify([...geocache.entries()])); } catch(e) {}
-        }
-
+        function saveGeoCache() { try { localStorage.setItem('lacksok_geocache', JSON.stringify([...geocache.entries()])); } catch(e) {} }
         async function geocodeAddress(addr) {
             const key = extractCleanAddressOnly(addr) + ', Botkyrka, Sverige';
             if (geocache.has(key)) return geocache.get(key);
@@ -1112,9 +1001,7 @@
             } catch(e) { geocache.set(key, null); return null; }
         }
 
-        // ── Karta (Leaflet) ───────────────────────────────────────────────────────
         document.getElementById('mapBtn').onclick = showMap;
-
         async function showMap() {
             if (!currentResults.length) {
                 document.getElementById('mapStatusText').textContent = 'Kör analys först.';
@@ -1123,7 +1010,6 @@
             }
             document.getElementById('mapModal').style.display = 'flex';
             await new Promise(r => setTimeout(r, 60));
-
             if (!leafletMap) {
                 leafletMap = L.map('leafletMap').setView([59.25, 17.85], 12);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19 }).addTo(leafletMap);
@@ -1132,12 +1018,10 @@
                 mapMarkers = [];
             }
             leafletMap.invalidateSize();
-
             const toPlot = currentResults.filter(r => !HIDDEN_CATS.has(r.category) && !ignoredIds.has(r.id));
             const statusEl = document.getElementById('mapStatusText');
             const nUncached = toPlot.filter(r => !geocache.has(extractCleanAddressOnly(r.adress) + ', Botkyrka, Sverige')).length;
             statusEl.textContent = `Laddar karta… ${nUncached} att geokoda (~${nUncached}s)`;
-
             let done = 0;
             for (const r of toPlot) {
                 const coords = await geocodeAddress(r.adress);
@@ -1156,7 +1040,6 @@
             if (mapMarkers.length > 0) leafletMap.fitBounds(L.featureGroup(mapMarkers).getBounds().pad(0.18));
         }
 
-        // ── Dagssammanfattning ────────────────────────────────────────────────────
         function saveDailySnapshot() {
             if (!currentResults.length) return;
             const snap = { date: new Date().toISOString().slice(0,10) };
@@ -1189,29 +1072,23 @@
             `;
         }
 
-        // ── Utskrift ──────────────────────────────────────────────────────────────
         document.getElementById('printBtn').onclick = () => window.print();
-
-        // ── Event listeners ───────────────────────────────────────────────────────
         document.getElementById('th-adress').onclick      = () => triggerSort('adress');
         document.getElementById('th-serienummer').onclick = () => triggerSort('serienummer');
         document.getElementById('th-area').onclick        = () => triggerSort('area');
         document.getElementById('th-change').onclick      = () => triggerSort('change');
         document.getElementById('th-max').onclick         = () => triggerSort('max');
-
+        document.getElementById('th-latest').onclick      = () => triggerSort('latest');
         document.getElementById('uploadBtn').onclick  = () => document.getElementById('fileInput').click();
         document.getElementById('fileInput').onchange = e => handleFiles(e.target.files);
         document.getElementById('analyzeBtn').onclick = () => runAnalysis();
-        document.getElementById('exportBtn').onclick = () => exportReport();
         document.getElementById('searchInput').oninput = () => displayResults();
         document.getElementById('areaFilter').onchange = e => { currentAreaFilter = e.target.value; displayResults(); };
-
         document.getElementById('closeModalBtn').onclick = () => { document.getElementById('graphModal').style.display = 'none'; };
         window.onclick = e => {
             if (e.target === document.getElementById('graphModal')) document.getElementById('graphModal').style.display = 'none';
             if (e.target === document.getElementById('mapModal'))   document.getElementById('mapModal').style.display = 'none';
         };
-
         document.getElementById('clearBtn').onclick = () => {
             uploadedFiles = []; currentResults = [];
             ignoredIds.clear(); interestingIds.clear(); userCategories.clear();
@@ -1220,7 +1097,6 @@
             document.getElementById('results').style.display = 'none';
             document.getElementById('fileInput').value = '';
         };
-
         loadPersistedState();
     </script>
 </body>

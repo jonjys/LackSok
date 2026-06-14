@@ -122,6 +122,7 @@
 
         .table-adress-text { font-weight: 700; font-size: 14px; color: #ffffff; }
         .field-memo-tag { display: inline-block; background: #14141e; border: 1px solid #2e2e3e; color: #2dd4bf; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 5px; margin-top: 5px; max-width: 460px; line-height: 1.4; }
+        .new-level-tag  { display: inline-block; background: linear-gradient(90deg,#1a0a00,#1f1000); border: 1px solid #c2410c; color: #fb923c; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 5px; margin-top: 5px; letter-spacing: 0.02em; }
         .copy-btn { background: #1c1c24; border: 1px solid var(--border-color); color: var(--text-muted); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
         .copy-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; display: inline-block; }
@@ -613,6 +614,40 @@
             return false;
         }
 
+        // ── Ny-nivå-detektor ─────────────────────────────────────────────────────
+        // Hittar tydlig bryttpunkt: var tyst länge → plötslig extrem ökning → STANNAR på ny nivå
+        function detectNewLevel(history) {
+            if (!history || history.length < 4) return null;
+            const sorted = [...history].sort((a, b) => a.date - b.date);
+            const vals   = sorted.map(h => h.value);
+
+            // Prova varje bryttpunkt (minst 2 på varje sida)
+            for (let split = 2; split <= vals.length - 2; split++) {
+                const before = vals.slice(0, split);
+                const after  = vals.slice(split);
+                const avgB   = before.reduce((a,b)=>a+b,0) / before.length;
+                const avgA   = after.reduce((a,b)=>a+b,0) / after.length;
+                if (avgB <= 0 || avgA <= avgB) continue;
+
+                const jumpRatio   = avgA / avgB;
+                // Före-perioden var stabil och låg
+                const beforeStable = before.every(v => v <= Math.max(avgB * 1.6, avgB + 8));
+                // Efter-perioden håller sig kvar på den nya nivån (inget stor dipp tillbaka)
+                const afterStable  = after.every(v => v >= avgA * 0.55);
+
+                if (jumpRatio >= 2.5 && avgA >= 15 && beforeStable && afterStable) {
+                    return {
+                        date:       sorted[split].dateStr,
+                        avgBefore:  Math.round(avgB),
+                        avgAfter:   Math.round(avgA),
+                        jumpRatio:  Math.round(jumpRatio * 10) / 10,
+                        splitIndex: split
+                    };
+                }
+            }
+            return null;
+        }
+
         // ── Smart-classify ────────────────────────────────────────────────────────
         function smartClassify(meter) {
             const R = (cat, reason) => ({ cat, reason });
@@ -627,15 +662,20 @@
 
             const hist = meter.history;
             if (!hist || hist.length < 2) {
-                const h    = hist?.length ? hist[hist.length - 1] : { value: 0, avgVal: 0 };
+                const h    = hist?.length ? hist[hist.length - 1] : { value: 0, avgVal: 0, maxVal: 0 };
                 const v    = h.value;
                 const aVal = h.avgVal || 0;
-                // Use Kamstrup ratio (E/F-1) when avgVal is available — single-file primary signal
+                const mVal = h.maxVal || v;
+                // Kamstrup ratio (E/F): hur mycket aktuellt brus överstiger historiskt snitt
                 if (aVal > 0) {
-                    const ratio = v / aVal;
-                    if (ratio >= 15)  return R('aktiv_lacka',  'high_ratio');
-                    if (ratio >= 4)   return R('misstankt',    'elevated_ratio');
-                    if (ratio >= 1.8) return R('ny_matare',    'single_reading');
+                    const ratio    = v / aVal;
+                    const isAtMax  = v >= mVal * 0.9; // Aktuellt ≈ historiskt max → ny extrempunkt
+                    // Extrem ratio + vid max → definitiv läcka (ny nivå)
+                    if (ratio >= 15 && isAtMax) return R('aktiv_lacka', 'high_ratio_new_peak');
+                    if (ratio >= 15)             return R('aktiv_lacka', 'high_ratio');
+                    if (ratio >= 4  && isAtMax)  return R('misstankt',   'elevated_ratio_new_peak');
+                    if (ratio >= 4)              return R('misstankt',   'elevated_ratio');
+                    if (ratio >= 1.8)            return R('ny_matare',   'single_reading');
                 }
                 if (v >= 25) return R('ny_matare', 'single_reading');
                 return R('normal', 'single_reading');
@@ -698,10 +738,13 @@
             // 5. Industridetektering
             if (meter.area === 'TULLINGE' && isStableHigh && maxHistorical > 80) return R('storing', 'industrial');
 
-            // 6. Ihållande stegring
-            const olderPeriod = history.slice(0, -3);
-            if (olderPeriod.every(h => h.value <= 12) && history.slice(-3).every(h => h.value >= 18)) {
-                return R('misstankt', 'persistent_rise');
+            // 6. Ny-nivå-detektor: tyst → extrem ökning → STANNAR på ny nivå
+            const nl = detectNewLevel(history);
+            if (nl) {
+                const r = nl.jumpRatio;
+                if (r >= 8)  return R('aktiv_lacka', `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
+                if (r >= 3)  return R('misstankt',   `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
+                return R('ny_matare', `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
             }
 
             // 7. Konstant högt = störning, inte ny läcka
@@ -750,6 +793,17 @@
                 const sR = history.filter(h => SUMMER.has(new Date(h.date).getMonth()));
 
                 const cleanAddr = extractCleanAddressOnly(m.adress);
+                // Extrahera ny-nivå-info ur reason-strängen
+                let newLevel = null;
+                if (finalCat.reason && finalCat.reason.startsWith('new_level:')) {
+                    const [, date, before, after, jr] = finalCat.reason.split(':');
+                    newLevel = { date, avgBefore: +before, avgAfter: +after, jumpRatio: jr ? +jr : Math.round(+after / (+before || 1) * 10) / 10 };
+                }
+                // Beräkna snittkvot från avgVal om tillgänglig
+                const lastH   = history[history.length - 1];
+                const avgVal  = lastH.avgVal  || 0;
+                const ratio   = avgVal > 0 ? Math.round((lastH.value / avgVal - 1) * 10) / 10 : null;
+
                 currentResults.push({
                     id: m.id, adress: m.adress, serienummer: m.serienummer,
                     area: m.area, street: m.street, history,
@@ -757,6 +811,8 @@
                     change: totalChange, max: maxValue,
                     category: finalCat.cat,
                     reason: finalCat.reason,
+                    newLevel,
+                    ratio,
                     winterAvg: wR.length >= 2 ? Math.round(avg(wR)) : null,
                     summerAvg: sR.length >= 2 ? Math.round(avg(sR)) : null,
                     memo: fieldKnowledgeBase[cleanAddr]?.memo || ''
@@ -846,6 +902,8 @@
                         <td>
                             <div class="table-adress-text">${r.adress}</div>
                             ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
+                            ${r.newLevel ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
+                            ${r.ratio !== null && r.ratio !== undefined && r.ratio > 0 ? `<span class="new-level-tag" style="background:none;border-color:#1e3a5f;color:#60a5fa;">E/F: ×${(r.ratio+1).toFixed(1)}</span>` : ''}
                         </td>
                         <td><code>${r.serienummer}</code></td>
                         <td><strong>${lastV} dB</strong> / ${r.max} dB${lastAvg > 0 ? `<br><small style="color:#666;">snitt: ${lastAvg} dB</small>` : ''}</td>
@@ -867,6 +925,8 @@
                         <td>
                             <div class="table-adress-text">${r.adress}</div>
                             ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
+                            ${r.newLevel ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
+                            ${r.ratio !== null && r.ratio !== undefined && r.ratio > 0 ? `<span class="new-level-tag" style="background:none;border-color:#1e3a5f;color:#60a5fa;">E/F: ×${(r.ratio+1).toFixed(1)}</span>` : ''}
                         </td>
                         <td style="text-align:center;"><button class="copy-btn" onclick="copyToClipboard('${r.adress}', event)">📋 Kopiera</button></td>
                         <td><code>${r.serienummer}</code></td>

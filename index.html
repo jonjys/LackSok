@@ -169,6 +169,7 @@
         .icon-btn:hover, .icon-btn.on { opacity: 1; }
         .addr { font-weight: 700; font-size: 12px; }
         .memo { font-size: 9px; color: #2dd4bf; background: #0a1e1e; border: 1px solid #163030; padding: 1px 5px; border-radius: 3px; margin-top: 2px; display: inline-block; }
+        .step-badge { font-size: 9px; color: var(--orange); background: #1e0e00; border: 1px solid #3d2200; padding: 1px 5px; border-radius: 3px; margin-top: 2px; display: inline-block; }
         .badge-area { background: #1a1a28; color: #777; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
         .cat-sel { background: #14141a; color: var(--text); border: 1px solid var(--border); border-radius: 5px; padding: 3px 5px; font-size: 10px; outline: none; cursor: pointer; }
         .copy-btn { background: #1a1a24; border: 1px solid var(--border); color: var(--muted); padding: 2px 7px; border-radius: 4px; font-size: 10px; cursor: pointer; transition: .15s; }
@@ -452,8 +453,53 @@ const fileDateFromName = (name, mod) => {
     return m ? new Date(m[1], m[2]-1, m[3]) : new Date(mod);
 };
 
+// ── STEGSDETEKTERING ──────────────────────────────────────────────────────
+// Analyserar historik och hittar om värdet hoppade till en ny nivå och stannar där.
+// Testar varje möjlig tidpunkt som "hopp-punkt" och väljer den som ger störst ökning.
+function detectStepChange(history) {
+    const vals = history.map(h => h.v).filter(v => v > 0);
+    if (vals.length < 3) return { detected: false };
+
+    const mean = arr => arr.reduce((s,v) => s+v, 0) / arr.length;
+    const std  = arr => {
+        const m = mean(arr);
+        return Math.sqrt(arr.reduce((s,v) => s + (v-m)**2, 0) / arr.length);
+    };
+
+    let bestScore = 0, bestSplit = -1, bestBefore = 0, bestAfter = 0;
+
+    for (let i = 1; i < vals.length; i++) {
+        const mb = mean(vals.slice(0, i));
+        const ma = mean(vals.slice(i));
+        if (mb <= 0) continue;
+        const jump = (ma - mb) / mb;
+        if (jump > bestScore) { bestScore = jump; bestSplit = i; bestBefore = mb; bestAfter = ma; }
+    }
+
+    if (bestSplit === -1 || bestScore < 0.4) return { detected: false };
+
+    // Kontrollera om ny nivå är stabil (låg varians relativt medelvärdet)
+    const afterVals = vals.slice(bestSplit);
+    const cv        = afterVals.length > 1 ? std(afterVals) / bestAfter : 0;
+    const sustained = cv < 0.35;
+
+    // Hitta datum för hoppet i originalhistoriken (hoppa över v=0-punkter)
+    const validHistory = history.filter(h => h.v > 0);
+    const changeDate   = validHistory[bestSplit]?.date || '';
+
+    return {
+        detected:   true,
+        changeDate,
+        beforeMean: Math.round(bestBefore * 10) / 10,
+        afterMean:  Math.round(bestAfter  * 10) / 10,
+        jumpPct:    Math.round(bestScore * 100),
+        sustained,
+        splitIdx:   bestSplit
+    };
+}
+
 // ── KLASSIFICERING ────────────────────────────────────────────────────────
-function classify(ratio, infokod, cleanKey, serial) {
+function classify(ratio, infokod, cleanKey, serial, step) {
     if (savedCategories[serial]) return savedCategories[serial];
     const kb = KB[cleanKey];
     if (kb) return kb.cat;
@@ -461,6 +507,11 @@ function classify(ratio, infokod, cleanKey, serial) {
     if (info.includes('LÄCK') || info.includes('LEAK'))                     return 'aktiv_lacka';
     if (info.includes('EJ FASTSTÄLLT') || info.includes('ANNAT BRUS') ||
         info.includes('BRUS') || info.includes('STÖRN'))                    return 'storning';
+    // Trendbaserad klassificering: bekräftat hopp som håller sig → uppgradera
+    if (step?.detected && step?.sustained) {
+        if (step.jumpPct > 100) return 'aktiv_lacka';
+        if (step.jumpPct >  40) return 'misstankt';
+    }
     if (ratio > 5)   return 'aktiv_lacka';
     if (ratio > 1)   return 'misstankt';
     if (ratio > 0.3) return 'kund_lacka';
@@ -653,13 +704,14 @@ function runAnalysis() {
     for (const [, m] of map) {
         m.history.sort((a,b) => a.date.localeCompare(b.date));
         const ratio    = m.avgVal > 0 ? (m.value / m.avgVal) - 1 : 0;
+        const step     = detectStepChange(m.history);
         const key      = cleanAddr(m.adress);
-        const category = classify(ratio, m.infokod, key, m.id);
+        const category = classify(ratio, m.infokod, key, m.id, step);
         const memo     = KB[key]?.memo || '';
         currentResults.push({
             id:m.id, adress:m.adress.replace(/[\r\n]+/g,' '), area:m.area,
             lastVal:m.value, avgVal:m.avgVal, maxVal:m.maxVal,
-            infokod:m.infokod, ratio, category, memo, history:m.history
+            infokod:m.infokod, ratio, category, memo, history:m.history, step
         });
     }
 
@@ -718,6 +770,11 @@ function renderTable() {
         const tr = document.createElement('tr');
         tr.className = `row-${r.category}${isHidden ? ' hidden-row' : ''}`;
 
+        const sc      = r.step;
+        const stepTxt = sc?.detected
+            ? `📈 +${sc.jumpPct}% ny nivå${sc.changeDate ? ' sedan ' + sc.changeDate : ''}${sc.sustained ? ' · håller sig' : ' · enstaka spike'}`
+            : '';
+
         tr.innerHTML = `
             <td style="text-align:center;padding:5px 3px;">
                 <button class="icon-btn mark-btn${isMarked?' on':''}" title="${isMarked?'Ta bort markering':'Markera'}">
@@ -732,7 +789,8 @@ function renderTable() {
             <td><select class="cat-sel">${opts}</select></td>
             <td>
                 <div class="addr">${r.adress}</div>
-                ${r.memo ? `<div class="memo">${r.memo}</div>` : ''}
+                ${r.memo    ? `<div class="memo">${r.memo}</div>` : ''}
+                ${stepTxt   ? `<div class="step-badge">${stepTxt}</div>` : ''}
             </td>
             <td><button class="copy-btn" title="Kopiera adress">📋</button></td>
             <td><code style="font-size:10px;">${r.id}</code></td>
@@ -818,21 +876,48 @@ function renderStats() {
 
 // ── TRENDGRAF ─────────────────────────────────────────────────────────────
 function openTrend(r) {
-    document.getElementById('modalTitle').textContent = `Tidslinje — ${cleanAddr(r.adress)}`;
+    const sc  = r.step;
+    const hist = r.history.filter(h => h.v > 0);
+
+    // Bygg rubriken med stegsinfo om tillgänglig
+    let title = `Tidslinje — ${cleanAddr(r.adress)}`;
+    if (sc?.detected) title += `  (+${sc.jumpPct}% ny nivå${sc.changeDate ? ' ' + sc.changeDate : ''})`;
+    document.getElementById('modalTitle').textContent = title;
     document.getElementById('trendOverlay').classList.add('open');
     if (chartInst) chartInst.destroy();
+
+    const datasets = [{
+        label: 'Avläsning',
+        data: hist.map(h=>h.v),
+        borderColor: '#1db954', backgroundColor: 'rgba(29,185,84,.07)',
+        fill: true, tension: 0.3, pointRadius: 5, pointHoverRadius: 7, order: 1
+    }];
+
+    // Streckade baslinjer om stegshopp hittades
+    if (sc?.detected && sc.splitIdx > 0 && sc.splitIdx < hist.length) {
+        datasets.push({
+            label: `Gammal nivå ≈${sc.beforeMean}`,
+            data: hist.map((_, i) => i < sc.splitIdx ? sc.beforeMean : null),
+            borderColor: '#38bdf8', borderWidth: 1.5,
+            borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0, order: 2
+        });
+        datasets.push({
+            label: `Ny nivå ≈${sc.afterMean} (+${sc.jumpPct}%)`,
+            data: hist.map((_, i) => i >= sc.splitIdx ? sc.afterMean : null),
+            borderColor: '#ef4444', borderWidth: 1.5,
+            borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0, order: 2
+        });
+    }
+
     chartInst = new Chart(document.getElementById('trendChart').getContext('2d'), {
         type: 'line',
-        data: {
-            labels: r.history.map(h=>h.date),
-            datasets: [{
-                label: 'Senaste värde',
-                data: r.history.map(h=>h.v),
-                borderColor: '#1db954', backgroundColor: 'rgba(29,185,84,.07)',
-                fill: true, tension: 0.3, pointRadius: 4
-            }]
-        },
-        options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ min:0 } } }
+        data: { labels: hist.map(h=>h.date), datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { min: 0, grid: { color: '#1e1e28' }, ticks: { color: '#6b6b7b' } },
+                      x: { grid: { color: '#1e1e28' }, ticks: { color: '#6b6b7b' } } },
+            plugins: { legend: { labels: { color: '#aaa', font: { size: 10 } } } }
+        }
     });
 }
 

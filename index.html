@@ -667,15 +667,15 @@
                 const aVal = h.avgVal || 0;
                 const mVal = h.maxVal || v;
                 // Kamstrup ratio (E/F): hur mycket aktuellt brus överstiger historiskt snitt
+                // Trösklar matchar manuell analys: >1000%=AKUT, 400-1000%=MISSTÄNKT, 100-400%=FÖLJ UPP
                 if (aVal > 0) {
                     const ratio    = v / aVal;
-                    const isAtMax  = v >= mVal * 0.9; // Aktuellt ≈ historiskt max → ny extrempunkt
-                    // Extrem ratio + vid max → definitiv läcka (ny nivå)
-                    if (ratio >= 15 && isAtMax) return R('aktiv_lacka', 'high_ratio_new_peak');
-                    if (ratio >= 15)             return R('aktiv_lacka', 'high_ratio');
-                    if (ratio >= 4  && isAtMax)  return R('misstankt',   'elevated_ratio_new_peak');
-                    if (ratio >= 4)              return R('misstankt',   'elevated_ratio');
-                    if (ratio >= 1.8)            return R('ny_matare',   'single_reading');
+                    const isAtMax  = v >= mVal * 0.9;
+                    if (ratio >= 11 && isAtMax) return R('aktiv_lacka', 'high_ratio_new_peak');  // >1000%
+                    if (ratio >= 11)             return R('aktiv_lacka', 'high_ratio');
+                    if (ratio >= 5  && isAtMax)  return R('misstankt',   'elevated_ratio_new_peak'); // >400%
+                    if (ratio >= 5)              return R('misstankt',   'elevated_ratio');
+                    if (ratio >= 2)              return R('ny_matare',   'single_reading');          // >100%
                 }
                 if (v >= 25) return R('ny_matare', 'single_reading');
                 return R('normal', 'single_reading');
@@ -703,9 +703,9 @@
                 return mean > 18 && (mean > 0 ? maxDev / mean : 1) < 0.30;
             })();
 
-            // Ratio-override: om Kamstrup-snitt finns och ratio är extrem → direkt klassning
-            if (currentRatio >= 15) return R('aktiv_lacka',  'high_ratio');
-            if (currentRatio >= 4 && !history.every(h => h.value >= 15)) return R('misstankt', 'elevated_ratio');
+            // Ratio-override: >1000%=AKUT, >400%=MISSTÄNKT (matchar manuell guide)
+            if (currentRatio >= 11) return R('aktiv_lacka',  'high_ratio');
+            if (currentRatio >= 5 && !history.every(h => h.value >= 15)) return R('misstankt', 'elevated_ratio');
 
             if (hist.length < 5) {
                 const alwaysHigh = history.every(h => h.value >= 18);
@@ -914,10 +914,19 @@
                     if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
                     const tr = document.createElement('tr');
                     tr.className = `row-${r.category}`;
-                    const changeClass = r.change > 100 ? 'trend-up' : (r.change < 0 ? 'trend-down' : '');
-                    const changeStr = r.change >= 100
-                        ? `<span class="trend-up">×${(r.change/100+1).toFixed(1)} (${r.change.toFixed(0)}%)</span>`
-                        : `<span class="${changeClass}">${r.change > 0 ? '+' : ''}${r.change.toFixed(1)}%</span>`;
+                    const pct = r.change;
+                    let changeStr;
+                    if (pct >= 1000) {
+                        changeStr = `<span class="trend-up" title="AKUT LÄCKAGE – åk dit!">🚨 ×${(pct/100+1).toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
+                    } else if (pct >= 400) {
+                        changeStr = `<span class="trend-up" title="MISSTÄNKT – kolla upp">⚠️ ×${(pct/100+1).toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
+                    } else if (pct >= 100) {
+                        changeStr = `<span style="color:#fbbf24;" title="Följ upp – bevaka trenden">📊 +${Math.round(pct)}%</span>`;
+                    } else if (pct < 0) {
+                        changeStr = `<span class="trend-down">${pct.toFixed(1)}%</span>`;
+                    } else {
+                        changeStr = `<span style="color:#4ade80;" title="Normalt – ingen åtgärd">✅ +${pct.toFixed(1)}%</span>`;
+                    }
                     tr.innerHTML = `
                         <td style="text-align:center;"><button class="action-btn" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
                         <td style="text-align:center;"><button class="action-btn" onclick="toggleIgnore('${r.id}')">👁️</button></td>

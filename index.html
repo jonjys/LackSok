@@ -593,8 +593,8 @@
             if (warmVals.length >= 1) {
                 const coldA = coldVals.reduce((a,b)=>a+b,0)/coldVals.length;
                 const warmA = warmVals.reduce((a,b)=>a+b,0)/warmVals.length;
-                // Vinter minst 1.8x varmare, sommar lugn (<30), vinter förhöjt (>15)
-                return warmA < 30 && coldA > warmA * 1.8 && coldA > 15;
+                // Vinter minst 1.5x sommar, sommar lugn (<45), vinter förhöjt (>12)
+                return warmA < 45 && coldA > warmA * 1.5 && coldA > 12;
             }
 
             // Mönster 2: Bara vinterdata — kolla om det finns en tydlig säsongsstegring/nedgång
@@ -608,7 +608,7 @@
                 const lastA    = lastTwo.reduce((a,b)=>a+b,0)/2;
                 const allMod   = sorted.every(h=>h.value < 80); // inget extremvärde
                 // Stiger från tidig höst mot vinter och värdena är måttliga → trolig värmepump
-                if (allMod && lastA > firstA * 1.5 && lastA > 20) return true;
+                if (allMod && lastA > firstA * 1.3 && lastA > 15) return true;
             }
 
             return false;
@@ -658,7 +658,7 @@
             if (info.includes('burst') || info.includes('rörbrott')) return R('extreme',   'burst');
             if (info.includes('dry'))                                  return R('normal',    'dry');
             if (info.includes('reverse'))                              return R('storing',   'reverse');
-            if (info.includes('leak') || info.includes('läckage'))    return R('leak_code', 'leak_alarm');
+            if (info.includes('leak') || info.includes('läcka') || info.includes('läckage') || info.includes('ld ') || info === 'ld') return R('leak_code', 'leak_alarm');
 
             const hist = meter.history;
             if (!hist || hist.length < 2) {
@@ -673,8 +673,8 @@
                     const isAtMax  = v >= mVal * 0.9;
                     if (ratio >= 11 && isAtMax) return R('aktiv_lacka', 'high_ratio_new_peak');  // >1000%
                     if (ratio >= 11)             return R('aktiv_lacka', 'high_ratio');
-                    if (ratio >= 5  && isAtMax)  return R('misstankt',   'elevated_ratio_new_peak'); // >400%
-                    if (ratio >= 5)              return R('misstankt',   'elevated_ratio');
+                    if (ratio >= 4  && isAtMax)  return R('misstankt',   'elevated_ratio_new_peak'); // >300%
+                    if (ratio >= 4)              return R('misstankt',   'elevated_ratio');
                     if (ratio >= 2)              return R('ny_matare',   'single_reading');          // >100%
                 }
                 if (v >= 25) return R('ny_matare', 'single_reading');
@@ -703,9 +703,9 @@
                 return mean > 18 && (mean > 0 ? maxDev / mean : 1) < 0.30;
             })();
 
-            // Ratio-override: >1000%=AKUT, >400%=MISSTÄNKT (matchar manuell guide)
+            // Ratio-override: >1000%=AKUT alltid, >300%=MISSTÄNKT om inte värmepump
             if (currentRatio >= 11) return R('aktiv_lacka',  'high_ratio');
-            if (currentRatio >= 5 && !history.every(h => h.value >= 15)) return R('misstankt', 'elevated_ratio');
+            if (currentRatio >= 4 && !isHeatpump(history)) return R('misstankt', 'elevated_ratio');
 
             if (hist.length < 5) {
                 const alwaysHigh = history.every(h => h.value >= 18);

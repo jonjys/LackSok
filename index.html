@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma – Läcksök Pro v5.1</title>
+    <title>Karma – Läcksök Pro v5.2</title>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -110,6 +110,7 @@
         .stat-chip.c-orange { border-left: 3px solid var(--orange); }
         .stat-chip.c-yellow { border-left: 3px solid var(--yellow); }
         .stat-chip.c-white  { border-left: 3px solid #555;          }
+        .stat-chip.c-blue   { border-left: 3px solid var(--blue);   }
 
         .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .area-pills { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -160,6 +161,39 @@
         .row-varmepanna  td:first-child { border-left: 3px solid var(--blue);   }
         .row-storning    td:first-child { border-left: 3px solid var(--purple); }
         .row-normal      td:first-child { border-left: 3px solid #2a2a35;       }
+        .row-ny_matare   td:first-child { border-left: 3px solid var(--blue);   }
+        .row-extreme td:first-child {
+            border-left: 3px solid #b91c1c;
+            animation: pulse-extreme 1.8s ease-in-out infinite;
+        }
+        @keyframes pulse-extreme {
+            0%, 100% { box-shadow: inset 3px 0 0 0 #b91c1c; }
+            50%      { box-shadow: inset 3px 0 0 0 #ef4444; }
+        }
+        .conf-badge {
+            font-size: 9px; padding: 1px 5px; border-radius: 3px; margin-top: 2px;
+            display: inline-block; font-weight: 700;
+        }
+        .conf-low  { background: #2a1500; color: var(--orange); border: 1px solid #4a2800; }
+        .extreme-tag {
+            font-size: 9px; font-weight: 800; color: #fff; background: #b91c1c;
+            padding: 1px 6px; border-radius: 3px; margin-right: 4px; display: inline-block;
+        }
+
+        /* ── WARNING BANNER ──────────────────────────────────────────── */
+        .warn-banner {
+            display: none; background: #2a1500; border: 1px solid #5a3200; color: #fbbf24;
+            border-radius: 8px; padding: 8px 12px; font-size: 11px; margin-top: 6px;
+            line-height: 1.6;
+        }
+        .warn-banner .warn-hdr { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+        .warn-banner .warn-close {
+            margin-left: auto; background: none; border: none; color: #fbbf24;
+            cursor: pointer; font-size: 14px; line-height: 1; padding: 0 4px;
+        }
+        .warn-banner .warn-items { margin-top: 4px; color: #d4a017; }
+        .file-chip.chip-err { border-color: #7f1d1d; color: #fca5a5; }
+        .file-chip.chip-ok  { border-color: #14532d; color: #86efac; }
 
         .icon-btn {
             background: none; border: none; cursor: pointer;
@@ -258,8 +292,8 @@
     <div class="brand">
         <h1>◆ KARMA LÄCKSÖK PRO</h1>
         <span class="formula-chip">=(E/F)−1</span>
-        <span class="v-badge">v5.1</span>
-        <span class="subtitle">PDF-stöd · Stegsdetektering · Värmepumpsdetektering · Kartintegration · v5.1</span>
+        <span class="v-badge">v5.2</span>
+        <span class="subtitle">PDF-stöd · Datakvalitetskontroll · Stegsdetektering · Värmepumpsdetektering · v5.2</span>
     </div>
     <div class="topbar-btns">
         <button class="btn btn-green"   id="uploadBtn">📁 Välj Mätarfiler (Excel/CSV/PDF)</button>
@@ -279,6 +313,13 @@
     <div id="progressWrap" style="display:none;">
         <div class="prog-track"><div id="progFill" class="prog-fill"></div></div>
         <div class="prog-label" id="progLabel"></div>
+    </div>
+    <div class="warn-banner" id="warnBanner">
+        <div class="warn-hdr">
+            <span id="warnTitle">⚠️ Varningar</span>
+            <button class="warn-close" id="warnClose">&times;</button>
+        </div>
+        <div class="warn-items" id="warnItems"></div>
     </div>
 </div>
 
@@ -302,6 +343,7 @@
                 <option value="aktiv_lacka">🚨 Aktivt läckage</option>
                 <option value="kund_lacka">📬 Kundleckage</option>
                 <option value="misstankt">⚠️ Misstänkt</option>
+                <option value="ny_matare">🆕 Ny mätare (ingen historik)</option>
                 <option value="lagad">✅ Lagat</option>
                 <option value="varmepanna">🔥 Värmepanna</option>
                 <option value="storning">⚡ Störning</option>
@@ -341,7 +383,7 @@
 <div class="footer" id="footer" style="display:none;">
     <span>Gömda — Störningar, Värmepumpar, LEAK-larm &amp; Lagade (<span id="hiddenCount">0</span> st dolda)</span>
     <button class="show-hidden-btn" id="showHiddenBtn">Visa dolda</button>
-    <div class="footer-right">=(E/F)−1 · Karma v5.1</div>
+    <div class="footer-right">=(E/F)−1 · Karma v5.2</div>
 </div>
 
 <!-- ── MAP OVERLAY ───────────────────────────────────────────────── -->
@@ -408,7 +450,14 @@
             har hoppat till en ny bestående nivå (kräver ≥2.5× ökning, stabil period före och efter). Sådana
             mätare flaggas med 📈 och kan ha högt läckagepoäng trots "normalt" dagsvärde.<br><br>
             <strong style="color:var(--text);">Värmepumpsdetektering:</strong> Mätare med vinterhöga / sommarlåga
-            avläsningar identifieras automatiskt som värmepumpar 🔥 och filtreras bort från läckageavsnittet.
+            avläsningar identifieras automatiskt som värmepumpar 🔥 och filtreras bort från läckageavsnittet.<br><br>
+            <strong style="color:var(--text);">🆘 Extremt:</strong> De allvarligaste fallen inom Aktivt läckage
+            (avvikelse &gt;2000% eller ett bekräftat hopp på ≥10×) märks separat för snabbare prioritering på fältet.<br><br>
+            <strong style="color:var(--text);">🆕 Ny mätare:</strong> Mätare utan genomsnittsvärde (ingen historik
+            att jämföra mot) flaggas för manuell granskning istället för att tystas ner som "Normal".<br><br>
+            <strong style="color:var(--text);">⚠️ Datakvalitet:</strong> Vid inläsning kontrolleras filerna för
+            saknad rubrikrad, dubblerade serienummer och tomma/oläsbara filer. Eventuella varningar visas under
+            filuppladdningen, och adresser med färre än 3 avläsningar märks som "osäker bedömning".
         </div>
     </div>
 </div>
@@ -416,6 +465,7 @@
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────
 let uploadedFiles   = [];
+let fileStatus      = [];
 let currentResults  = [];
 let savedCategories = JSON.parse(localStorage.getItem('lacksok_cats')   || '{}');
 let markedIds       = new Set(JSON.parse(localStorage.getItem('lacksok_marks')  || '[]'));
@@ -460,6 +510,7 @@ const CATS = {
     aktiv_lacka: { label:'Aktivt läckage', sym:'🚨', cl:'c-red'    },
     kund_lacka:  { label:'Kundleckage',    sym:'📬', cl:'c-orange'  },
     misstankt:   { label:'Misstänkt',      sym:'⚠️', cl:'c-yellow'  },
+    ny_matare:   { label:'Ny mätare',      sym:'🆕', cl:'c-blue'    },
     lagad:       { label:'Lagat',          sym:'✅', cl:'c-teal'    },
     varmepanna:  { label:'Värmepanna',     sym:'🔥', cl:'c-blue'    },
     storning:    { label:'Störning',       sym:'⚡', cl:'c-purple'  },
@@ -467,7 +518,7 @@ const CATS = {
 };
 
 const CAT_MAP_COLOR = {
-    aktiv_lacka:'#ef4444', kund_lacka:'#f97316', misstankt:'#eab308',
+    aktiv_lacka:'#ef4444', kund_lacka:'#f97316', misstankt:'#eab308', ny_matare:'#38bdf8',
     lagad:'#10b981', varmepanna:'#38bdf8', storning:'#c084fc', normal:'#555'
 };
 
@@ -494,7 +545,7 @@ const fmtRatio = (r, avg) => {
     if (avg <= 0) return { text:'—', cls:'ratio-l' };
     const p = Math.round(r * 100);
     const s = (p > 0 ? '+' : '') + p + '%';
-    return { text:s, cls: r>5?'ratio-x': r>1?'ratio-h': r>0.3?'ratio-m':'ratio-l' };
+    return { text:s, cls: r>10?'ratio-x': r>4?'ratio-h': r>1?'ratio-m':'ratio-l' };
 };
 
 const fileDateFromName = (name, mod) => {
@@ -564,7 +615,7 @@ function isHeatpump(history) {
 // ── KLASSIFICERING ────────────────────────────────────────────────────────
 // Tröskelguide: >1000% (ratio>10)=Akut, 400-1000% (ratio 4-10)=Misstänkt,
 //               100-400% (ratio 1-4)=Följ upp, <100% (ratio<1)=Normal
-function classify(ratio, infokod, cleanKey, serial, step, history) {
+function classify(ratio, infokod, cleanKey, serial, step, history, avgVal) {
     if (savedCategories[serial]) return savedCategories[serial];
     const kb = KB[cleanKey];
     if (kb) return kb.cat;
@@ -574,6 +625,9 @@ function classify(ratio, infokod, cleanKey, serial, step, history) {
         info.includes('BRUS') || info.includes('STÖRN'))           return 'storning';
     // Säsongsbaserad värmepumpsdetektering (vinter högt, sommar lågt)
     if (history && isHeatpump(history))                            return 'varmepanna';
+    // Mätare utan genomsnitt har ingen jämförelsebaslinje – flagga för manuell
+    // granskning istället för att tysta klassas som "normal".
+    if (!(avgVal > 0))                                              return 'ny_matare';
     // Stegsdetektering: bekräftat nytt bestående läge
     if (step?.detected) {
         if (step.jumpPct >= 400) return 'aktiv_lacka';   // ≥5× ökning → akut
@@ -586,20 +640,37 @@ function classify(ratio, infokod, cleanKey, serial, step, history) {
     return 'normal';
 }
 
+// ── DATAKVALITET: KONFIDENS ───────────────────────────────────────────────
+// Varnar när klassificeringen bygger på få avläsningar (risk för felaktigt larm).
+function dataConfidence(history) {
+    const n = (history || []).filter(h => h.v > 0).length;
+    return { n, low: n < 3 };
+}
+
+// Markerar de allvarligaste fallen inom "Aktivt läckage" för snabbare triage.
+function isExtreme(ratio, step) {
+    return ratio > 20 || (step?.detected && step.jumpPct >= 900);
+}
+
 // ── EXCEL / CSV PARSER ────────────────────────────────────────────────────
 function parseExcel(file) {
-    return new Promise((res, rej) => {
+    return new Promise((res) => {
         const rdr = new FileReader();
         rdr.onload = e => {
+            const warnings = [];
             try {
                 const wb  = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
                 const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'' });
-                if (!raw || raw.length < 2) { res([]); return; }
+                if (!raw || raw.length < 2) { res({ data:[], warnings:['Filen är tom eller saknar data.'] }); return; }
 
-                let hdrIdx = 0;
+                let hdrIdx = -1;
                 for (let i = 0; i < Math.min(10, raw.length); i++) {
                     const j = raw[i].map(c=>(c||'').toString().toLowerCase()).join('|');
                     if (j.includes('adress') && j.includes('serienummer')) { hdrIdx = i; break; }
+                }
+                if (hdrIdx === -1) {
+                    warnings.push('Hittade ingen rubrikrad med "Adress"/"Serienummer" – gissar standardkolumner (A/B/E/F/G/M).');
+                    hdrIdx = 0;
                 }
                 const hdr = raw[hdrIdx].map(h=>(h||'').toString().toLowerCase().trim());
                 const fc  = (terms, fb) => { for (const t of terms) { const i = hdr.findIndex(h=>h.includes(t)); if (i!==-1) return i; } return fb; };
@@ -613,21 +684,28 @@ function parseExcel(file) {
 
                 const fd = fileDateFromName(file.name, file.lastModified);
                 const out = [];
+                const seen = new Map();
+                let dupCount = 0, skipCount = 0;
                 for (let i = hdrIdx+1; i < raw.length; i++) {
                     const row = raw[i];
                     const id  = (row[cS]||'').toString().trim();
                     const adr = (row[cA]||'').toString().trim();
-                    if (!id || !adr) continue;
+                    if (!id || !adr) { skipCount++; continue; }
                     if (isNaN(Number(id)) && id.toLowerCase().includes('nummer')) continue;
-                    out.push({
+                    const rec = {
                         id, adress:adr, value:toNum(row[cE]), avgVal:toNum(row[cF]),
                         maxVal:toNum(row[cG])||toNum(row[cE]),
                         infokod:(row[cI]||'').toString().trim(),
                         area:getArea(adr), fileDate:fd
-                    });
+                    };
+                    if (seen.has(id)) { dupCount++; out[seen.get(id)] = rec; }
+                    else { seen.set(id, out.length); out.push(rec); }
                 }
-                res(out);
-            } catch(err) { rej(err); }
+                if (dupCount > 0)   warnings.push(`${dupCount} dubblerade serienummer i filen – senaste raden användes.`);
+                if (skipCount > 3)  warnings.push(`${skipCount} rader saknade adress/serienummer och hoppades över.`);
+                if (out.length === 0) warnings.push('Ingen giltig mätardata kunde tolkas ur filen.');
+                res({ data: out, warnings });
+            } catch(err) { res({ data:[], warnings:[`Kunde inte läsa filen: ${err.message}`] }); }
         };
         rdr.readAsArrayBuffer(file);
     });
@@ -635,7 +713,7 @@ function parseExcel(file) {
 
 // ── PDF PARSER (positions-baserad) ────────────────────────────────────────
 async function parsePDF(file) {
-    if (!pdfLib) return [];
+    if (!pdfLib) return { data: [], warnings: ['PDF-biblioteket är inte laddat än – försök igen om en stund.'] };
     try {
         const buf = await file.arrayBuffer();
         const pdf = await pdfLib.getDocument({ data: buf }).promise;
@@ -680,18 +758,24 @@ async function parsePDF(file) {
                 break;
             }
         }
-        if (hdrIdx === -1 || !cols.serial) return [];
+        if (hdrIdx === -1 || !cols.serial) {
+            return { data: [], warnings: ['Hittade ingen rubrikrad med "Adress"/"Serienummer" i PDF:en – kunde inte tolka kolumner.'] };
+        }
 
         const TOL  = 35;
         const getC = (cells, tx) => tx === undefined ? '' :
             (cells.find(c => Math.abs(c.x - tx) < TOL) || { text:'' }).text;
 
         const out = [];
+        const seen = new Set();
+        let dupCount = 0;
         for (let i = hdrIdx+1; i < rows.length; i++) {
             const cells  = rows[i];
             const serial = getC(cells, cols.serial).replace(/\s/g,'');
             const addr   = getC(cells, cols.addr);
             if (!serial || !/^\d{6,12}$/.test(serial) || !addr || addr.length < 4) continue;
+            if (seen.has(serial)) dupCount++;
+            seen.add(serial);
             out.push({
                 id: serial, adress: addr,
                 value:   toNum(getC(cells, cols.lastV)),
@@ -702,8 +786,11 @@ async function parsePDF(file) {
                 fileDate: fd
             });
         }
-        return out;
-    } catch { return []; }
+        const warnings = [];
+        if (dupCount > 0)      warnings.push(`${dupCount} dubblerade serienummer hittades i PDF:en.`);
+        if (out.length === 0)  warnings.push('Ingen giltig mätardata kunde tolkas ur PDF:en.');
+        return { data: out, warnings };
+    } catch (err) { return { data: [], warnings: [`Kunde inte läsa PDF:en: ${err.message}`] }; }
 }
 
 // ── FILHANTERING ──────────────────────────────────────────────────────────
@@ -713,6 +800,7 @@ async function handleFiles(files) {
     const pgWrap = document.getElementById('progressWrap');
     const pgFill = document.getElementById('progFill');
     const pgLbl  = document.getElementById('progLabel');
+    const allWarnings = [];
 
     document.getElementById('fileBar').style.display = 'block';
     if (arr.length > 1) {
@@ -723,11 +811,25 @@ async function handleFiles(files) {
 
     for (let i = 0; i < arr.length; i += BATCH) {
         await Promise.allSettled(arr.slice(i, i+BATCH).map(async f => {
+            const ext = f.name.split('.').pop().toLowerCase();
+            if (!['xlsx','xls','csv','pdf'].includes(ext)) {
+                allWarnings.push(`${f.name}: filtypen .${ext} stöds inte.`);
+                fileStatus.push({ name: f.name, ok: false, count: 0 });
+                return;
+            }
             try {
-                const ext  = f.name.split('.').pop().toLowerCase();
-                const data = ext === 'pdf' ? await parsePDF(f) : await parseExcel(f);
-                if (data.length > 0) uploadedFiles.push({ name:f.name, date:f.lastModified, data });
-            } catch {}
+                const { data, warnings } = ext === 'pdf' ? await parsePDF(f) : await parseExcel(f);
+                (warnings || []).forEach(w => allWarnings.push(`${f.name}: ${w}`));
+                if (data.length > 0) {
+                    uploadedFiles.push({ name:f.name, date:f.lastModified, data });
+                    fileStatus.push({ name: f.name, ok: true, count: data.length });
+                } else {
+                    fileStatus.push({ name: f.name, ok: false, count: 0 });
+                }
+            } catch (err) {
+                allWarnings.push(`${f.name}: oväntat fel vid inläsning (${err.message}).`);
+                fileStatus.push({ name: f.name, ok: false, count: 0 });
+            }
         }));
         const done = Math.min(i+BATCH, arr.length);
         pgFill.style.width = `${(done/arr.length)*100}%`;
@@ -737,14 +839,28 @@ async function handleFiles(files) {
 
     setTimeout(() => { pgWrap.style.display = 'none'; }, 1000);
     updateFileChips();
+    showWarnings(allWarnings);
     runAnalysis();
 }
 
 function updateFileChips() {
     const el = document.getElementById('fileChips');
-    el.innerHTML = uploadedFiles.map(f =>
-        `<div class="file-chip">📄 ${f.name}</div>`
+    el.innerHTML = fileStatus.map(f =>
+        f.ok
+            ? `<div class="file-chip chip-ok">✓ ${f.name} (${f.count} mätare)</div>`
+            : `<div class="file-chip chip-err">✗ ${f.name} – kunde inte läsas</div>`
     ).join('') || '<span style="color:var(--muted);font-size:10px;">Inga filer</span>';
+}
+
+function showWarnings(warnings) {
+    const banner = document.getElementById('warnBanner');
+    if (!warnings.length) { banner.style.display = 'none'; return; }
+    document.getElementById('warnTitle').textContent =
+        `⚠️ ${warnings.length} datakvalitetsvarning${warnings.length===1?'':'ar'}`;
+    document.getElementById('warnItems').innerHTML =
+        warnings.slice(0, 8).map(w => `<div>• ${w}</div>`).join('') +
+        (warnings.length > 8 ? `<div>…och ${warnings.length - 8} till.</div>` : '');
+    banner.style.display = 'block';
 }
 
 // ── ANALYS ────────────────────────────────────────────────────────────────
@@ -774,12 +890,14 @@ function runAnalysis() {
         const ratio    = m.avgVal > 0 ? (m.value / m.avgVal) - 1 : 0;
         const step     = detectNewLevel(m.history);
         const key      = cleanAddr(m.adress);
-        const category = classify(ratio, m.infokod, key, m.id, step, m.history);
+        const category = classify(ratio, m.infokod, key, m.id, step, m.history, m.avgVal);
         const memo     = KB[key]?.memo || '';
+        const conf      = dataConfidence(m.history);
+        const extreme   = category === 'aktiv_lacka' && isExtreme(ratio, step);
         currentResults.push({
             id:m.id, adress:m.adress.replace(/[\r\n]+/g,' '), area:m.area,
             lastVal:m.value, avgVal:m.avgVal, maxVal:m.maxVal,
-            infokod:m.infokod, ratio, category, memo, history:m.history, step
+            infokod:m.infokod, ratio, category, memo, history:m.history, step, conf, extreme
         });
     }
 
@@ -836,11 +954,14 @@ function renderTable() {
 
         const isMarked = markedIds.has(r.id);
         const tr = document.createElement('tr');
-        tr.className = `row-${r.category}${isHidden ? ' hidden-row' : ''}`;
+        tr.className = `row-${r.extreme ? 'extreme' : r.category}${isHidden ? ' hidden-row' : ''}`;
 
         const sc      = r.step;
         const stepTxt = sc?.detected
             ? `📈 +${sc.jumpPct}% ny bestående nivå${sc.changeDate ? ' sedan ' + sc.changeDate : ''} (${sc.jumpRatio}×)`
+            : '';
+        const confTxt = r.conf?.low
+            ? `<div class="conf-badge conf-low">⚠️ Endast ${r.conf.n} avläsning${r.conf.n===1?'':'ar'} – osäker bedömning</div>`
             : '';
 
         tr.innerHTML = `
@@ -856,9 +977,10 @@ function renderTable() {
             </td>
             <td><select class="cat-sel">${opts}</select></td>
             <td>
-                <div class="addr">${r.adress}</div>
+                <div class="addr">${r.extreme ? '<span class="extreme-tag">🆘 EXTREMT</span>' : ''}${r.adress}</div>
                 ${r.memo    ? `<div class="memo">${r.memo}</div>` : ''}
                 ${stepTxt   ? `<div class="step-badge">${stepTxt}</div>` : ''}
+                ${confTxt}
             </td>
             <td><button class="copy-btn" title="Kopiera adress">📋</button></td>
             <td><code style="font-size:10px;">${r.id}</code></td>
@@ -872,6 +994,7 @@ function renderTable() {
 
         tr.querySelector('.cat-sel').addEventListener('change', function() {
             r.category = this.value;
+            r.extreme  = false;
             savedCategories[r.id] = this.value;
             localStorage.setItem('lacksok_cats', JSON.stringify(savedCategories));
             tr.className = `row-${r.category}${hiddenIds.has(r.id)?' hidden-row':''}`;
@@ -913,13 +1036,15 @@ function renderTable() {
 
 // ── STATISTIK ─────────────────────────────────────────────────────────────
 function renderStats() {
-    const c = { total:0, aktiv:0, kund:0, misstankt:0 };
+    const c = { total:0, aktiv:0, kund:0, misstankt:0, nya:0, extreme:0 };
     currentResults.forEach(r => {
         if (hiddenIds.has(r.id) && !showHidden) return;
         c.total++;
         if (r.category==='aktiv_lacka') c.aktiv++;
         if (r.category==='kund_lacka')  c.kund++;
         if (r.category==='misstankt')   c.misstankt++;
+        if (r.category==='ny_matare')   c.nya++;
+        if (r.extreme)                  c.extreme++;
     });
 
     const chip = (label, val, cls, filter) =>
@@ -929,9 +1054,11 @@ function renderStats() {
 
     document.getElementById('statRow').innerHTML =
         chip('Totalt mätare', c.total,     'c-white',  'alla')        +
+        (c.extreme > 0 ? chip('🆘 Extremt', c.extreme, 'c-red', 'aktiv_lacka') : '') +
         chip('Aktiva läckor', c.aktiv,     'c-red',    'aktiv_lacka') +
         chip('Kundleckage',   c.kund,      'c-orange', 'kund_lacka')  +
-        chip('Misstänkta',    c.misstankt, 'c-yellow', 'misstankt');
+        chip('Misstänkta',    c.misstankt, 'c-yellow', 'misstankt')   +
+        chip('Nya mätare',    c.nya,       'c-blue',   'ny_matare');
 
     document.querySelectorAll('.stat-chip').forEach(el => {
         el.addEventListener('click', () => {
@@ -1097,13 +1224,18 @@ document.getElementById('mapBtn').onclick     = () => openMap();
 document.getElementById('exportBtn').onclick  = () => exportReport();
 document.getElementById('printBtn').onclick   = () => window.print();
 document.getElementById('clearBtn').onclick   = () => {
-    uploadedFiles = []; currentResults = [];
+    uploadedFiles = []; currentResults = []; fileStatus = [];
     updateFileChips();
+    document.getElementById('warnBanner').style.display      = 'none';
     document.getElementById('fileBar').style.display        = 'none';
     document.getElementById('controlBar').style.display     = 'none';
     document.getElementById('emptyState').style.display     = 'block';
     document.getElementById('tableContainer').style.display = 'none';
     document.getElementById('footer').style.display         = 'none';
+};
+
+document.getElementById('warnClose').onclick = () => {
+    document.getElementById('warnBanner').style.display = 'none';
 };
 
 document.getElementById('showHiddenBtn').onclick = () => {

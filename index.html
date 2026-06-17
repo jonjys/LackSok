@@ -357,7 +357,7 @@
             "LINDHOVSVÄGEN 3":     { cat: "leak_code",   memo: "📋 Kunds sida (LEAK) - Gemensam servis 3/5/7. Skickat till Jimmy." },
             "LINDHOVSVÄGEN 5":     { cat: "leak_code",   memo: "📋 Kunds sida (LEAK) - Gemensam servis 3/5/7. Skickat till Jimmy." },
             "LINDHOVSVÄGEN 7":     { cat: "leak_code",   memo: "📋 Kunds sida (LEAK) - Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "MALMSJÖVÄGEN 25":     { cat: "leak_code",   memo: "✔ Kunds sida (LEAK) - KUND INFORMERAD." },
+            "MALMSJÖVÄGEN 25":     { cat: "lagad",      memo: "🟢 LAGAD - Kunds läcka åtgärdad, kund informerad." },
             "VATTRAVÄGEN 8":       { cat: "leak_code",   memo: "✔ Kunds sida (LEAK) - KUND INFORMERAD." },
             "NIBBLEBACKEN 40":     { cat: "extreme",     memo: "🚨 KONSTATERAD LÄCKA PÅ VÅR SIDA (Kommunens ledning)." },
             "BJÖRKVÄNDAN 7":       { cat: "normal",      memo: "👌 Provstängd & läcklyssnad: Inga servisläckor." },
@@ -652,7 +652,11 @@
         function smartClassify(meter) {
             const R = (cat, reason) => ({ cat, reason });
             const cleanAddr = extractCleanAddressOnly(meter.adress);
-            if (fieldKnowledgeBase[cleanAddr]) return R(fieldKnowledgeBase[cleanAddr].cat, 'knowledge_base');
+            // Kunskapsbasen overridar KUN bekräftade resolvedtillstånd (lagad/normal).
+            // Alla andra kategorier (leak_code, extreme etc.) låter sensordatan avgöra —
+            // memo visas ändå som fältanteckning i tabellen.
+            const kb = fieldKnowledgeBase[cleanAddr];
+            if (kb && (kb.cat === 'lagad' || kb.cat === 'normal')) return R(kb.cat, 'knowledge_base');
 
             const info = (meter.infokod || '').toLowerCase();
             if (info.includes('burst') || info.includes('rörbrott')) return R('extreme',   'burst');

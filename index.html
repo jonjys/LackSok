@@ -57,14 +57,17 @@
 
         .accordion-trigger { background: #181822; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-top: 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: fit-content; gap: 12px; user-select: none; transition: background 0.2s; }
         .accordion-trigger:hover { background: #222230; }
-        .file-grid-container { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
-        .file-grid-container.open { max-height: 400px; overflow-y: auto; margin-top: 14px; }
-        .file-grid-compact { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px; background: #09090d; border-radius: 8px; border: 1px solid var(--border-color); }
-        .file-chip-compact { display: inline-flex; align-items: center; background: #161620; color: var(--text-main); font-size: 12px; font-weight: 500; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border-color); gap: 8px; }
-        .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
-        .chip-date { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
-        .remove-file-x { color: #ef4444; cursor: pointer; font-size: 16px; padding: 0 4px; font-weight: 800; }
-        .remove-file-x:hover { color: #f87171; }
+        .file-grid-container { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1); }
+        .file-grid-container.open { max-height: 500px; overflow-y: auto; margin-top: 10px; }
+        .file-grid-compact { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: #09090d; border-radius: 8px; border: 1px solid var(--border-color); }
+        .file-list-row { display: grid; grid-template-columns: 20px 1fr 80px 80px 28px; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; background: #111118; border: 1px solid #1e1e2e; transition: background 0.15s; }
+        .file-list-row:hover { background: #181828; }
+        .file-list-icon { font-size: 13px; }
+        .file-list-name { font-size: 12px; font-weight: 500; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-list-date { font-size: 11px; color: var(--text-muted); text-align: right; }
+        .file-list-count { font-size: 11px; color: #60a5fa; text-align: right; font-weight: 600; }
+        .file-list-remove { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 14px; font-weight: 700; padding: 2px 4px; border-radius: 4px; line-height: 1; }
+        .file-list-remove:hover { background: #2a1010; color: #f87171; }
 
         .progress-container { background: #1a1a22; border-radius: 8px; margin-top: 16px; padding: 12px; }
         .progress-bar-bg { background: #2a2a32; border-radius: 20px; height: 8px; overflow: hidden; }
@@ -1087,23 +1090,38 @@
         }
 
         function updateFileList() {
+            const sorted = [...uploadedFiles].sort((a, b) => b.date - a.date);
             document.getElementById('fileCountText').innerText = uploadedFiles.length;
             const grid = document.getElementById('fileList');
             grid.innerHTML = '';
             if (!uploadedFiles.length) {
+                document.getElementById('fileGridContainer').classList.remove('open');
+                document.getElementById('arrowIndicator').innerText = '▸';
                 grid.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">Inga filer laddade än.</span>';
                 return;
             }
-            uploadedFiles.forEach((f, idx) => {
-                const chip = document.createElement('div');
-                chip.className = 'file-chip-compact';
-                chip.innerHTML = `<span class="chip-name">📄 ${f.name}</span><span class="chip-date">${formatShortDate(f.date)}</span><strong class="remove-file-x">×</strong>`;
-                chip.querySelector('.remove-file-x').onclick = e => {
+            // Auto-öppna rullgardinen när det finns filer
+            document.getElementById('fileGridContainer').classList.add('open');
+            document.getElementById('arrowIndicator').innerText = '▾';
+
+            sorted.forEach((f, idx) => {
+                const realIdx = uploadedFiles.indexOf(f);
+                const row = document.createElement('div');
+                row.className = 'file-list-row';
+                row.innerHTML = `
+                    <span class="file-list-icon">📄</span>
+                    <span class="file-list-name" title="${f.name}">${f.name}</span>
+                    <span class="file-list-date">${formatShortDate(f.date)}</span>
+                    <span class="file-list-count">${f.meters.length} mätare</span>
+                    <button class="file-list-remove" title="Ta bort fil">✕</button>
+                `;
+                row.querySelector('.file-list-remove').onclick = e => {
                     e.stopPropagation();
-                    uploadedFiles.splice(idx, 1);
+                    uploadedFiles.splice(realIdx, 1);
                     updateFileList();
+                    if (uploadedFiles.length) runAnalysis();
                 };
-                grid.appendChild(chip);
+                grid.appendChild(row);
             });
         }
 

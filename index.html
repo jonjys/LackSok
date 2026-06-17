@@ -988,7 +988,7 @@
                 insight.innerHTML = `🚨 <strong>AKUT:</strong> ${counts.extreme} mätare klassad som <strong>Akut Huvudledning</strong> — åtgärd krävs omgående!`;
                 insight.style.borderColor = 'var(--clr-extreme)';
             } else if (counts.aktiv_lacka > 0) {
-                insight.innerHTML = `🔴 <strong>Aktiva läckor:</strong> ${counts.aktiv_lacka} mätare med extremt hög avvikelse (E/F ratio ≥ 15×) — trolig servis- eller ledningsläcka. Prioritera fältkontroll!`;
+                insight.innerHTML = `🔴 <strong>Aktiva läckor:</strong> ${counts.aktiv_lacka} mätare med extremt hög avvikelse (E/F >1000%) — trolig servis- eller ledningsläcka. Prioritera fältkontroll!`;
                 insight.style.borderColor = 'var(--clr-aktiv-lacka)';
             } else if (counts.misstankt > 0) {
                 insight.innerHTML = `🟠 <strong>Karma fält-tips:</strong> ${counts.misstankt} st <strong>Misstänkta / Ihållande stegringar</strong> — avvikelse E/F 4–15×. Prioritera fältkontroll. 🔥 ${counts.heatpump} värmepumpar automatiskt sorterade.`;

@@ -1,4 +1,3 @@
-// lacksok-pro.html
 
 <!DOCTYPE html>
 <html lang="sv">
@@ -154,6 +153,12 @@
         .map-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
         .map-legend-item { display: flex; align-items: center; gap: 6px; }
         .map-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .route-bar { display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; padding: 8px 12px; background: #0c1520; border: 1px solid #1e3a5f; border-radius: 8px; }
+        .route-count { font-size: 12px; color: #60a5fa; font-weight: 700; }
+        .btn-route { background: #1a3a6a; border: 1px solid #3b82f6; color: #93c5fd; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-route:hover { background: #1e4080; border-color: #60a5fa; color: #fff; transform: scale(1.02); }
+        .btn-route:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .route-star-hint { font-size: 11px; color: var(--text-muted); }
 
         /* ── Mobile ──────────────────────────────────────────────────────────── */
         @media (max-width: 768px) {
@@ -304,6 +309,12 @@
                 <button class="close-modal-btn" style="position:static;" onclick="document.getElementById('mapModal').style.display='none'">&times;</button>
             </div>
             <div id="mapStatusText" style="font-size:12px;color:var(--text-muted);flex-shrink:0;">Kör analys och öppna kartan för att geokoda mätare.</div>
+            <div class="route-bar" id="routeBar">
+                <span class="route-count" id="routeCount">⭐ 0 markerade mätare</span>
+                <button class="btn-route" id="routeBtn" disabled>🚗 Kör rutt i Google Maps</button>
+                <button class="btn-route" id="routeMapBtn" disabled style="background:#0f2a1a;border-color:#22c55e;color:#86efac;">📍 Visa enbart markerade på karta</button>
+                <span class="route-star-hint" id="routeHint">Markera mätare med ⭐ i tabellen för att bygga en körrutt</span>
+            </div>
             <div id="leafletMap"></div>
             <div class="map-legend">
                 <div class="map-legend-item"><div class="map-legend-dot" style="background:#dc2626;"></div>Akut Huvudledning</div>
@@ -1033,7 +1044,7 @@
 
         function toggleInteresting(id) {
             interestingIds.has(id) ? interestingIds.delete(id) : interestingIds.add(id);
-            persistState(); displayResults();
+            persistState(); displayResults(); updateRouteBar();
         }
 
         function toggleIgnore(id) {
@@ -1206,6 +1217,7 @@
         document.getElementById('mapBtn').onclick = showMap;
 
         async function showMap() {
+            updateRouteBar();
             if (!currentResults.length) {
                 document.getElementById('mapStatusText').textContent = 'Kör analys först.';
                 document.getElementById('mapModal').style.display = 'flex';
@@ -1247,6 +1259,89 @@
         }
 
         // ── Dagssammanfattning ────────────────────────────────────────────────────
+
+        // Körrutt för markerade mätare
+        function updateRouteBar() {
+            const n = interestingIds.size;
+            document.getElementById('routeCount').textContent = String.fromCharCode(11088) + ' ' + n + ' markerade mätare';
+            document.getElementById('routeBtn').disabled    = n < 2;
+            document.getElementById('routeMapBtn').disabled = n < 1;
+            document.getElementById('routeHint').style.display = n > 0 ? 'none' : '';
+        }
+
+        document.getElementById('routeBtn').addEventListener('click', function(){ buildGoogleMapsRoute(false); });
+        document.getElementById('routeMapBtn').addEventListener('click', function(){ buildGoogleMapsRoute(true); });
+
+        async function buildGoogleMapsRoute(mapOnly) {
+            const marked = currentResults.filter(function(r){ return interestingIds.has(r.id); });
+            if (!marked.length) return;
+
+            if (mapOnly) {
+                if (!leafletMap) {
+                    document.getElementById('mapModal').style.display = 'flex';
+                    await new Promise(function(r){ setTimeout(r, 60); });
+                    leafletMap = L.map('leafletMap').setView([59.25, 17.85], 12);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '\u00a9 OpenStreetMap', maxZoom: 19 }).addTo(leafletMap);
+                } else {
+                    mapMarkers.forEach(function(mk){ leafletMap.removeLayer(mk); });
+                    mapMarkers = [];
+                }
+                leafletMap.invalidateSize();
+                const statusEl = document.getElementById('mapStatusText');
+                statusEl.textContent = 'Laddar ' + marked.length + ' markerade mätare\u2026';
+                let done = 0, placed = 0;
+                for (const r of marked) {
+                    const coords = await geocodeAddress(r.adress);
+                    done++;
+                    statusEl.textContent = 'Geokoderar\u2026 ' + done + '/' + marked.length;
+                    if (coords) {
+                        placed++;
+                        const num = placed;
+                        const mk = L.marker([coords.lat, coords.lng], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: '<div style="background:#f59e0b;color:#000;font-weight:800;font-size:11px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);">' + num + '</div>',
+                                iconSize: [24,24], iconAnchor: [12,12]
+                            })
+                        });
+                        const cat = categories[r.category] || categories.normal;
+                        const cleanA = extractCleanAddressOnly(r.adress);
+                        mk.bindPopup('<div style="min-width:180px;"><strong>' + num + '. ' + cleanA + '</strong><br><span style="color:' + cat.bg + ';font-weight:700;">' + cat.symbol + ' ' + cat.label + '</span><br><small style="color:#888;">' + r.serienummer + '</small></div>');
+                        mk.addTo(leafletMap);
+                        mapMarkers.push(mk);
+                    }
+                }
+                if (mapMarkers.length > 1) {
+                    const coordPairs = mapMarkers.map(function(mk){ return mk.getLatLng(); });
+                    L.polyline(coordPairs, { color: '#f59e0b', weight: 3, opacity: 0.7, dashArray: '8 5' }).addTo(leafletMap);
+                }
+                statusEl.textContent = '\u2b50 ' + placed + ' av ' + marked.length + ' mätare visade \u2014 rutten är indikativ (ej GPS-beräknad)';
+                if (mapMarkers.length > 0) leafletMap.fitBounds(L.featureGroup(mapMarkers).getBounds().pad(0.25));
+                return;
+            }
+
+            // Öppna Google Maps med körrutt (max 9 stopp utan API-nyckel)
+            const toRoute = marked.slice(0, 9);
+            if (marked.length > 9)
+                document.getElementById('mapStatusText').textContent = '\u26a0\ufe0f Google Maps stödjer max 9 stopp \u2014 visar de första 9 av ' + marked.length + '.';
+
+            document.getElementById('mapStatusText').textContent = 'Hämtar koordinater för rutten\u2026';
+            const stops = await Promise.all(toRoute.map(async function(r) {
+                const c = await geocodeAddress(r.adress);
+                return c ? (c.lat + ',' + c.lng) : encodeURIComponent(extractCleanAddressOnly(r.adress) + ', Botkyrka, Sverige');
+            }));
+
+            const origin = stops[0];
+            const destination = stops[stops.length - 1];
+            const waypoints = stops.slice(1, -1).join('|');
+            let url = 'https://www.google.com/maps/dir/?api=1&origin=' + origin + '&destination=' + destination + '&travelmode=driving';
+            if (waypoints) url += '&waypoints=' + waypoints;
+
+            document.getElementById('mapStatusText').textContent = '\U0001f697 Öppnar Google Maps med ' + toRoute.length + ' stopp\u2026';
+            window.open(url, '_blank');
+        }
+
+
         function saveDailySnapshot() {
             if (!currentResults.length) return;
             const snap = { date: new Date().toISOString().slice(0,10) };

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksök Pro v5.0</title>
+    <title>Karma - Läcksök Pro v6.0</title>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -59,7 +59,7 @@
         .file-grid-container { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1); }
         .file-grid-container.open { max-height: 500px; overflow-y: auto; margin-top: 10px; }
         .file-grid-compact { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: #09090d; border-radius: 8px; border: 1px solid var(--border-color); }
-        .file-list-row { display: grid; grid-template-columns: 20px 1fr 80px 80px 28px; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; background: #111118; border: 1px solid #1e1e2e; transition: background 0.15s; }
+        .file-list-row { display: grid; grid-template-columns: 20px 1fr 80px 80px auto 28px; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; background: #111118; border: 1px solid #1e1e2e; transition: background 0.15s; }
         .file-list-row:hover { background: #181828; }
         .file-list-icon { font-size: 13px; }
         .file-list-name { font-size: 12px; font-weight: 500; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -200,6 +200,43 @@
             .daily-bar { background: #f9f9f9; border: 1px solid #ccc; color: #000; }
             @page { margin: 1.5cm; }
         }
+
+        /* ── Confidence badges ──────────────────────────────────────────────── */
+        .conf-badge { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+        .conf-low    { background: #3f1212; color: #f87171; }
+        .conf-medium { background: #2e2000; color: #fbbf24; }
+        .conf-high   { background: #0a2e16; color: #4ade80; }
+
+        /* ── Editable memo ──────────────────────────────────────────────────── */
+        .field-memo-tag { cursor: pointer; }
+        .field-memo-tag:hover { border-color: #3dd4bf; }
+        .memo-add-btn { display: inline-block; background: transparent; border: 1px dashed #2e3e3e; color: #2dd4bf; font-size: 11px; padding: 3px 8px; border-radius: 5px; margin-top: 4px; cursor: pointer; transition: all 0.15s; }
+        .memo-add-btn:hover { background: #0a1e1e; border-style: solid; }
+        .memo-edit-input { background: #0a1e1e; border: 1px solid #2dd4bf; color: #2dd4bf; font-size: 11px; padding: 4px 8px; border-radius: 5px; width: 380px; max-width: 100%; outline: none; font-family: inherit; }
+
+        /* ── Toolbar extra buttons ──────────────────────────────────────────── */
+        .btn-star-filter { background: transparent; border: 1px solid #4f46e5; color: #818cf8; padding: 9px 18px; border-radius: 50px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+        .btn-star-filter:hover { background: #1e1a40; border-color: #818cf8; }
+        .btn-star-filter.active { background: #1e1a40; border-color: #818cf8; color: #c7d2fe; }
+        .btn-bulk-star { background: transparent; border: 1px solid #374151; color: #9ca3af; padding: 9px 18px; border-radius: 50px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+        .btn-bulk-star:hover { background: #1c1c24; border-color: #6b7280; color: #d1d5db; }
+
+        /* ── Parse warning chip ─────────────────────────────────────────────── */
+        .parse-warn { display: inline-block; background: #2d1a00; border: 1px solid #92400e; color: #fbbf24; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; }
+        .parse-ok   { display: inline-block; background: #0a2e16; border: 1px solid #166534; color: #4ade80; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; }
+
+        /* ── Tolkningsguide modal ───────────────────────────────────────────── */
+        .guide-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 3000; justify-content: center; align-items: center; padding: 20px; }
+        .guide-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 640px; max-height: 85vh; overflow-y: auto; padding: 28px; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
+        .guide-section { margin-bottom: 20px; }
+        .guide-section h4 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 10px; }
+        .guide-row { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+        .guide-row:last-child { border-bottom: none; }
+        .guide-badge { flex-shrink: 0; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 800; min-width: 90px; text-align: center; }
+        .guide-desc { font-size: 13px; color: #d1d5db; line-height: 1.5; }
+
+        /* ── ny_matare highlight ────────────────────────────────────────────── */
+        .row-ny_matare td:first-child { border-left: 4px solid var(--clr-ny-matare); }
     </style>
 </head>
 <body>
@@ -207,7 +244,7 @@
     <div class="app-header">
         <div class="app-title-area">
             <h1>Karma - Läcksök Pro</h1>
-            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · v5.0</div>
+            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · Editerbara memos · v6.0</div>
         </div>
     </div>
 
@@ -219,6 +256,7 @@
             <button id="exportBtn" class="secondary">📥 Exportera Rapport</button>
             <button id="printBtn" class="secondary">🖨️ Skriv ut</button>
             <button id="clearBtn" class="secondary danger">🗑️ Nollställ</button>
+            <button id="guideBtn" class="secondary">📖 Tolkningsguide</button>
             <input type="file" id="fileInput" multiple style="display:none;" accept=".xlsx,.xls,.csv,.pdf">
         </div>
         <div class="accordion-trigger" id="accordionTrigger">
@@ -254,6 +292,8 @@
                     <option value="GRÖDINGE">Grödinge</option>
                     <option value="ÖVRIGT">Övriga områden</option>
                 </select>
+                <button class="btn-star-filter" id="starFilterBtn" onclick="toggleStarredFilter()">⭐ Visa markerade</button>
+                <button class="btn-bulk-star" id="bulkStarBtn" onclick="bulkStarVisible()">☆ Markera synliga</button>
             </div>
         </div>
 
@@ -327,6 +367,36 @@
         </div>
     </div>
 
+    <div class="guide-modal" id="guideModal">
+        <div class="guide-modal-content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="font-size:20px;font-weight:800;">📖 Tolkningsguide — Karma Läcksök</h3>
+                <button class="close-modal-btn" style="position:static;" onclick="document.getElementById('guideModal').style.display='none'">&times;</button>
+            </div>
+            <div class="guide-section">
+                <h4>Avvikelse (E/F − 1) = Aktuellt brus ÷ Genomsnitt</h4>
+                <div class="guide-row"><span class="guide-badge" style="background:#dc2626;color:#fff;">🚨 &gt;1000%</span><div class="guide-desc"><strong>AKUT</strong> — Extremt högt. Sannolikt brott på kommunens ledning. Åk ut omgående.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#f87171;color:#000;">🔴 400–1000%</span><div class="guide-desc"><strong>Aktiv läcka</strong> — Trolig servis- eller ledningsläcka. Prioritera fältkontroll.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#f97316;color:#fff;">🟠 100–400%</span><div class="guide-desc"><strong>Misstänkt</strong> — Förhöjt och ihållande. Planera läcklyssning.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#eab308;color:#000;">🟡 LEAK-kod</span><div class="guide-desc"><strong>Abonnentkod</strong> — Mätaren rapporterar LEAK. Troligen kundens sida. Kontakta fastighetsägare.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#c084fc;color:#fff;">🟣 Ny mätare</span><div class="guide-desc"><strong>Otillräcklig data</strong> — För lite historik för säker klassning. Bevaka nästa period.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#10b981;color:#fff;">🟢 Lagad</span><div class="guide-desc">Bekräftad och åtgärdad läcka. Fortsatt tyst historik.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#38bdf8;color:#fff;">🔵 Störning</span><div class="guide-desc">Ej klassbar som läcka — industriprocess, pump eller fjärrvärma.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#f59e0b;color:#fff;">🔥 Värmepump</span><div class="guide-desc">Säsongsmönster: högt brus vinter, lågt sommar. Inget läckage.</div></div>
+            </div>
+            <div class="guide-section">
+                <h4>Datakvalitet</h4>
+                <div class="guide-row"><span class="conf-badge conf-high" style="margin-left:0;">HÖG</span><div class="guide-desc">4+ datafiler — trygg klassificering med trend.</div></div>
+                <div class="guide-row"><span class="conf-badge conf-medium" style="margin-left:0;">MEDEL</span><div class="guide-desc">2–3 datafiler — tillräckligt för att se riktning.</div></div>
+                <div class="guide-row"><span class="conf-badge conf-low" style="margin-left:0;">LÅG</span><div class="guide-desc">1 fil — ögonblicksbild endast, bekräfta manuellt.</div></div>
+            </div>
+            <div class="guide-section">
+                <h4>Fältmemos</h4>
+                <div class="guide-row" style="border:none;"><div class="guide-desc">Klicka på ett memo i tabellen för att redigera det. Klicka på <em>+ Lägg till memo</em> för att skapa ett nytt. Sparas automatiskt i webbläsaren.</div></div>
+            </div>
+        </div>
+    </div>
+
     <div class="graph-modal" id="graphModal">
         <div class="graph-modal-content">
             <button class="close-modal-btn" id="closeModalBtn">&times;</button>
@@ -354,9 +424,12 @@
         let currentSort      = { column: 'change', direction: 'desc' };
         let currentAreaFilter     = 'all';
         let currentCategoryFilter = 'all';
-        let geocache   = new Map();
-        let leafletMap = null;
-        let mapMarkers = [];
+        let geocache        = new Map();
+        let leafletMap      = null;
+        let mapMarkers      = [];
+        let userMemos       = new Map();
+        let showStarredOnly = false;
+        let parseWarnings   = new Map();
 
         const BOTTOM_PANEL_CATS = new Set(['storing', 'heatpump', 'leak_code', 'lagad']);
         const HIDDEN_CATS       = new Set(['normal']);
@@ -462,26 +535,73 @@
                 reader.onload = e => {
                     try {
                         const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+                        const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+
+                        // Kamstrup files often have a title row before the real header row.
+                        // Scan first 10 rows to find the actual header row (contains 'adress' AND 'serienummer').
+                        let headerIdx = -1;
+                        for (let i = 0; i < Math.min(10, rawRows.length); i++) {
+                            const lower = rawRows[i].map(c => c.toString().toLowerCase());
+                            if (lower.some(c => c.includes('adress')) && lower.some(c => c.includes('serienummer'))) {
+                                headerIdx = i;
+                                break;
+                            }
+                        }
+
+                        // Build column-index lookup from the detected header row
+                        let colIdx = null;
+                        if (headerIdx >= 0) {
+                            const hdr = rawRows[headerIdx].map(c => c.toString().toLowerCase());
+                            const fi = key => hdr.findIndex(h => h.includes(key));
+                            colIdx = {
+                                id:      fi('serienummer') >= 0 ? fi('serienummer') : fi('mätarnummer'),
+                                addr:    fi('adress') >= 0 ? fi('adress') : fi('mätarplats'),
+                                val:     fi('senaste värde') >= 0 ? fi('senaste värde') : fi('brus'),
+                                avg:     fi('genomsnittsvärde') >= 0 ? fi('genomsnittsvärde') : fi('medelvärde'),
+                                maxV:    fi('maxvärde') >= 0 ? fi('maxvärde') : fi('max'),
+                                info:    fi('aktiva händelser') >= 0 ? fi('aktiva händelser') : fi('infokod'),
+                                area:    fi('område') >= 0 ? fi('område') : fi('ort'),
+                                dateCol: fi('senaste avläsning')
+                            };
+                        }
+
+                        // Convert raw rows to named-column objects (fallback for normal files)
+                        let rows;
+                        if (colIdx && headerIdx >= 0) {
+                            rows = rawRows.slice(headerIdx + 1).map(r => ({
+                                '__Serienummer':       r[colIdx.id]   || '',
+                                '__Adress':            r[colIdx.addr] || '',
+                                '__SenasteVarde':      r[colIdx.val]  || '',
+                                '__Genomsnittsvarde':  r[colIdx.avg]  || '',
+                                '__Maxvarde':          r[colIdx.maxV] || '',
+                                '__Infokod':           r[colIdx.info] || '',
+                                '__Omrade':            r[colIdx.area] || '',
+                                '__Lasning':           colIdx.dateCol >= 0 ? (r[colIdx.dateCol] || '') : ''
+                            }));
+                        } else {
+                            rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+                        }
+
                         const meters = [];
                         let fileReadingDate = null;
+                        let skipped = 0;
                         rows.forEach(row => {
-                            const id      = row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'] || row['Device ID'];
-                            const address = row['Adress'] || row['Plats'] || row['address'] || row['Mätarplats'];
+                            const id      = row['__Serienummer'] || row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'] || row['Device ID'];
+                            const address = row['__Adress'] || row['Adress'] || row['Plats'] || row['address'] || row['Mätarplats'];
                             // E = Senaste värde (aktuellt ALD-brus)
-                            const rawE    = row['Senaste värde'] || row['Brus'] || row['value'] || '0';
+                            const rawE    = row['__SenasteVarde'] || row['Senaste värde'] || row['Brus'] || row['value'] || '0';
                             const value   = parseInt(rawE.toString().replace(/[^0-9]/g, '')) || 0;
                             // F = Genomsnittsvärde (Kamstrups historiska snitt — nyckelkolumn!)
-                            const rawF    = row['Genomsnittsvärde'] || row['Medelvärde'] || '0';
+                            const rawF    = row['__Genomsnittsvarde'] || row['Genomsnittsvärde'] || row['Medelvärde'] || '0';
                             const avgVal  = parseInt(rawF.toString().replace(/[^0-9]/g, '')) || 0;
                             // G = Maxvärde
-                            const rawG    = row['Maxvärde'] || row['Max'] || '0';
+                            const rawG    = row['__Maxvarde'] || row['Maxvärde'] || row['Max'] || '0';
                             const maxVal  = parseInt(rawG.toString().replace(/[^0-9]/g, '')) || value;
                             // H = Infokod,  I = Aktiva händelser
-                            const infokod = [row['Infokod'], row['Aktiva händelser'], row['Felkod'], row['Status']].filter(Boolean).join(' ').trim();
-                            const rawArea = row['Område'] || row['Ort'] || '';
+                            const infokod = [row['__Infokod'], row['Infokod'], row['Aktiva händelser'], row['Felkod'], row['Status']].filter(Boolean).join(' ').trim();
+                            const rawArea = row['__Omrade'] || row['Område'] || row['Ort'] || '';
                             // D = Senaste avläsning — extrahera datum
-                            const readingDateStr = row['Senaste avläsning'] || '';
+                            const readingDateStr = row['__Lasning'] || row['Senaste avläsning'] || '';
                             if (!fileReadingDate && readingDateStr) {
                                 const m = readingDateStr.toString().match(/(\d{4})-(\d{2})-(\d{2})/);
                                 if (m) fileReadingDate = new Date(+m[1], +m[2]-1, +m[3]);
@@ -672,6 +792,17 @@
             if (kb && (kb.cat === 'lagad' || kb.cat === 'normal')) return R(kb.cat, 'knowledge_base');
 
             const info = (meter.infokod || '').toLowerCase();
+
+            // ny_matare: no historical average means we cannot classify — flag for manual review
+            const lastHist = meter.history?.length ? meter.history[meter.history.length - 1] : null;
+            if (!lastHist || !(lastHist.avgVal > 0)) {
+                const v = lastHist ? lastHist.value : (meter.value || 0);
+                if (info.includes('burst'))  return R('extreme',   'burst');
+                if (info.includes('leak') || info.includes('läcka') || info === 'ld') return R('leak_code', 'leak_alarm');
+                if (v >= 40) return R('aktiv_lacka', 'no_avg_high');
+                if (v >= 18) return R('ny_matare',   'no_avg');
+                return R('normal', 'no_avg_low');
+            }
             if (info.includes('burst') || info.includes('rörbrott')) return R('extreme',   'burst');
             if (info.includes('dry'))                                  return R('normal',    'dry');
             if (info.includes('reverse'))                              return R('storing',   'reverse');
@@ -901,6 +1032,7 @@
                 if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
                 if (ignoredIds.has(r.id)) return;
                 if (HIDDEN_CATS.has(r.category)) return;
+                if (showStarredOnly && !interestingIds.has(r.id)) return;
 
                 let catOptions = '';
                 for (const c in categories) {
@@ -944,13 +1076,20 @@
                     } else {
                         changeStr = `<span style="color:#4ade80;" title="Normalt – ingen åtgärd">✅ +${pct.toFixed(1)}%</span>`;
                     }
+                    const confN  = r.history ? r.history.length : 1;
+                    const confCls = confN >= 4 ? 'conf-high' : confN >= 2 ? 'conf-medium' : 'conf-low';
+                    const confLbl = confN >= 4 ? 'HÖG' : confN >= 2 ? 'MEDEL' : 'LÅG';
+                    const activeMemo = userMemos.get(r.id) ?? r.memo ?? '';
+                    const memoHtml = activeMemo
+                        ? `<span class="field-memo-tag" onclick="editMemo('${r.id}', this)" title="Klicka för att redigera">${activeMemo}</span>`
+                        : `<span class="memo-add-btn" onclick="editMemo('${r.id}', this)">+ Lägg till memo</span>`;
                     tr.innerHTML = `
                         <td style="text-align:center;"><button class="action-btn" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
                         <td style="text-align:center;"><button class="action-btn" onclick="toggleIgnore('${r.id}')">👁️</button></td>
                         <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
                         <td>
-                            <div class="table-adress-text">${r.adress}</div>
-                            ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
+                            <div class="table-adress-text">${r.adress}<span class="conf-badge ${confCls}">${confLbl}</span></div>
+                            ${memoHtml}
                             ${r.newLevel ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
                             ${r.ratio !== null && r.ratio !== undefined && r.ratio > 0 ? `<span class="new-level-tag" style="background:none;border-color:#1e3a5f;color:#60a5fa;">E/F: ×${(r.ratio+1).toFixed(1)}</span>` : ''}
                         </td>
@@ -1019,6 +1158,7 @@
                 localStorage.setItem('lacksok_fav_v3',    JSON.stringify([...interestingIds]));
                 localStorage.setItem('lacksok_pro_cats',  JSON.stringify([...userCategories.entries()]));
                 localStorage.setItem('lacksok_pro_hidden', JSON.stringify([...ignoredIds]));
+                localStorage.setItem('lacksok_memos_v1',  JSON.stringify([...userMemos.entries()]));
             } catch(e) {}
         }
 
@@ -1028,6 +1168,7 @@
                 JSON.parse(localStorage.getItem('lacksok_pro_cats')   || '[]').forEach(([k,v]) => userCategories.set(k, v));
                 JSON.parse(localStorage.getItem('lacksok_pro_hidden') || '[]').forEach(id      => ignoredIds.add(id));
                 JSON.parse(localStorage.getItem('lacksok_geocache')   || '[]').forEach(([k,v]) => geocache.set(k, v));
+                JSON.parse(localStorage.getItem('lacksok_memos_v1')   || '[]').forEach(([k,v]) => userMemos.set(k, v));
             } catch(e) {}
         }
 
@@ -1087,7 +1228,10 @@
                                 uploadedFiles.push({ name: file.name, date, meters: r.meters });
                             }
                         }
-                    } catch(e) { console.warn('Fil kunde inte läsas:', file.name, e); }
+                    } catch(e) {
+                        console.warn('Fil kunde inte läsas:', file.name, e);
+                        uploadedFiles.push({ name: file.name, date: new Date(file.lastModified), meters: [], parseWarning: 'Parsningsfel' });
+                    }
                 }));
                 totalDone = Math.min(i + BATCH, allFiles.length);
                 progFill.style.width = `${(totalDone / allFiles.length) * 100}%`;
@@ -1124,6 +1268,7 @@
                     <span class="file-list-name" title="${f.name}">${f.name}</span>
                     <span class="file-list-date">${formatShortDate(f.date)}</span>
                     <span class="file-list-count">${f.meters.length} mätare</span>
+                    ${f.parseWarning ? `<span class="parse-warn">⚠ ${f.parseWarning}</span>` : `<span class="parse-ok">✓ OK</span>`}
                     <button class="file-list-remove" title="Ta bort fil">✕</button>
                 `;
                 row.querySelector('.file-list-remove').onclick = e => {
@@ -1394,15 +1539,74 @@
         window.onclick = e => {
             if (e.target === document.getElementById('graphModal')) document.getElementById('graphModal').style.display = 'none';
             if (e.target === document.getElementById('mapModal'))   document.getElementById('mapModal').style.display = 'none';
+            if (e.target === document.getElementById('guideModal')) document.getElementById('guideModal').style.display = 'none';
         };
 
         document.getElementById('clearBtn').onclick = () => {
             uploadedFiles = []; currentResults = [];
-            ignoredIds.clear(); interestingIds.clear(); userCategories.clear();
+            ignoredIds.clear(); interestingIds.clear(); userCategories.clear(); userMemos.clear();
+            showStarredOnly = false;
+            const sfBtn = document.getElementById('starFilterBtn');
+            if (sfBtn) { sfBtn.classList.remove('active'); sfBtn.textContent = '⭐ Visa markerade'; }
             persistState();
             updateFileList();
             document.getElementById('results').style.display = 'none';
             document.getElementById('fileInput').value = '';
+        };
+
+        // ── Redigerbara memos ─────────────────────────────────────────────────────
+        function editMemo(id, el) {
+            const current = userMemos.get(id) || el.dataset.memo || '';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'memo-edit-input';
+            input.value = current;
+            input.placeholder = 'Skriv fältkommentar… (Enter = spara, Esc = avbryt)';
+            el.replaceWith(input);
+            input.focus();
+            input.select();
+            const save = () => {
+                const val = input.value.trim();
+                if (val) { userMemos.set(id, val); } else { userMemos.delete(id); }
+                persistState();
+                displayResults();
+            };
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter')  { e.preventDefault(); save(); }
+                if (e.key === 'Escape') { displayResults(); }
+            });
+            input.addEventListener('blur', save);
+        }
+
+        // ── Filtrering på markerade ────────────────────────────────────────────────
+        function toggleStarredFilter() {
+            showStarredOnly = !showStarredOnly;
+            const btn = document.getElementById('starFilterBtn');
+            btn.classList.toggle('active', showStarredOnly);
+            btn.textContent = showStarredOnly ? '⭐ Visa alla' : '⭐ Visa markerade';
+            displayResults();
+        }
+
+        // ── Bulk-markera synliga mätare ────────────────────────────────────────────
+        function bulkStarVisible() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            let changed = false;
+            currentResults.forEach(r => {
+                if (ignoredIds.has(r.id))             return;
+                if (HIDDEN_CATS.has(r.category))      return;
+                if (BOTTOM_PANEL_CATS.has(r.category)) return;
+                if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
+                if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
+                if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
+                interestingIds.add(r.id);
+                changed = true;
+            });
+            if (changed) { persistState(); displayResults(); updateRouteBar(); }
+        }
+
+        // ── Guide modal ────────────────────────────────────────────────────────────
+        document.getElementById('guideBtn').onclick = () => {
+            document.getElementById('guideModal').style.display = 'flex';
         };
 
         loadPersistedState();

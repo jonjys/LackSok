@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksök Pro v6.0</title>
+    <title>Karma - Läcksök Pro v6.1</title>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -244,7 +244,7 @@
     <div class="app-header">
         <div class="app-title-area">
             <h1>Karma - Läcksök Pro</h1>
-            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · Editerbara memos · v6.0</div>
+            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · Editerbara memos · v6.1</div>
         </div>
     </div>
 
@@ -494,8 +494,14 @@
         }
 
         function parseSwedishDate(day, monthStr, year) {
-            const map = { jan:0, feb:1, mar:2, apr:3, maj:4, jun:5, jul:6, aug:7, sep:8, okt:9, nov:10, dec:11 };
-            const mo = map[monthStr.toLowerCase().slice(0,3)];
+            const map = {
+                jan:0, feb:1, mar:2, apr:3, maj:4, jun:5, jul:6, aug:7, sep:8, okt:9, nov:10, dec:11,
+                // Full names + common OCR variants
+                januari:0, februari:1, mars:2, april:3, juni:5, juli:6,
+                augusti:7, september:8, oktober:9, november:10, december:11
+            };
+            const key = monthStr.toLowerCase().replace(/[^a-zåäö]/g, '');
+            const mo = map[key] !== undefined ? map[key] : map[key.slice(0,3)];
             return mo !== undefined ? new Date(parseInt(year), mo, parseInt(day)) : null;
         }
 
@@ -648,6 +654,11 @@
                             if (!reportDate) {
                                 const dm = joined.match(/Rapport utfärdad den (\d{1,2})\s+(\w+)\s+(\d{4})/i);
                                 if (dm) reportDate = parseSwedishDate(dm[1], dm[2], dm[3]);
+                                // Also try ISO date format in headers
+                                if (!reportDate) {
+                                    const iso = joined.match(/(\d{4})-(\d{2})-(\d{2})/);
+                                    if (iso) reportDate = new Date(+iso[1], +iso[2]-1, +iso[3]);
+                                }
                             }
                             if (row.some(i => i.str === 'Serienummer' || i.str === 'Adress')) { pendingCity = null; continue; }
                             if (/Rapport utfärdad|Sida \d+|Filtrerade mätare/i.test(joined) && row.length <= 5) { pendingCity = null; continue; }
@@ -752,6 +763,9 @@
         // Hittar tydlig bryttpunkt: var tyst länge → plötslig extrem ökning → STANNAR på ny nivå
         function detectNewLevel(history) {
             if (!history || history.length < 4) return null;
+            // Kräver minst 2 distinkta datum — annars kan vi inte fastställa riktning
+            const distinctDates = new Set(history.map(h => h.dateStr)).size;
+            if (distinctDates < 2) return null;
             const sorted = [...history].sort((a, b) => a.date - b.date);
             const vals   = sorted.map(h => h.value);
 
@@ -910,6 +924,13 @@
             currentResults = [];
             const metersMap = new Map();
 
+            // Check for date collisions — if all files share the same date, trend analysis is unreliable
+            const validFiles = uploadedFiles.filter(f => f.meters.length > 0);
+            const uniqueDates = new Set(validFiles.map(f => formatShortDate(f.date)));
+            window._allSameDate = uniqueDates.size <= 1 && validFiles.length > 1;
+            window._singleDate  = validFiles.length === 1;
+            window._uniqueDateCount = uniqueDates.size;
+
             uploadedFiles.forEach(file => {
                 const dateStr = formatShortDate(file.date);
                 file.meters.forEach(m => {
@@ -1051,7 +1072,7 @@
                         <td>
                             <div class="table-adress-text">${r.adress}</div>
                             ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
-                            ${r.newLevel ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
+                            ${r.newLevel && !window._allSameDate ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
                             ${r.ratio !== null && r.ratio !== undefined && r.ratio > 0 ? `<span class="new-level-tag" style="background:none;border-color:#1e3a5f;color:#60a5fa;">E/F: ×${(r.ratio+1).toFixed(1)}</span>` : ''}
                         </td>
                         <td><code>${r.serienummer}</code></td>
@@ -1090,7 +1111,7 @@
                         <td>
                             <div class="table-adress-text">${r.adress}<span class="conf-badge ${confCls}">${confLbl}</span></div>
                             ${memoHtml}
-                            ${r.newLevel ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
+                            ${r.newLevel && !window._allSameDate ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
                             ${r.ratio !== null && r.ratio !== undefined && r.ratio > 0 ? `<span class="new-level-tag" style="background:none;border-color:#1e3a5f;color:#60a5fa;">E/F: ×${(r.ratio+1).toFixed(1)}</span>` : ''}
                         </td>
                         <td style="text-align:center;"><button class="copy-btn" onclick="copyToClipboard('${r.adress}', event)">📋 Kopiera</button></td>
@@ -1137,6 +1158,15 @@
             renderDailySummaryBar(counts);
 
             const insight = document.getElementById('insightBox');
+
+            // Same-date warning — trendanalys ej möjlig
+            if (window._allSameDate) {
+                const [theDate] = [...new Set(uploadedFiles.filter(f=>f.meters.length>0).map(f=>formatShortDate(f.date)))];
+                insight.innerHTML = `⚠️ <strong>Alla ${uploadedFiles.filter(f=>f.meters.length>0).length} filer har samma datum (${theDate})</strong> — trendanalys och ny-nivå-detektion är inaktiverade. Ladda upp filer från olika datum för att se trend och förändringsriktning.<br><br>Klassificering baseras på <strong>E/F-kvoten</strong> (senaste värde ÷ genomsnitt) från varje enskild fil.`;
+                insight.style.borderColor = '#f59e0b';
+                return;
+            }
+
             if (counts.extreme > 0) {
                 insight.innerHTML = `🚨 <strong>AKUT:</strong> ${counts.extreme} mätare klassad som <strong>Akut Huvudledning</strong> — åtgärd krävs omgående!`;
                 insight.style.borderColor = 'var(--clr-extreme)';
@@ -1149,6 +1179,14 @@
             } else {
                 insight.innerHTML = `💡 <strong>Systemstatus:</strong> Inga akuta signaler. 🔥 ${counts.heatpump} värmepumpar, ${hiddenCount} störningar/larm filtrerade nedan. Avvikelse = (Senaste värde / Kamstrup-snitt) − 1.`;
                 insight.style.borderColor = 'var(--primary)';
+            }
+
+            // Append date-range info
+            if (!window._allSameDate && uploadedFiles.filter(f=>f.meters.length>0).length > 0) {
+                const dts = uploadedFiles.filter(f=>f.meters.length>0).map(f=>f.date).sort((a,b)=>a-b);
+                const from = formatShortDate(dts[0]), to = formatShortDate(dts[dts.length-1]);
+                const span = dts.length > 1 ? ` · Dataperiod: <strong>${from}</strong> → <strong>${to}</strong> (${window._uniqueDateCount} unika datum)` : ` · Datum: <strong>${from}</strong>`;
+                insight.innerHTML += span;
             }
         }
 
@@ -1218,14 +1256,16 @@
                                 progText.innerText = `PDF: sida ${pg}/${tot} — ${file.name}`;
                             });
                             const date = r.reportDate || extractDateFromFilename(file.name) || new Date(file.lastModified);
-                            if (r.meters.length && !uploadedFiles.some(f => f.name === file.name)) {
-                                uploadedFiles.push({ name: file.name, date, meters: r.meters });
+                            if (!uploadedFiles.some(f => f.name === file.name)) {
+                                const warn = r.meters.length === 0 ? 'Inga mätare hittades' : null;
+                                uploadedFiles.push({ name: file.name, date, meters: r.meters, parseWarning: warn });
                             }
                         } else {
                             const r = await parseExcelFile(file);
                             const date = r.fileReadingDate || extractDateFromFilename(file.name) || new Date(file.lastModified);
-                            if (r.meters.length && !uploadedFiles.some(f => f.name === file.name)) {
-                                uploadedFiles.push({ name: file.name, date, meters: r.meters });
+                            if (!uploadedFiles.some(f => f.name === file.name)) {
+                                const warn = r.meters.length === 0 ? 'Inga mätare hittades' : null;
+                                uploadedFiles.push({ name: file.name, date, meters: r.meters, parseWarning: warn });
                             }
                         }
                     } catch(e) {
@@ -1267,7 +1307,7 @@
                     <span class="file-list-icon">📄</span>
                     <span class="file-list-name" title="${f.name}">${f.name}</span>
                     <span class="file-list-date">${formatShortDate(f.date)}</span>
-                    <span class="file-list-count">${f.meters.length} mätare</span>
+                    <span class="file-list-count" style="${f.meters.length === 0 ? 'color:#f87171;' : ''}">${f.meters.length} mätare</span>
                     ${f.parseWarning ? `<span class="parse-warn">⚠ ${f.parseWarning}</span>` : `<span class="parse-ok">✓ OK</span>`}
                     <button class="file-list-remove" title="Ta bort fil">✕</button>
                 `;
@@ -1304,7 +1344,11 @@
             activeChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: meter.history.map(h => h.dateStr),
+                    labels: (() => {
+                        const dates = meter.history.map(h => h.dateStr);
+                        const allSame = new Set(dates).size <= 1;
+                        return allSame ? dates.map((_, i) => `Fil ${i+1}`) : dates;
+                    })(),
                     datasets: [{ label: 'Brusnivå (dB)', data: meter.history.map(h => h.value), borderColor: '#1db954', backgroundColor: 'rgba(29,185,84,0.08)', borderWidth: 3, pointBackgroundColor: '#fff', pointRadius: 5, tension: 0.2 }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' }, beginAtZero: true }, x: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' } } } }
@@ -1502,7 +1546,7 @@
         function renderDailySummaryBar(counts) {
             const snap = getDailySnapshot();
             const bar  = document.getElementById('dailySummaryBar');
-            if (!snap || snap.date === new Date().toISOString().slice(0,10)) { bar.style.display = 'none'; return; }
+            if (!snap || snap.date === new Date().toISOString().slice(0,10) || window._allSameDate) { bar.style.display = 'none'; return; }
             const diff = key => {
                 const d = (counts[key] || 0) - (snap[key] || 0);
                 if (d > 0) return `<span class="d-up">↑ +${d}</span>`;

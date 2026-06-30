@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksök Pro v6.1</title>
+    <title>Karma - Läcksök Pro v7.0</title>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -244,7 +244,7 @@
     <div class="app-header">
         <div class="app-title-area">
             <h1>Karma - Läcksök Pro</h1>
-            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · Editerbara memos · v6.1</div>
+            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · Superanalys · Återgångsdetektering · v7.0</div>
         </div>
     </div>
 
@@ -394,6 +394,12 @@
                 <h4>Fältmemos</h4>
                 <div class="guide-row" style="border:none;"><div class="guide-desc">Klicka på ett memo i tabellen för att redigera det. Klicka på <em>+ Lägg till memo</em> för att skapa ett nytt. Sparas automatiskt i webbläsaren.</div></div>
             </div>
+            <div class="guide-section">
+                <h4>Återgång till normal vs. bestående höjning</h4>
+                <div class="guide-row"><span class="guide-badge" style="background:#27272a;color:#bbb;">⚪ Tystnat</span><div class="guide-desc">Mätaren gick upp men de <strong>senaste mätningarna</strong> ligger tillbaka nära sin egen normalnivå → klassas som normal/lagad, <strong>ingen varning</strong>.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#f87171;color:#000;">🔴 Stannar kvar</span><div class="guide-desc">Mätaren gick upp och <strong>stannar</strong> på en ny, högre nivå (sjunker inte tillbaka) → klassas som misstänkt/aktiv läcka, <strong>varnar</strong>.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#38bdf8;color:#fff;">🔵 Alltid på</span><div class="guide-desc">Stabilt, måttligt brus i <strong>hela</strong> historiken (aldrig haft en tyst period) → troligen värmepanna/cirkulationspump, ej läckage.</div></div>
+            </div>
         </div>
     </div>
 
@@ -532,6 +538,20 @@
 
         function avg(readings) {
             return readings.reduce((s, h) => s + h.value, 0) / readings.length;
+        }
+
+        function median(vals) {
+            const s = [...vals].sort((a, b) => a - b);
+            const mid = Math.floor(s.length / 2);
+            return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+        }
+
+        // Robust baseline: medianen av den tystare hälften av historiken.
+        // Resistent mot en enstaka spik (läcka/störning) som annars skulle dra upp ett vanligt snitt.
+        function robustBaseline(history) {
+            const vals = history.map(h => h.value).sort((a, b) => a - b);
+            const quietHalf = vals.slice(0, Math.max(1, Math.ceil(vals.length / 2)));
+            return median(quietHalf);
         }
 
         // ── Excel-parser ──────────────────────────────────────────────────────────
@@ -746,14 +766,19 @@
             // Sortera historien kronologiskt och leta efter V-kurva (höst→vinter→vår) eller stigande höst
             if (history.length >= 4) {
                 const sorted = [...history].sort((a,b)=>a.date-b.date);
+                const chronoVals = sorted.map(h=>h.value);
                 // Kolla om sista 2 mätningarna stiger relativt de 2 första (höst-uppgång)
-                const firstTwo = sorted.slice(0,2).map(h=>h.value);
-                const lastTwo  = sorted.slice(-2).map(h=>h.value);
+                const firstTwo = chronoVals.slice(0,2);
+                const lastTwo  = chronoVals.slice(-2);
                 const firstA   = firstTwo.reduce((a,b)=>a+b,0)/2;
                 const lastA    = lastTwo.reduce((a,b)=>a+b,0)/2;
-                const allMod   = sorted.every(h=>h.value < 80); // inget extremvärde
-                // Stiger från tidig höst mot vinter och värdena är måttliga → trolig värmepump
-                if (allMod && lastA > firstA * 1.3 && lastA > 15) return true;
+                // Värmepumpar skapar sällan brus över ~40 dB — högre värden talar för en läcka, inte säsong
+                const allMod   = chronoVals.every(v => v < 40);
+                // Kräver GRADVIS stegring — en enskild abrupt språng mellan två mätningar är
+                // detectNewLevels jobb att hitta (sannolik läcka), inte ett säsongsmönster
+                const noAbruptJump = chronoVals.every((v,i) => i === 0 || v <= chronoVals[i-1] * 1.8 + 5);
+                // Stiger gradvis från tidig höst mot vinter och värdena är måttliga → trolig värmepump
+                if (allMod && noAbruptJump && lastA > firstA * 1.3 && lastA > 15 && lastA < 40) return true;
             }
 
             return false;
@@ -782,8 +807,14 @@
                 const beforeStable = before.every(v => v <= Math.max(avgB * 1.6, avgB + 8));
                 // Efter-perioden håller sig kvar på den nya nivån (inget stor dipp tillbaka)
                 const afterStable  = after.every(v => v >= avgA * 0.55);
+                // Senaste mätningarna (svansen) jämförs mot URSPRUNGLIGA baseline (avgB), inte avgA.
+                // Detta är skillnaden mellan "gick upp och STANNAR" och "gick upp och kom TILLBAKA":
+                // om svansen har sjunkit ner mot ursprungsnivån igen ska det INTE räknas som ny nivå.
+                const tail = after.slice(-Math.min(3, after.length));
+                const tailAvg = tail.reduce((a,b)=>a+b,0) / tail.length;
+                const stillElevated = tailAvg >= avgB * 1.8;
 
-                if (jumpRatio >= 2.5 && avgA >= 15 && beforeStable && afterStable) {
+                if (jumpRatio >= 2.5 && avgA >= 15 && beforeStable && afterStable && stillElevated) {
                     return {
                         date:       sorted[split].dateStr,
                         avgBefore:  Math.round(avgB),
@@ -821,6 +852,9 @@
             if (info.includes('dry'))                                  return R('normal',    'dry');
             if (info.includes('reverse'))                              return R('storing',   'reverse');
             if (info.includes('leak') || info.includes('läcka') || info.includes('läckage') || info.includes('ld ') || info === 'ld') return R('leak_code', 'leak_alarm');
+            // Värmepanna / cirkulationspump — om fältet uttryckligen flaggar mekanisk källa
+            const mechKeyword = info.includes('panna') || info.includes('vvc') || info.includes('cirkulation') || info.includes('värmesystem');
+            if (mechKeyword) return R('storing', 'varmepanna_kod');
 
             const hist = meter.history;
             if (!hist || hist.length < 2) {
@@ -869,16 +903,28 @@
             if (currentRatio >= 11) return R('aktiv_lacka',  'high_ratio');
             if (currentRatio >= 4 && !isHeatpump(history)) return R('misstankt', 'elevated_ratio');
 
+            const baseline = robustBaseline(history);
+
             if (hist.length < 5) {
                 const alwaysHigh = history.every(h => h.value >= 18);
+                // Om senaste mätningen ligger nära den lägsta uppmätta nivån men historiken
+                // innehåller ett betydligt högre värde → troligen redan tillbaka till normalt.
+                const settledLow = currentNoise <= Math.max(baseline * 1.5, baseline + 8, 18) && maxHistorical > currentNoise * 1.8;
+                if (settledLow) return R('normal', 'returned_short');
                 if (currentNoise >= 28) return alwaysHigh ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
                 if (currentNoise >= 18) return R('ny_matare', 'elevated');
                 return R('normal', 'ok');
             }
 
-            // 1. Reparation
-            if (history.slice(-4).every(h => h.value <= 22)) {
-                return maxHistorical >= 50 ? R('lagad', 'repaired') : R('normal', 'ok');
+            // 1. Återgång till normal — kräver att det FUNNITS en tydlig topp (annars är det
+            // bara stabilt brus hela tiden, se steg 6.5) OCH att senaste 2 mätningarna ligger
+            // tillbaka nära mätarens egen (robusta) baseline. Detta ska INTE varna,
+            // oavsett hur hög den tillfälliga toppen var.
+            const quietThreshold = Math.max(baseline * 1.5, baseline + 8, 18);
+            const hadRealPeak = maxHistorical >= baseline * 1.8 && maxHistorical >= baseline + 10;
+            const tailReadings = history.slice(-Math.min(2, history.length));
+            if (hadRealPeak && tailReadings.every(h => h.value <= quietThreshold)) {
+                return maxHistorical >= Math.max(baseline * 2.5, 50) ? R('lagad', 'repaired') : R('normal', 'ok');
             }
 
             // 2. Värmepump (säsong) — separat kategori
@@ -907,6 +953,18 @@
                 if (r >= 8)  return R('aktiv_lacka', `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
                 if (r >= 3)  return R('misstankt',   `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
                 return R('ny_matare', `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
+            }
+
+            // 6.5 Stabilt bakgrundsbrus i HELA historiken (aldrig tyst, ingen ny nivå hittad)
+            // → mätaren har troligen aldrig varit "tyst", vilket talar för en mekanisk källa
+            // (cirkulationspump, värmepanna, ventil) snarare än en läcka som uppstått och stannat.
+            const allVals  = history.map(h => h.value);
+            const meanAll  = allVals.reduce((a,b)=>a+b,0) / allVals.length;
+            const varAll   = allVals.reduce((a,b)=>a+(b-meanAll)**2,0) / allVals.length;
+            const cvAll    = meanAll > 0 ? Math.sqrt(varAll) / meanAll : 1;
+            const neverQuiet = allVals.every(v => v >= 14);
+            if (meanAll >= 16 && meanAll <= 55 && cvAll < 0.28 && neverQuiet) {
+                return R('storing', mechKeyword ? 'varmepanna' : 'stable_background');
             }
 
             // 7. Konstant högt = störning, inte ny läcka
@@ -994,7 +1052,7 @@
 
         // ── Bottenpanel-kommentarer ───────────────────────────────────────────────
         function getBottomComment(r) {
-            if (r.category === 'lagad') return `✅ Historiskt lagad — Max: <strong>${r.max} dB</strong>. Konsekvent tyst de senaste 4 mätningarna.`;
+            if (r.category === 'lagad') return `✅ Återgått till normal nivå — Max: <strong>${r.max} dB</strong>, men senaste mätningarna ligger tillbaka nära mätarens egen baseline.`;
             if (r.category === 'heatpump') {
                 const s = r.summerAvg && r.winterAvg ? ` (vinter: ${r.winterAvg} / sommar: ${r.summerAvg})` : '';
                 const sub = r.reason === 'heat_pump_seasonal' ? 'Höst→Vinter-stegring' : 'Säsongsmönster';
@@ -1010,6 +1068,9 @@
                 if (r.reason === 'industrial')         return `🏭 Industriprocess — Tullinge-zone, stabilt högt. Kontrollera med kund.`;
                 if (r.reason === 'reverse')            return `↩️ Bakåtflöde (REVERSE) — Kontrollera installation.`;
                 if (r.reason === 'always_high')        return `🔵 Konstant bakgrundsbrus — Aldrig tyst i historiken. Ej ny läcka.`;
+                if (r.reason === 'varmepanna_kod')     return `🔥 Värmepanna/cirkulationspump — Flaggat i infokod. Inget läckage.`;
+                if (r.reason === 'varmepanna')         return `🔥 Trolig värmepanna/cirkulationspump — Stabilt, måttligt brus hela historiken utan tyst period. Inget läckage.`;
+                if (r.reason === 'stable_background')  return `🔵 Stabilt bakgrundsbrus — Aldrig tyst i hela historiken, ingen ny nivå hittad. Troligen mekaniskt, ej läckage.`;
                 return `🔵 Störning/pump — Fluktuerande brus, ej klassbar som aktiv läcka.`;
             }
             return '';

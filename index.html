@@ -939,15 +939,20 @@
                 if (seasonRatio > 0.7 && seasonRatio < 1.4 && isStableHigh) return R('storing', 'heat_pump_constant');
             }
 
+            // Beräknas tidigt så att en BEKRÄFTAD ny nivå (nyligen uppkommen, bestående höjning)
+            // alltid går före de mer generella "det här är nog bara bakgrundsstörning"-heuristikerna
+            // nedan (4/5). Annars kan en riktig läcka som råkar ligga i en fjärrvärme-/industrizon
+            // maskeras som störning bara för att den hunnit bli "stabil" efter hoppet.
+            const nl = detectNewLevel(history);
+
             // 4. Fjärrvärmestörning
             const hasUncertainCode = info.includes('ej fastställt') || info.includes('annat brus');
-            if (hasUncertainCode && isStableHigh) return R('storing', 'district_heating');
+            if (hasUncertainCode && isStableHigh && !nl) return R('storing', 'district_heating');
 
             // 5. Industridetektering
-            if (meter.area === 'TULLINGE' && isStableHigh && maxHistorical > 80) return R('storing', 'industrial');
+            if (meter.area === 'TULLINGE' && isStableHigh && maxHistorical > 80 && !nl) return R('storing', 'industrial');
 
             // 6. Ny-nivå-detektor: tyst → extrem ökning → STANNAR på ny nivå
-            const nl = detectNewLevel(history);
             if (nl) {
                 const r = nl.jumpRatio;
                 if (r >= 8)  return R('aktiv_lacka', `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
@@ -1146,12 +1151,22 @@
                     const tr = document.createElement('tr');
                     tr.className = `row-${r.category}`;
                     const pct = r.change;
+                    // Avvikelsekolumnen visar annars bara den SENASTE avläsningens egna E/F-kvot,
+                    // som kan se lugn ut om Kamstrups eget rullande snitt hunnit "komma ikapp" en
+                    // läcka som pågått länge. Slutklassificeringen (t.ex. en bekräftad ny nivå från
+                    // detectNewLevel) väger därför alltid minst lika tungt som den råa procentsatsen,
+                    // så badgen aldrig visar ett lugnt grönt ✅ på en rad märkt som aktiv läcka.
+                    const CAT_TIER = { extreme: 3, aktiv_lacka: 3, misstankt: 2, ny_matare: 1 };
+                    const pctTier = pct >= 1000 ? 3 : pct >= 400 ? 2 : pct >= 100 ? 1 : 0;
+                    const catTier = CAT_TIER[r.category] || 0;
+                    const tier = Math.max(pctTier, catTier);
+                    const displayMult = (catTier > pctTier && r.newLevel) ? r.newLevel.jumpRatio : (pct / 100 + 1);
                     let changeStr;
-                    if (pct >= 1000) {
-                        changeStr = `<span class="trend-up" title="AKUT LÄCKAGE – åk dit!">🚨 ×${(pct/100+1).toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
-                    } else if (pct >= 400) {
-                        changeStr = `<span class="trend-up" title="MISSTÄNKT – kolla upp">⚠️ ×${(pct/100+1).toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
-                    } else if (pct >= 100) {
+                    if (tier === 3) {
+                        changeStr = `<span class="trend-up" title="AKTIV LÄCKA – åk dit!">🚨 ×${displayMult.toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
+                    } else if (tier === 2) {
+                        changeStr = `<span class="trend-up" title="MISSTÄNKT – kolla upp">⚠️ ×${displayMult.toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
+                    } else if (tier === 1) {
                         changeStr = `<span style="color:#fbbf24;" title="Följ upp – bevaka trenden">📊 +${Math.round(pct)}%</span>`;
                     } else if (pct < 0) {
                         changeStr = `<span class="trend-down">${pct.toFixed(1)}%</span>`;

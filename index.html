@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksök Pro v6.0</title>
+    <title>Karma - Läcksök Pro v7.0</title>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -244,7 +244,7 @@
     <div class="app-header">
         <div class="app-title-area">
             <h1>Karma - Läcksök Pro</h1>
-            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · Editerbara memos · v6.0</div>
+            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · Superanalys · Återgångsdetektering · v7.0</div>
         </div>
     </div>
 
@@ -394,6 +394,12 @@
                 <h4>Fältmemos</h4>
                 <div class="guide-row" style="border:none;"><div class="guide-desc">Klicka på ett memo i tabellen för att redigera det. Klicka på <em>+ Lägg till memo</em> för att skapa ett nytt. Sparas automatiskt i webbläsaren.</div></div>
             </div>
+            <div class="guide-section">
+                <h4>Återgång till normal vs. bestående höjning</h4>
+                <div class="guide-row"><span class="guide-badge" style="background:#27272a;color:#bbb;">⚪ Tystnat</span><div class="guide-desc">Mätaren gick upp men de <strong>senaste mätningarna</strong> ligger tillbaka nära sin egen normalnivå → klassas som normal/lagad, <strong>ingen varning</strong>.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#f87171;color:#000;">🔴 Stannar kvar</span><div class="guide-desc">Mätaren gick upp och <strong>stannar</strong> på en ny, högre nivå (sjunker inte tillbaka) → klassas som misstänkt/aktiv läcka, <strong>varnar</strong>.</div></div>
+                <div class="guide-row"><span class="guide-badge" style="background:#38bdf8;color:#fff;">🔵 Alltid på</span><div class="guide-desc">Stabilt, måttligt brus i <strong>hela</strong> historiken (aldrig haft en tyst period) → troligen värmepanna/cirkulationspump, ej läckage.</div></div>
+            </div>
         </div>
     </div>
 
@@ -494,8 +500,14 @@
         }
 
         function parseSwedishDate(day, monthStr, year) {
-            const map = { jan:0, feb:1, mar:2, apr:3, maj:4, jun:5, jul:6, aug:7, sep:8, okt:9, nov:10, dec:11 };
-            const mo = map[monthStr.toLowerCase().slice(0,3)];
+            const map = {
+                jan:0, feb:1, mar:2, apr:3, maj:4, jun:5, jul:6, aug:7, sep:8, okt:9, nov:10, dec:11,
+                // Full names + common OCR variants
+                januari:0, februari:1, mars:2, april:3, juni:5, juli:6,
+                augusti:7, september:8, oktober:9, november:10, december:11
+            };
+            const key = monthStr.toLowerCase().replace(/[^a-zåäö]/g, '');
+            const mo = map[key] !== undefined ? map[key] : map[key.slice(0,3)];
             return mo !== undefined ? new Date(parseInt(year), mo, parseInt(day)) : null;
         }
 
@@ -526,6 +538,20 @@
 
         function avg(readings) {
             return readings.reduce((s, h) => s + h.value, 0) / readings.length;
+        }
+
+        function median(vals) {
+            const s = [...vals].sort((a, b) => a - b);
+            const mid = Math.floor(s.length / 2);
+            return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+        }
+
+        // Robust baseline: medianen av den tystare hälften av historiken.
+        // Resistent mot en enstaka spik (läcka/störning) som annars skulle dra upp ett vanligt snitt.
+        function robustBaseline(history) {
+            const vals = history.map(h => h.value).sort((a, b) => a - b);
+            const quietHalf = vals.slice(0, Math.max(1, Math.ceil(vals.length / 2)));
+            return median(quietHalf);
         }
 
         // ── Excel-parser ──────────────────────────────────────────────────────────
@@ -648,6 +674,11 @@
                             if (!reportDate) {
                                 const dm = joined.match(/Rapport utfärdad den (\d{1,2})\s+(\w+)\s+(\d{4})/i);
                                 if (dm) reportDate = parseSwedishDate(dm[1], dm[2], dm[3]);
+                                // Also try ISO date format in headers
+                                if (!reportDate) {
+                                    const iso = joined.match(/(\d{4})-(\d{2})-(\d{2})/);
+                                    if (iso) reportDate = new Date(+iso[1], +iso[2]-1, +iso[3]);
+                                }
                             }
                             if (row.some(i => i.str === 'Serienummer' || i.str === 'Adress')) { pendingCity = null; continue; }
                             if (/Rapport utfärdad|Sida \d+|Filtrerade mätare/i.test(joined) && row.length <= 5) { pendingCity = null; continue; }
@@ -735,14 +766,19 @@
             // Sortera historien kronologiskt och leta efter V-kurva (höst→vinter→vår) eller stigande höst
             if (history.length >= 4) {
                 const sorted = [...history].sort((a,b)=>a.date-b.date);
+                const chronoVals = sorted.map(h=>h.value);
                 // Kolla om sista 2 mätningarna stiger relativt de 2 första (höst-uppgång)
-                const firstTwo = sorted.slice(0,2).map(h=>h.value);
-                const lastTwo  = sorted.slice(-2).map(h=>h.value);
+                const firstTwo = chronoVals.slice(0,2);
+                const lastTwo  = chronoVals.slice(-2);
                 const firstA   = firstTwo.reduce((a,b)=>a+b,0)/2;
                 const lastA    = lastTwo.reduce((a,b)=>a+b,0)/2;
-                const allMod   = sorted.every(h=>h.value < 80); // inget extremvärde
-                // Stiger från tidig höst mot vinter och värdena är måttliga → trolig värmepump
-                if (allMod && lastA > firstA * 1.3 && lastA > 15) return true;
+                // Värmepumpar skapar sällan brus över ~40 dB — högre värden talar för en läcka, inte säsong
+                const allMod   = chronoVals.every(v => v < 40);
+                // Kräver GRADVIS stegring — en enskild abrupt språng mellan två mätningar är
+                // detectNewLevels jobb att hitta (sannolik läcka), inte ett säsongsmönster
+                const noAbruptJump = chronoVals.every((v,i) => i === 0 || v <= chronoVals[i-1] * 1.8 + 5);
+                // Stiger gradvis från tidig höst mot vinter och värdena är måttliga → trolig värmepump
+                if (allMod && noAbruptJump && lastA > firstA * 1.3 && lastA > 15 && lastA < 40) return true;
             }
 
             return false;
@@ -752,6 +788,9 @@
         // Hittar tydlig bryttpunkt: var tyst länge → plötslig extrem ökning → STANNAR på ny nivå
         function detectNewLevel(history) {
             if (!history || history.length < 4) return null;
+            // Kräver minst 2 distinkta datum — annars kan vi inte fastställa riktning
+            const distinctDates = new Set(history.map(h => h.dateStr)).size;
+            if (distinctDates < 2) return null;
             const sorted = [...history].sort((a, b) => a.date - b.date);
             const vals   = sorted.map(h => h.value);
 
@@ -768,8 +807,14 @@
                 const beforeStable = before.every(v => v <= Math.max(avgB * 1.6, avgB + 8));
                 // Efter-perioden håller sig kvar på den nya nivån (inget stor dipp tillbaka)
                 const afterStable  = after.every(v => v >= avgA * 0.55);
+                // Senaste mätningarna (svansen) jämförs mot URSPRUNGLIGA baseline (avgB), inte avgA.
+                // Detta är skillnaden mellan "gick upp och STANNAR" och "gick upp och kom TILLBAKA":
+                // om svansen har sjunkit ner mot ursprungsnivån igen ska det INTE räknas som ny nivå.
+                const tail = after.slice(-Math.min(3, after.length));
+                const tailAvg = tail.reduce((a,b)=>a+b,0) / tail.length;
+                const stillElevated = tailAvg >= avgB * 1.8;
 
-                if (jumpRatio >= 2.5 && avgA >= 15 && beforeStable && afterStable) {
+                if (jumpRatio >= 2.5 && avgA >= 15 && beforeStable && afterStable && stillElevated) {
                     return {
                         date:       sorted[split].dateStr,
                         avgBefore:  Math.round(avgB),
@@ -807,6 +852,9 @@
             if (info.includes('dry'))                                  return R('normal',    'dry');
             if (info.includes('reverse'))                              return R('storing',   'reverse');
             if (info.includes('leak') || info.includes('läcka') || info.includes('läckage') || info.includes('ld ') || info === 'ld') return R('leak_code', 'leak_alarm');
+            // Värmepanna / cirkulationspump — om fältet uttryckligen flaggar mekanisk källa
+            const mechKeyword = info.includes('panna') || info.includes('vvc') || info.includes('cirkulation') || info.includes('värmesystem');
+            if (mechKeyword) return R('storing', 'varmepanna_kod');
 
             const hist = meter.history;
             if (!hist || hist.length < 2) {
@@ -855,16 +903,28 @@
             if (currentRatio >= 11) return R('aktiv_lacka',  'high_ratio');
             if (currentRatio >= 4 && !isHeatpump(history)) return R('misstankt', 'elevated_ratio');
 
+            const baseline = robustBaseline(history);
+
             if (hist.length < 5) {
                 const alwaysHigh = history.every(h => h.value >= 18);
+                // Om senaste mätningen ligger nära den lägsta uppmätta nivån men historiken
+                // innehåller ett betydligt högre värde → troligen redan tillbaka till normalt.
+                const settledLow = currentNoise <= Math.max(baseline * 1.5, baseline + 8, 18) && maxHistorical > currentNoise * 1.8;
+                if (settledLow) return R('normal', 'returned_short');
                 if (currentNoise >= 28) return alwaysHigh ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
                 if (currentNoise >= 18) return R('ny_matare', 'elevated');
                 return R('normal', 'ok');
             }
 
-            // 1. Reparation
-            if (history.slice(-4).every(h => h.value <= 22)) {
-                return maxHistorical >= 50 ? R('lagad', 'repaired') : R('normal', 'ok');
+            // 1. Återgång till normal — kräver att det FUNNITS en tydlig topp (annars är det
+            // bara stabilt brus hela tiden, se steg 6.5) OCH att senaste 2 mätningarna ligger
+            // tillbaka nära mätarens egen (robusta) baseline. Detta ska INTE varna,
+            // oavsett hur hög den tillfälliga toppen var.
+            const quietThreshold = Math.max(baseline * 1.5, baseline + 8, 18);
+            const hadRealPeak = maxHistorical >= baseline * 1.8 && maxHistorical >= baseline + 10;
+            const tailReadings = history.slice(-Math.min(2, history.length));
+            if (hadRealPeak && tailReadings.every(h => h.value <= quietThreshold)) {
+                return maxHistorical >= Math.max(baseline * 2.5, 50) ? R('lagad', 'repaired') : R('normal', 'ok');
             }
 
             // 2. Värmepump (säsong) — separat kategori
@@ -879,20 +939,37 @@
                 if (seasonRatio > 0.7 && seasonRatio < 1.4 && isStableHigh) return R('storing', 'heat_pump_constant');
             }
 
+            // Beräknas tidigt så att en BEKRÄFTAD ny nivå (nyligen uppkommen, bestående höjning)
+            // alltid går före de mer generella "det här är nog bara bakgrundsstörning"-heuristikerna
+            // nedan (4/5). Annars kan en riktig läcka som råkar ligga i en fjärrvärme-/industrizon
+            // maskeras som störning bara för att den hunnit bli "stabil" efter hoppet.
+            const nl = detectNewLevel(history);
+
             // 4. Fjärrvärmestörning
             const hasUncertainCode = info.includes('ej fastställt') || info.includes('annat brus');
-            if (hasUncertainCode && isStableHigh) return R('storing', 'district_heating');
+            if (hasUncertainCode && isStableHigh && !nl) return R('storing', 'district_heating');
 
             // 5. Industridetektering
-            if (meter.area === 'TULLINGE' && isStableHigh && maxHistorical > 80) return R('storing', 'industrial');
+            if (meter.area === 'TULLINGE' && isStableHigh && maxHistorical > 80 && !nl) return R('storing', 'industrial');
 
             // 6. Ny-nivå-detektor: tyst → extrem ökning → STANNAR på ny nivå
-            const nl = detectNewLevel(history);
             if (nl) {
                 const r = nl.jumpRatio;
                 if (r >= 8)  return R('aktiv_lacka', `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
                 if (r >= 3)  return R('misstankt',   `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
                 return R('ny_matare', `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
+            }
+
+            // 6.5 Stabilt bakgrundsbrus i HELA historiken (aldrig tyst, ingen ny nivå hittad)
+            // → mätaren har troligen aldrig varit "tyst", vilket talar för en mekanisk källa
+            // (cirkulationspump, värmepanna, ventil) snarare än en läcka som uppstått och stannat.
+            const allVals  = history.map(h => h.value);
+            const meanAll  = allVals.reduce((a,b)=>a+b,0) / allVals.length;
+            const varAll   = allVals.reduce((a,b)=>a+(b-meanAll)**2,0) / allVals.length;
+            const cvAll    = meanAll > 0 ? Math.sqrt(varAll) / meanAll : 1;
+            const neverQuiet = allVals.every(v => v >= 14);
+            if (meanAll >= 16 && meanAll <= 55 && cvAll < 0.28 && neverQuiet) {
+                return R('storing', mechKeyword ? 'varmepanna' : 'stable_background');
             }
 
             // 7. Konstant högt = störning, inte ny läcka
@@ -909,6 +986,13 @@
             uploadedFiles.sort((a, b) => a.date - b.date);
             currentResults = [];
             const metersMap = new Map();
+
+            // Check for date collisions — if all files share the same date, trend analysis is unreliable
+            const validFiles = uploadedFiles.filter(f => f.meters.length > 0);
+            const uniqueDates = new Set(validFiles.map(f => formatShortDate(f.date)));
+            window._allSameDate = uniqueDates.size <= 1 && validFiles.length > 1;
+            window._singleDate  = validFiles.length === 1;
+            window._uniqueDateCount = uniqueDates.size;
 
             uploadedFiles.forEach(file => {
                 const dateStr = formatShortDate(file.date);
@@ -973,7 +1057,7 @@
 
         // ── Bottenpanel-kommentarer ───────────────────────────────────────────────
         function getBottomComment(r) {
-            if (r.category === 'lagad') return `✅ Historiskt lagad — Max: <strong>${r.max} dB</strong>. Konsekvent tyst de senaste 4 mätningarna.`;
+            if (r.category === 'lagad') return `✅ Återgått till normal nivå — Max: <strong>${r.max} dB</strong>, men senaste mätningarna ligger tillbaka nära mätarens egen baseline.`;
             if (r.category === 'heatpump') {
                 const s = r.summerAvg && r.winterAvg ? ` (vinter: ${r.winterAvg} / sommar: ${r.summerAvg})` : '';
                 const sub = r.reason === 'heat_pump_seasonal' ? 'Höst→Vinter-stegring' : 'Säsongsmönster';
@@ -989,6 +1073,9 @@
                 if (r.reason === 'industrial')         return `🏭 Industriprocess — Tullinge-zone, stabilt högt. Kontrollera med kund.`;
                 if (r.reason === 'reverse')            return `↩️ Bakåtflöde (REVERSE) — Kontrollera installation.`;
                 if (r.reason === 'always_high')        return `🔵 Konstant bakgrundsbrus — Aldrig tyst i historiken. Ej ny läcka.`;
+                if (r.reason === 'varmepanna_kod')     return `🔥 Värmepanna/cirkulationspump — Flaggat i infokod. Inget läckage.`;
+                if (r.reason === 'varmepanna')         return `🔥 Trolig värmepanna/cirkulationspump — Stabilt, måttligt brus hela historiken utan tyst period. Inget läckage.`;
+                if (r.reason === 'stable_background')  return `🔵 Stabilt bakgrundsbrus — Aldrig tyst i hela historiken, ingen ny nivå hittad. Troligen mekaniskt, ej läckage.`;
                 return `🔵 Störning/pump — Fluktuerande brus, ej klassbar som aktiv läcka.`;
             }
             return '';
@@ -1051,7 +1138,7 @@
                         <td>
                             <div class="table-adress-text">${r.adress}</div>
                             ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
-                            ${r.newLevel ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
+                            ${r.newLevel && !window._allSameDate ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
                             ${r.ratio !== null && r.ratio !== undefined && r.ratio > 0 ? `<span class="new-level-tag" style="background:none;border-color:#1e3a5f;color:#60a5fa;">E/F: ×${(r.ratio+1).toFixed(1)}</span>` : ''}
                         </td>
                         <td><code>${r.serienummer}</code></td>
@@ -1064,12 +1151,22 @@
                     const tr = document.createElement('tr');
                     tr.className = `row-${r.category}`;
                     const pct = r.change;
+                    // Avvikelsekolumnen visar annars bara den SENASTE avläsningens egna E/F-kvot,
+                    // som kan se lugn ut om Kamstrups eget rullande snitt hunnit "komma ikapp" en
+                    // läcka som pågått länge. Slutklassificeringen (t.ex. en bekräftad ny nivå från
+                    // detectNewLevel) väger därför alltid minst lika tungt som den råa procentsatsen,
+                    // så badgen aldrig visar ett lugnt grönt ✅ på en rad märkt som aktiv läcka.
+                    const CAT_TIER = { extreme: 3, aktiv_lacka: 3, misstankt: 2, ny_matare: 1 };
+                    const pctTier = pct >= 1000 ? 3 : pct >= 400 ? 2 : pct >= 100 ? 1 : 0;
+                    const catTier = CAT_TIER[r.category] || 0;
+                    const tier = Math.max(pctTier, catTier);
+                    const displayMult = (catTier > pctTier && r.newLevel) ? r.newLevel.jumpRatio : (pct / 100 + 1);
                     let changeStr;
-                    if (pct >= 1000) {
-                        changeStr = `<span class="trend-up" title="AKUT LÄCKAGE – åk dit!">🚨 ×${(pct/100+1).toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
-                    } else if (pct >= 400) {
-                        changeStr = `<span class="trend-up" title="MISSTÄNKT – kolla upp">⚠️ ×${(pct/100+1).toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
-                    } else if (pct >= 100) {
+                    if (tier === 3) {
+                        changeStr = `<span class="trend-up" title="AKTIV LÄCKA – åk dit!">🚨 ×${displayMult.toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
+                    } else if (tier === 2) {
+                        changeStr = `<span class="trend-up" title="MISSTÄNKT – kolla upp">⚠️ ×${displayMult.toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
+                    } else if (tier === 1) {
                         changeStr = `<span style="color:#fbbf24;" title="Följ upp – bevaka trenden">📊 +${Math.round(pct)}%</span>`;
                     } else if (pct < 0) {
                         changeStr = `<span class="trend-down">${pct.toFixed(1)}%</span>`;
@@ -1090,7 +1187,7 @@
                         <td>
                             <div class="table-adress-text">${r.adress}<span class="conf-badge ${confCls}">${confLbl}</span></div>
                             ${memoHtml}
-                            ${r.newLevel ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
+                            ${r.newLevel && !window._allSameDate ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
                             ${r.ratio !== null && r.ratio !== undefined && r.ratio > 0 ? `<span class="new-level-tag" style="background:none;border-color:#1e3a5f;color:#60a5fa;">E/F: ×${(r.ratio+1).toFixed(1)}</span>` : ''}
                         </td>
                         <td style="text-align:center;"><button class="copy-btn" onclick="copyToClipboard('${r.adress}', event)">📋 Kopiera</button></td>
@@ -1137,6 +1234,15 @@
             renderDailySummaryBar(counts);
 
             const insight = document.getElementById('insightBox');
+
+            // Same-date warning — trendanalys ej möjlig
+            if (window._allSameDate) {
+                const [theDate] = [...new Set(uploadedFiles.filter(f=>f.meters.length>0).map(f=>formatShortDate(f.date)))];
+                insight.innerHTML = `⚠️ <strong>Alla ${uploadedFiles.filter(f=>f.meters.length>0).length} filer har samma datum (${theDate})</strong> — trendanalys och ny-nivå-detektion är inaktiverade. Ladda upp filer från olika datum för att se trend och förändringsriktning.<br><br>Klassificering baseras på <strong>E/F-kvoten</strong> (senaste värde ÷ genomsnitt) från varje enskild fil.`;
+                insight.style.borderColor = '#f59e0b';
+                return;
+            }
+
             if (counts.extreme > 0) {
                 insight.innerHTML = `🚨 <strong>AKUT:</strong> ${counts.extreme} mätare klassad som <strong>Akut Huvudledning</strong> — åtgärd krävs omgående!`;
                 insight.style.borderColor = 'var(--clr-extreme)';
@@ -1149,6 +1255,14 @@
             } else {
                 insight.innerHTML = `💡 <strong>Systemstatus:</strong> Inga akuta signaler. 🔥 ${counts.heatpump} värmepumpar, ${hiddenCount} störningar/larm filtrerade nedan. Avvikelse = (Senaste värde / Kamstrup-snitt) − 1.`;
                 insight.style.borderColor = 'var(--primary)';
+            }
+
+            // Append date-range info
+            if (!window._allSameDate && uploadedFiles.filter(f=>f.meters.length>0).length > 0) {
+                const dts = uploadedFiles.filter(f=>f.meters.length>0).map(f=>f.date).sort((a,b)=>a-b);
+                const from = formatShortDate(dts[0]), to = formatShortDate(dts[dts.length-1]);
+                const span = dts.length > 1 ? ` · Dataperiod: <strong>${from}</strong> → <strong>${to}</strong> (${window._uniqueDateCount} unika datum)` : ` · Datum: <strong>${from}</strong>`;
+                insight.innerHTML += span;
             }
         }
 
@@ -1218,14 +1332,16 @@
                                 progText.innerText = `PDF: sida ${pg}/${tot} — ${file.name}`;
                             });
                             const date = r.reportDate || extractDateFromFilename(file.name) || new Date(file.lastModified);
-                            if (r.meters.length && !uploadedFiles.some(f => f.name === file.name)) {
-                                uploadedFiles.push({ name: file.name, date, meters: r.meters });
+                            if (!uploadedFiles.some(f => f.name === file.name)) {
+                                const warn = r.meters.length === 0 ? 'Inga mätare hittades' : null;
+                                uploadedFiles.push({ name: file.name, date, meters: r.meters, parseWarning: warn });
                             }
                         } else {
                             const r = await parseExcelFile(file);
                             const date = r.fileReadingDate || extractDateFromFilename(file.name) || new Date(file.lastModified);
-                            if (r.meters.length && !uploadedFiles.some(f => f.name === file.name)) {
-                                uploadedFiles.push({ name: file.name, date, meters: r.meters });
+                            if (!uploadedFiles.some(f => f.name === file.name)) {
+                                const warn = r.meters.length === 0 ? 'Inga mätare hittades' : null;
+                                uploadedFiles.push({ name: file.name, date, meters: r.meters, parseWarning: warn });
                             }
                         }
                     } catch(e) {
@@ -1267,7 +1383,7 @@
                     <span class="file-list-icon">📄</span>
                     <span class="file-list-name" title="${f.name}">${f.name}</span>
                     <span class="file-list-date">${formatShortDate(f.date)}</span>
-                    <span class="file-list-count">${f.meters.length} mätare</span>
+                    <span class="file-list-count" style="${f.meters.length === 0 ? 'color:#f87171;' : ''}">${f.meters.length} mätare</span>
                     ${f.parseWarning ? `<span class="parse-warn">⚠ ${f.parseWarning}</span>` : `<span class="parse-ok">✓ OK</span>`}
                     <button class="file-list-remove" title="Ta bort fil">✕</button>
                 `;
@@ -1304,7 +1420,11 @@
             activeChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: meter.history.map(h => h.dateStr),
+                    labels: (() => {
+                        const dates = meter.history.map(h => h.dateStr);
+                        const allSame = new Set(dates).size <= 1;
+                        return allSame ? dates.map((_, i) => `Fil ${i+1}`) : dates;
+                    })(),
                     datasets: [{ label: 'Brusnivå (dB)', data: meter.history.map(h => h.value), borderColor: '#1db954', backgroundColor: 'rgba(29,185,84,0.08)', borderWidth: 3, pointBackgroundColor: '#fff', pointRadius: 5, tension: 0.2 }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' }, beginAtZero: true }, x: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' } } } }
@@ -1502,7 +1622,7 @@
         function renderDailySummaryBar(counts) {
             const snap = getDailySnapshot();
             const bar  = document.getElementById('dailySummaryBar');
-            if (!snap || snap.date === new Date().toISOString().slice(0,10)) { bar.style.display = 'none'; return; }
+            if (!snap || snap.date === new Date().toISOString().slice(0,10) || window._allSameDate) { bar.style.display = 'none'; return; }
             const diff = key => {
                 const d = (counts[key] || 0) - (snap[key] || 0);
                 if (d > 0) return `<span class="d-up">↑ +${d}</span>`;

@@ -911,6 +911,13 @@
                 // innehåller ett betydligt högre värde → troligen redan tillbaka till normalt.
                 const settledLow = currentNoise <= Math.max(baseline * 1.5, baseline + 8, 18) && maxHistorical > currentNoise * 1.8;
                 if (settledLow) return R('normal', 'returned_short');
+                // Kamstrups egen E/F-kvot väger tyngre än ett absolut dB-tal vid kort historik.
+                // Annars flaggas naturligt "höga men normala" installationer (kommersiella
+                // fastigheter, permanent bullriga ledningar) som aktiva läckor bara för att de
+                // råkar ligga över en fast tröskel, trots att de inte avviker från sin egen historik.
+                if (currentAvgVal > 0 && currentNoise / currentAvgVal < 1.6) {
+                    return alwaysHigh ? R('storing', 'proportional_high') : R('normal', 'proportional');
+                }
                 if (currentNoise >= 28) return alwaysHigh ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
                 if (currentNoise >= 18) return R('ny_matare', 'elevated');
                 return R('normal', 'ok');
@@ -972,7 +979,10 @@
                 return R('storing', mechKeyword ? 'varmepanna' : 'stable_background');
             }
 
-            // 7. Konstant högt = störning, inte ny läcka
+            // 7. Konstant högt = störning, inte ny läcka — men först: är det proportionerligt
+            // mot mätarens EGEN historik (Kamstrups E/F)? Annars fastnar naturligt bullriga men
+            // helt normala mätare (t.ex. kommersiella fastigheter) i bevakningslistan permanent.
+            if (currentAvgVal > 0 && currentRatio < 1.6) return R('normal', 'proportional');
             if (currentNoise >= 28) {
                 return history.every(h => h.value >= 18) ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
             }

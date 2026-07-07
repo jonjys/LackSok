@@ -574,6 +574,19 @@
                             }
                         }
 
+                        // Rapportens EGEN genereringstidsstämpel (t.ex. cell N1: "2026-07-02T07:28:04+02:00")
+                        // finns i title-raderna FÖRE headern. Detta är den enda tillförlitliga "filens datum" —
+                        // till skillnad från en enskild mätares "Senaste avläsning", som kan råka vara samma
+                        // datum i flera olika dagsexporter om just den mätaren inte rapporterat något nytt.
+                        let reportGeneratedDate = null;
+                        for (let i = 0; i < Math.min(6, rawRows.length) && !reportGeneratedDate; i++) {
+                            for (const cell of rawRows[i]) {
+                                const s = cell.toString();
+                                const m = s.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+                                if (m) { reportGeneratedDate = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]); break; }
+                            }
+                        }
+
                         // Build column-index lookup from the detected header row
                         let colIdx = null;
                         if (headerIdx >= 0) {
@@ -646,7 +659,7 @@
                                 });
                             }
                         });
-                        resolve({ meters, fileReadingDate });
+                        resolve({ meters, fileReadingDate, reportGeneratedDate });
                     } catch(err) { reject(err); }
                 };
                 reader.readAsArrayBuffer(file);
@@ -1348,7 +1361,10 @@
                             }
                         } else {
                             const r = await parseExcelFile(file);
-                            const date = r.fileReadingDate || extractDateFromFilename(file.name) || new Date(file.lastModified);
+                            // Prioritetsordning: rapportens EGEN tidsstämpel (mest tillförlitlig) > datum i
+                            // filnamnet > en enskild mätares "Senaste avläsning" (kan råka vara samma datum
+                            // i flera olika dagsexporter) > filens senast-ändrad-tid som sista utväg.
+                            const date = r.reportGeneratedDate || extractDateFromFilename(file.name) || r.fileReadingDate || new Date(file.lastModified);
                             if (!uploadedFiles.some(f => f.name === file.name)) {
                                 const warn = r.meters.length === 0 ? 'Inga mätare hittades' : null;
                                 uploadedFiles.push({ name: file.name, date, meters: r.meters, parseWarning: warn });

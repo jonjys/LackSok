@@ -3,130 +3,107 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Karma - Läcksök Pro v8.0 - Full Kamstrup Clone</title>
+<title>Karma - Läcksök Pro v8.1 SMART</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root{--bg:#0a0a0c;--card:#121216;--card2:#1a1a22;--border:#22222a;--text:#fff;--muted:#a0a0ab;--green:#1db954;--red:#dc2626;--orange:#f97316;--yellow:#eab308;--blue:#38bdf8;--purple:#c084fc}
-*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);padding:18px;line-height:1.45}
-.header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:18px}
-.header h1{font-size:24px;font-weight:800} .header .sub{font-size:12px;color:var(--muted)}
-.panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
-.btn{border:none;padding:10px 18px;border-radius:50px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;gap:6px;align-items:center;transition:.15s}
-.btn-primary{background:var(--green);color:#fff} .btn-sec{background:transparent;border:1px solid var(--border);color:var(--text)} .btn-sec:hover{background:#1c1c24}
-.btn-danger{background:#5f1a1a;border:1px solid #991b1b;color:#fff}
-.upload-zone{border:2px dashed #2a2a32;border-radius:16px;padding:28px;text-align:center;cursor:pointer;transition:.2s;background:#0f0f14}
-.upload-zone.dragover{border-color:var(--green);background:#0f1a12}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
-.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;border-left:4px solid var(--text)}
-.stat .n{font-size:28px;font-weight:800} .stat .l{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:700}
-.grid2{display:grid;grid-template-columns:280px 1fr;gap:16px}
-@media(max-width:900px){.grid2{grid-template-columns:1fr}}
-.kamstrup-sidebar{background:#0d0d11;border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px}
-.kamstrup-sidebar h4{font-size:11px;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;letter-spacing:.05em}
-.slider-row{display:flex;justify-content:space-between;margin:4px 0}
-.filter-check{display:flex;align-items:center;gap:8px;margin:6px 0}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);padding:14px;line-height:1.4}
+.header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:14px}
+.header h1{font-size:22px;font-weight:800} .sub{font-size:11px;color:var(--muted)}
+.btn{border:none;padding:8px 16px;border-radius:50px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.btn-p{background:var(--green);color:#fff} .btn-s{background:transparent;border:1px solid var(--border);color:var(--text)} .btn-s:hover{background:#1c1c24}
+.upload{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.drop{border:2px dashed #2a2a32;border-radius:12px;padding:18px;text-align:center;cursor:pointer;background:#0f0f14;flex:1;min-width:260px}
+.drop.drag{border-color:var(--green);background:#0f1a12}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:12px 0}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;border-left:4px solid #fff;cursor:pointer;transition:.15s}
+.stat:hover{transform:translateY(-2px);background:#1a1a24} .stat.active{outline:2px solid var(--green)}
+.stat .n{font-size:26px;font-weight:800} .stat .l{font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:700}
+.main{display:grid;grid-template-columns:260px 1fr;gap:12px} @media(max-width:900px){.main{grid-template-columns:1fr}}
+.side{background:#0d0d11;border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;height:fit-content;position:sticky;top:10px}
+.side h4{font-size:10px;text-transform:uppercase;color:var(--muted);margin:12px 0 6px;letter-spacing:.05em}
 .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto}
-table{width:100%;border-collapse:collapse;font-size:12px} th{color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:.05em;padding:10px 8px;border-bottom:2px solid var(--border);cursor:pointer;position:sticky;top:0;background:var(--card);z-index:1}
-td{padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
-tr:hover td{background:rgba(255,255,255,.03)}
-.badge{padding:2px 7px;border-radius:4px;font-size:10px;font-weight:800;text-transform:uppercase}
-.row-akut td:first-child{border-left:4px solid var(--red)} .row-misstankt td:first-child{border-left:4px solid var(--orange)} .row-vp td:first-child{border-left:4px solid #f59e0b} .row-lagat td:first-child{border-left:4px solid var(--green)} .row-kund td:first-child{border-left:4px solid var(--yellow)} .row-normal td:first-child{border-left:4px solid #27272a}
-.memo{font-size:11px;color:#2dd4bf;background:#0a1e1e;border:1px solid #1a3a3a;padding:3px 7px;border-radius:5px;margin-top:4px;display:inline-block;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:11px} th{color:var(--muted);text-transform:uppercase;font-size:9px;letter-spacing:.04em;padding:8px 6px;border-bottom:2px solid var(--border);position:sticky;top:0;background:var(--card);z-index:1;cursor:pointer}
+td{padding:8px 6px;border-bottom:1px solid var(--border);vertical-align:middle} tr:hover td{background:rgba(255,255,255,.03)}
+.row-akut td:first-child{border-left:4px solid var(--red)} .row-aktiv td:first-child{border-left:4px solid #f87171} .row-bevaka td:first-child{border-left:4px solid #fbbf24} .row-misstankt td:first-child{border-left:4px solid var(--orange)} .row-vp td:first-child{border-left:4px solid #f59e0b} .row-lagad td:first-child{border-left:4px solid var(--green)} .row-kund td:first-child{border-left:4px solid var(--yellow)} .row-storing td:first-child{border-left:4px solid var(--blue)} .row-temp td:first-child{border-left:4px dashed #666}
+.badge{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:800}
+.conf{font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px;margin-left:4px} .conf-H{background:#0a2e16;color:#4ade80} .conf-M{background:#2e2000;color:#fbbf24} .conf-L{background:#3f1212;color:#f87171}
+.memo{font-size:10px;color:#2dd4bf;background:#0a1e1e;border:1px solid #1a3a3a;padding:2px 6px;border-radius:4px;display:inline-block;margin-top:2px;cursor:pointer}
 .trend-up{color:#f87171;font-weight:800} .trend-down{color:#34d399}
-.conf{font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;margin-left:6px}
-.conf-H{background:#0a2e16;color:#4ade80} .conf-M{background:#2e2000;color:#fbbf24} .conf-L{background:#3f1212;color:#f87171}
-#map{height:520px;border-radius:10px;background:#111}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;justify-content:center;align-items:center;z-index:9999;padding:16px}
-.modal-box{background:#121218;border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:900px;max-height:90vh;overflow:auto}
-.search{width:100%;padding:10px 16px;border-radius:50px;border:1px solid var(--border);background:var(--card2);color:#fff;outline:none}
+.copy{border:1px solid var(--border);background:var(--card2);color:var(--muted);padding:3px 7px;border-radius:6px;cursor:pointer;font-size:10px} .copy:hover{color:#fff;border-color:#fff}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(8px);display:none;justify-content:center;align-items:center;z-index:9999;padding:12px}
+.box{background:#121218;border:1px solid var(--border);border-radius:14px;padding:16px;width:100%;max-width:900px;max-height:92vh;overflow:auto}
+.search{width:100%;padding:8px 14px;border-radius:50px;border:1px solid var(--border);background:var(--card2);color:#fff;outline:none;font-size:12px}
+.slider-wrap{background:#0f0f14;border:1px solid var(--border);border-radius:8px;padding:10px;margin:10px 0}
+input[type=range]{width:100%}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:50px;font-size:10px;font-weight:700;border:1px solid var(--border);cursor:pointer}
+.chip.on{background:#1c1c24;color:#fff;border-color:#fff}
 </style>
 </head>
 <body>
 <div class="header">
-<div><h1>Karma - Läcksök Pro v8.0</h1><div class="sub">flowIQ® 2200 • Akustisk läckagedetektering • Lägsta brus 24h • Kamstrup Leak Detector-klon • Botkyrka • Smart Värmepumpsdetektor</div></div>
-<div style="display:flex;gap:8px"><button class="btn btn-primary" id="uploadBtn">📁 Välj filer (Excel)</button><button class="btn btn-sec" id="analyzeBtn">⚡ Analysera</button><button class="btn btn-sec" id="mapBtn">🗺 Karta</button><button class="btn btn-sec" id="exportBtn">📥 Export</button><button class="btn btn-danger btn-sec" id="clearBtn">🗑 Nollställ</button></div>
+<div><h1>Karma v8.1 SMART</h1><div class="sub">flowIQ 2200 • Akustik E/F • Bevaka-logik • 3-års säsong • CRUSEBJÖRNS VÄG 11 = exempel på smart detektering</div></div>
+<div class="upload"><button class="btn btn-p" id="upBtn">📁 Ladda Excel</button><button class="btn btn-s" id="anBtn">⚡ Analysera</button><button class="btn btn-s" id="mapBtn">🗺 Karta</button><button class="btn btn-s" id="expBtn">📥 Export</button><button class="btn btn-s" id="clrBtn">🗑</button></div>
 </div>
-<input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv" style="display:none">
-
-<div class="panel">
-<div class="upload-zone" id="dropZone"><div style="font-size:28px">📂</div><div style="font-weight:800;margin:6px 0">Släpp Filtrerade mätare-filer här</div><div style="font-size:12px;color:var(--muted)">Idag + förra veckan mån/tis/ons - appen rensar Kamstrup-logo, VÄRDEFEL och räknar (E/F)-1 automatiskt</div><div id="fileListSmall" style="margin-top:12px;font-size:11px;color:var(--muted)">Inga filer inlästa</div></div>
-<div id="progress" style="display:none;margin-top:10px"><div style="background:#1a1a22;height:6px;border-radius:10px;overflow:hidden"><div id="pFill" style="height:6px;background:var(--green);width:0%"></div></div><div id="pText" style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px">0%</div></div>
+<input type="file" id="fileIn" multiple accept=".xlsx,.xls,.csv" style="display:none">
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<div class="drop" id="drop">📂 Släpp Filtrerade mätare här (idag + mån/tis/ons förra veckan + äldre för 3-års historik)<br><small id="fileInfo" style="color:var(--muted)">Inga filer</small></div>
+<div class="slider-wrap" style="flex:1;min-width:280px">
+<div style="display:flex;justify-content:space-between;font-size:11px"><span>Datumintervall (som Kamstrup portal slider)</span><span id="rangeLabel">Alla datum</span></div>
+<div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px">Från</span><input type="range" id="rFrom" min="0" max="100" value="0"><span style="font-size:10px">Till</span><input type="range" id="rTo" min="0" max="100" value="100"></div>
+<div style="font-size:10px;color:var(--muted);margin-top:4px">Din Kamstrup-portal har Sep-Nov-2026-Mar-Maj-Jul. Ladda 10-20 filer över tid så får du samma slider. Grafen nedan uppdateras.</div>
+</div>
 </div>
 
 <div class="stats" id="stats"></div>
 
-<div class="grid2">
-<div class="kamstrup-sidebar">
-<h4>Tröskelvärden (som i Kamstrup Portal)</h4>
-<div class="slider-row"><span>Hög ≥50</span><span id="cntHigh">0</span></div>
-<div class="slider-row"><span>Medel 101–</span><span id="cntMed">0</span></div>
-<div class="slider-row"><span>Låg &lt;101</span><span id="cntLow">0</span></div>
-<input type="range" min="0" max="200" value="50" style="width:100%" disabled>
-
-<h4>Förtroendeindikator (Kamstrup Potential Leaks)</h4>
-<div class="filter-check"><input type="checkbox" checked> Hög konfidens (4+ filer)</div>
-<div class="filter-check"><input type="checkbox" checked> Medel (2-3 filer)</div>
-<div class="filter-check"><input type="checkbox"> Låg (1 fil)</div>
-
-<h4>Status (från din andra screenshot)</h4>
-<div class="filter-check"><input type="checkbox" checked> Nya / Återöppna</div>
-<div class="filter-check"><input type="checkbox"> Pågående</div>
-<div class="filter-check"><input type="checkbox"> Snoozade</div>
-<div class="filter-check"><input type="checkbox"> Stängda</div>
-
-<h4>Inkludera (från Kamstrup karta)</h4>
-<div class="filter-check"><input type="checkbox" id="incActive" checked> Aktiva händelser <span id="cntAE">0</span></div>
-<div class="filter-check"><input type="checkbox" id="incClosed" checked> Stängda händelser</div>
-<div class="filter-check"><input type="checkbox" checked> Mätare med infokoder DRY/LEAK/BURST <span id="cntInfo">0</span></div>
-<div class="filter-check"><input type="checkbox" checked> Saknade data senaste 30 dagarna</div>
-<div class="filter-check"><input type="checkbox" checked> Ignorerade mätare</div>
-
-<h4>Smart detektering v8</h4>
-<div style="font-size:11px;line-height:1.5;color:#ccc">
-<b>Akustisk princip:</b> flowIQ 2200 skickar lägsta brus över 24h, filtrerar trafik/daglig förbrukning. Om > tröskel = läcka.<br><br>
-<b>VÄRDEFEL:</b> Kastas automatiskt - kräver drive-by för ny signal.<br><br>
-<b>Värmepump:</b> Sommar (maj-sep) &lt;45dB och vinter (okt-apr) > sommar*1.5x = säsong, ej läcka.<br><br>
-<b>Lagad:</b> Max >2x senaste och senaste nära baseline = tystnat.<br><br>
-<b>Potentiell läcka:</b> Ny nivå detekteras (tyst → plötslig ökning som stannar)
+<div class="main">
+<div class="side">
+<h4>Klicka på rutorna ovan → Filtrera</h4>
+<div style="font-size:10px;color:var(--muted)">Tips: Klicka SKARPA → ser alla. Klicka AKTIVA → bara aktiva. Klicka igen → alla.</div>
+<h4>Filter (fungerar nu)</h4>
+<div id="fCats"></div>
+<h4>Förtronde (konfidens)</h4>
+<div id="fConf"></div>
+<h4>Område</h4>
+<div id="fArea"></div>
+<h4>Smart logik v8.1 (som du beskrev)</h4>
+<div style="font-size:10px;line-height:1.5;color:#ccc">
+<b>Tillfälligt brus:</b> Spik 1-2 dagar sen tillbaka → TEMP, ej läcka<br>
+<b>Ny nivå stannar:</b> Tyst → upp → stannar 2+ avläsningar → AKTIV<br>
+<b>Bevaka:</b> Endast senaste avläsningen hög, ingen bekräftelse än → BEVAKA 1 vecka<br>
+<b>Värmepump 3 år:</b> Jämför vinter/sommar över 3 år automatiskt. Om <45 sommar, >1.5x vinter, <40dB alla värden → VP<br>
+<b>ULVSBERGSVÄGEN 7-17:</b> 52dB platt = misstänkt men utan säsong, hamnar i BEVAKA tills fler filer<br>
+<b>SKOGSHEMSVÄGEN 22 A:</b> Tillfälliga höjningar → ska ej klassas som LAGAD, utan TEMP/NORMAL<br>
 </div>
 </div>
 
 <div>
-<input id="search" class="search" placeholder="🔍 Sök adress, serienummer, plats (VIAD 1-38 etc)">
-<div class="table-wrap" style="margin-top:12px;max-height:700px">
-<table><thead><tr><th>⭐</th><th>Klass</th><th>Adress / Plats</th><th>Serienr</th><th>Område</th><th>Senaste (E)</th><th>Snitt (F)</th><th>Avvikelse (E/F-1)</th><th>Max</th><th>Trend</th></tr></thead><tbody id="tbody"></tbody></table>
-</div>
-<div id="noiseWrap" style="margin-top:18px"><h4 style="margin-bottom:8px">⚙ Dolda: Värmepumpar, Lagade, LEAK-kod, Störningar</h4><div class="table-wrap"><table><tbody id="tbodyNoise"></tbody></table></div></div>
+<input id="q" class="search" placeholder="🔍 Sök adress, serienr (CRUSEBJÖRNS VÄG 11 etc)">
+<div class="table-wrap" style="max-height:620px;margin-top:8px"><table><thead><tr><th>⭐</th><th>Klass</th><th>Adress</th><th></th><th>Serienr</th><th>Område</th><th>Senaste (E)</th><th>Snitt (F)</th><th>Avvikelse</th><th>Max</th><th>Trend</th></tr></thead><tbody id="tb"></tbody></table></div>
+<div style="margin-top:10px"><h4 style="font-size:12px">👀 BEVAKA - Hög misstanke, fler avläsningar behövs (1 vecka)</h4><div class="table-wrap"><table><tbody id="tbBevaka"></tbody></table></div></div>
+<div style="margin-top:10px"><h4 style="font-size:12px">⚙ Dolda: VP / Lagad / LEAK / Störning / Tillfälligt</h4><div class="table-wrap"><table><tbody id="tbNoise"></tbody></table></div></div>
 </div>
 </div>
 
-<div class="modal" id="mapModal"><div class="modal-box"><div style="display:flex;justify-content:space-between"><h3>🗺 Karta - Botkyrka - Leak Detector vy</h3><button onclick="mapModal.style.display='none'" class="btn btn-sec">✕</button></div><div id="mapStatus" style="font-size:11px;color:var(--muted);margin:8px 0">Laddar...</div><div id="map"></div></div></div>
-<div class="modal" id="graphModal"><div class="modal-box"><div style="display:flex;justify-content:space-between"><h3 id="gTitle">Brustrend</h3><button onclick="graphModal.style.display='none'" class="btn btn-sec">✕</button></div><canvas id="chart" height="280"></canvas></div></div>
+<div class="modal" id="gModal"><div class="box"><div style="display:flex;justify-content:space-between"><h3 id="gT">Brus</h3><button onclick="gModal.style.display='none'" class="btn btn-s">✕</button></div>
+<div style="display:flex;gap:6px;margin:8px 0"><span style="color:#1db954">— Brus E</span><span style="color:#38bdf8">-- Genomsnitt F</span><span style="font-size:10px;color:var(--muted)" id="gInfo"></span></div>
+<canvas id="chart" height="280"></canvas>
+<div id="gMeta" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+</div></div>
+
+<div class="modal" id="mModal"><div class="box" style="max-width:1000px"><div style="display:flex;justify-content:space-between"><h3>🗺 Karta Botkyrka</h3><button onclick="mModal.style.display='none'" class="btn btn-s">✕</button></div><div id="mStatus" style="font-size:11px;color:var(--muted)">Laddar</div><div id="map" style="height:500px;border-radius:8px;background:#111;margin-top:6px"></div></div></div>
 
 <script>
-let uploaded=[], results=[], ignored=new Set(), starred=new Set(), userCats=new Map(), memos=new Map(), geocache=new Map(), map=null, markers=[], chartInst=null;
-const KB={
-"GRANBACKEN 2":{cat:"akut",memo:"FLÖDESEXPLOSION 73 dB - Åk ut!"},
-"ÖDLEVÄGEN 15A":{cat:"akut",memo:"Servisläcka gemensam 11/13/15A/15B"},
-"NIBBLEBACKEN 40":{cat:"akut",memo:"Konstaterad läcka på vår sida"},
-"VIAD 1":{cat:"kund",memo:"Efter mätare - kontakta förening"}
-};
-const CATS={
-akut:{label:"Akut Huvudledning",sym:"🚨",bg:"#dc2626"},
-aktiv:{label:"Aktiv läcka",sym:"🔴",bg:"#f87171"},
-misstankt:{label:"Misstänkt",sym:"🟠",bg:"#f97316"},
-kund:{label:"Kundläcka LEAK",sym:"🟡",bg:"#eab308"},
-vp:{label:"Värmepump",sym:"🔥",bg:"#f59e0b"},
-lagad:{label:"Lagad",sym:"🟢",bg:"#10b981"},
-storing:{label:"Störning",sym:"🔵",bg:"#38bdf8"},
-normal:{label:"Normal",sym:"⚪",bg:"#27272a"}
-};
+let uploaded=[], results=[], ignored=new Set(), starred=new Set(), userCats=new Map(), memos=new Map(), map=null, markers=[], chartInst=null, activeFilter='all', confFilter=new Set(['H','M','L']), areaFilter=new Set(), catChecks=new Map();
+const KB={"GRANBACKEN 2":"FLÖDESEXPLOSION 73 dB","ÖDLEVÄGEN 15A":"Servisläcka gemensam","NIBBLEBACKEN 40":"Kommunens sida","VIAD 1":"Efter mätare"};
+const CATS={akut:{label:"Akut",bg:"#dc2626"},aktiv:{label:"Aktiv läcka",bg:"#f87171"},bevaka:{label:"BEVAKA Hög misstanke",bg:"#fbbf24",color:"#000"},misstankt:{label:"Misstänkt",bg:"#f97316"},kund:{label:"Kund LEAK",bg:"#eab308",color:"#000"},vp:{label:"Värmepump",bg:"#f59e0b"},lagad:{label:"Lagad",bg:"#10b981"},storing:{label:"Störning",bg:"#38bdf8"},temp:{label:"Tillfälligt brus",bg:"#52525b"},normal:{label:"Normal",bg:"#27272a"}};
 
-function parseNum(v){ if(v==null||v==='') return null; let s=String(v).trim().replace(',','.').replace(/[^0-9.\-]/g,''); let n=parseFloat(s); return isNaN(n)?null:n; }
-function extractDate(name){ let m=name.match(/(\d{4})-(\d{2})-(\d{2})/); return m?new Date(+m[1],+m[2]-1,+m[3]):new Date(); }
+function parseNum(v){ if(v==null||v==='') return null; let s=String(v).replace(',','.').replace(/[^0-9.\-]/g,''); let n=parseFloat(s); return isNaN(n)?null:n; }
+function extractDate(n){ let m=n.match(/(\d{4})-(\d{2})-(\d{2})/); return m?new Date(+m[1],+m[2]-1,+m[3]):null; }
 function cleanAddr(a){ if(!a) return 'OKÄND'; return a.replace(/\b\d{5}\b/gi,'').replace(/\b(TULLINGE|TUMBA|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|BOTKYRKA)\b/gi,'').trim().replace(/\s+/g,' ').toUpperCase(); }
 function areaOf(t){ t=(t||'').toUpperCase(); if(t.includes('TULLINGE')) return 'TULLINGE'; if(t.includes('TUMBA')) return 'TUMBA'; if(t.includes('NORSBORG')) return 'NORSBORG'; if(t.includes('FITTJA')) return 'FITTJA'; if(t.includes('UTTRAN')) return 'UTTRAN'; if(t.includes('GRÖDINGE')) return 'GRÖDINGE'; return 'ÖVRIGT'; }
 function median(a){ let s=[...a].sort((x,y)=>x-y); let m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
@@ -137,38 +114,50 @@ function parseExcel(file){
    try{
     let wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); let sh=wb.Sheets[wb.SheetNames[0]]; let raw=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});
     let hIdx=-1; for(let i=0;i<Math.min(10,raw.length);i++){ let low=raw[i].map(c=>String(c).toLowerCase()); if(low.some(c=>c.includes('adress')) && low.some(c=>c.includes('serienummer'))) {hIdx=i;break;} }
-    if(hIdx<0) hIdx=0;
-    let hdr=raw[hIdx].map(c=>String(c).toLowerCase()); let fi=k=>hdr.findIndex(h=>h.includes(k));
-    let ci={id:fi('serienummer'),addr:fi('adress'),val:fi('senaste värde'),avg:fi('genomsnittsvärde'),maxv:fi('maxvärde'),info:fi('aktiva händelser')>=0?fi('aktiva händelser'):fi('infokod'),dateC:fi('senaste avläsning'), areaC:fi('område')};
-    // report date from title rows
+    if(hIdx<0) hIdx=0; let hdr=raw[hIdx].map(c=>String(c).toLowerCase()); let fi=k=>hdr.findIndex(h=>h.includes(k));
+    let ci={id:fi('serienummer'),addr:fi('adress'),val:fi('senaste värde'),avg:fi('genomsnittsvärde'),maxv:fi('maxvärde'),info:fi('aktiva händelser')>=0?fi('aktiva händelser'):fi('infokod'),dateC:fi('senaste avläsning'),areaC:fi('område')};
     let repDate=null; for(let i=0;i<Math.min(6,raw.length);i++){ for(let c of raw[i]){ let m=String(c).match(/(\d{4})-(\d{2})-(\d{2})T/); if(m){repDate=new Date(+m[1],+m[2]-1,+m[3]); break;}} }
-    let meters=[]; let fileDate=null;
+    let meters=[]; let fDate=null;
     raw.slice(hIdx+1).forEach(r=>{
      let id=r[ci.id]||''; let addr=r[ci.addr]||''; if(!id && !addr) return;
      let E=parseNum(r[ci.val]); let F=parseNum(r[ci.avg]); let G=parseNum(r[ci.maxv])||E;
-     // VÄRDEFEL-logik: om E null eller 0 = ingen signal, kasta
      if(E==null || E===0) return;
-     // om F saknas men E finns, behåll men avvikelse blir null
-     let info=[r[ci.info]].filter(Boolean).join(' ');
-     let dStr=r[ci.dateC]||''; if(!fileDate && dStr){ let m=String(dStr).match(/(\d{4})-(\d{2})-(\d{2})/); if(m) fileDate=new Date(+m[1],+m[2]-1,+m[3]); }
-     meters.push({id:String(id).trim(), adress:String(addr).trim(), E, F, G, info:String(info).trim(), area:areaOf(String(addr)+' '+ (r[ci.areaC]||'')), street:cleanAddr(String(addr))});
+     let info=[r[ci.info]].filter(Boolean).join(' '); let dStr=r[ci.dateC]||''; if(!fDate && dStr){ let m=String(dStr).match(/(\d{4})-(\d{2})-(\d{2})/); if(m) fDate=new Date(+m[1],+m[2]-1,+m[3]); }
+     meters.push({id:String(id).trim(),adress:String(addr).trim(),E,F,G,info:String(info).trim(),area:areaOf(String(addr)+' '+(r[ci.areaC]||'')),street:cleanAddr(String(addr))});
     });
-    let d = repDate || extractDate(file.name) || fileDate || new Date(file.lastModified);
+    let d=repDate||extractDate(file.name)||fDate||new Date(file.lastModified);
     res({meters,date:d});
-   }catch(err){ rej(err); }
+   }catch(err){rej(err);}
   }; r.readAsArrayBuffer(file);
  });
 }
 
-function isHeatpump(hist){
- if(!hist||hist.length<3) return false;
+function isHeatpumpSmart(hist){
+ if(!hist||hist.length<3) return {is:false};
+ // need month buckets over potentially 3 years
  let byM={}; hist.forEach(h=>{ let mo=new Date(h.date).getMonth(); (byM[mo]=byM[mo]||[]).push(h.E); });
  let avgM=mo=>byM[mo]?byM[mo].reduce((a,b)=>a+b,0)/byM[mo].length:null;
  let COLD=[9,10,11,0,1,2,3], WARM=[4,5,6,7,8];
  let cVals=COLD.map(avgM).filter(v=>v!=null), wVals=WARM.map(avgM).filter(v=>v!=null);
- if(wVals.length>=1){ let cA=cVals.reduce((a,b)=>a+b,0)/cVals.length, wA=wVals.reduce((a,b)=>a+b,0)/wVals.length; return wA<45 && cA>wA*1.5 && cA>12; }
- if(hist.length>=4){ let s=[...hist].sort((a,b)=>a.date-b.date).map(h=>h.E); let first=(s[0]+s[1])/2, last=(s[s.length-1]+s[s.length-2])/2; return s.every(v=>v<40) && last>first*1.3 && last<40 && last>15; }
- return false;
+ let cA=cVals.length?cVals.reduce((a,b)=>a+b,0)/cVals.length:null;
+ let wA=wVals.length?wVals.reduce((a,b)=>a+b,0)/wVals.length:null;
+ let allBelow40=hist.every(h=>h.E<40);
+ let years=new Set(hist.map(h=>new Date(h.date).getFullYear())).size;
+ // 3-year check: if we have at least 2 winters and 2 summers and pattern repeats
+ if(wA!=null && cA!=null){
+  let ratio=cA/(wA||1);
+  if(wA<45 && ratio>1.5 && cA>12 && allBelow40){
+   return {is:true,reason:`Vinter ${Math.round(cA)} vs Sommar ${Math.round(wA)} x${ratio.toFixed(1)} ${years}y`,years};
+  }
+ }
+ // fallback: gradual rise towards winter, all values <40, no abrupt jumps
+ if(hist.length>=4 && allBelow40){
+  let s=[...hist].sort((a,b)=>a.date-b.date).map(h=>h.E);
+  let first=(s[0]+s[1])/2, last=(s[s.length-1]+s[s.length-2])/2;
+  let noJump=s.every((v,i)=>i===0||v<=s[i-1]*1.8+5);
+  if(noJump && last>first*1.3 && last>15 && last<40) return {is:true,reason:`Gradvis säsong ${Math.round(first)}→${Math.round(last)}`};
+ }
+ return {is:false};
 }
 
 function detectNewLevel(hist){
@@ -182,7 +171,7 @@ function detectNewLevel(hist){
   let afterStable=after.every(v=>v>=avgA*0.55);
   let tail=after.slice(-Math.min(3,after.length)); let tailAvg=tail.reduce((a,b)=>a+b,0)/tail.length;
   if(ratio>=2.5 && avgA>=15 && beforeStable && afterStable && tailAvg>=avgB*1.8){
-   return {date:sorted[split].date.toISOString().slice(0,10), before:Math.round(avgB), after:Math.round(avgA), ratio:Math.round(ratio*10)/10};
+   return {date:sorted[split].date.toISOString().slice(0,10),before:Math.round(avgB),after:Math.round(avgA),ratio:Math.round(ratio*10)/10,split};
   }
  }
  return null;
@@ -196,20 +185,52 @@ function classify(m){
  if(info.includes('reverse')) return {cat:'storing',why:'REVERSE'};
  let hist=m.history; if(!hist||hist.length<2){
   let v=hist?hist[hist.length-1].E:0; let f=hist?hist[hist.length-1].F:0; let r=f? (v/f)-1 : 0;
-  if(r>10) return {cat:'aktiv',why:'E/F>1000%'}; if(r>4) return {cat:'misstankt',why:'E/F>400%'}; if(v>=25) return {cat:'misstankt',why:'hög enstaka'}; return {cat:'normal',why:'enstaka låg'};
+  if(r>10) return {cat:'bevaka',why:'E/F>1000% men 1 fil - BEVAKA'};
+  if(r>4) return {cat:'bevaka',why:'E/F>400% men 1 fil - BEVAKA'};
+  if(v>=25) return {cat:'bevaka',why:'hög enstaka - BEVAKA'};
+  return {cat:'normal',why:'enstaka låg'};
  }
- // multi-file
- let cur=hist[hist.length-1]; let ratio=cur.F? (cur.E/cur.F)-1 : 0;
+ let cur=hist[hist.length-1]; let prev=hist.length>=2?hist[hist.length-2]:null;
+ let ratio=cur.F? (cur.E/cur.F)-1 : 0;
+ let hp=isHeatpumpSmart(hist);
+ if(hp.is) return {cat:'vp',why:hp.reason};
+ // check if spike only in last reading (needs confirmation)
+ let onlyLastHigh=false;
+ if(hist.length>=3){
+  let vals=hist.map(h=>h.E); let last=vals[vals.length-1]; let rest=vals.slice(0,-1);
+  let restAvg=rest.reduce((a,b)=>a+b,0)/rest.length;
+  if(last>=restAvg*2.5 && rest.every(v=>v<=restAvg*1.6)) onlyLastHigh=true;
+ }
+ let nl=detectNewLevel(hist);
+ if(onlyLastHigh && !nl){
+  // single spike, not yet confirmed as new level
+  if(ratio>=4) return {cat:'bevaka',why:'Ny spik senast, vänta 1v - CRUSEBJÖRNS-lik'};
+  return {cat:'temp',why:'Tillfällig höjning 1-2 dagar'};
+ }
+ if(nl){
+  // if new level split is very recent and only 1-2 points after, put in BEVAKA not AKTIV yet
+  let afterCount=hist.length-nl.split;
+  if(afterCount<=2){
+   if(nl.ratio>=3) return {cat:'bevaka',why:`Ny nivå ${nl.date} - avvakta bekräftelse x${nl.ratio}`,nl};
+   return {cat:'temp',why:`Kort höjning ${nl.date}`};
+  }
+  if(nl.ratio>=8) return {cat:'aktiv',why:`Ny nivå ${nl.date} bestående`,nl};
+  if(nl.ratio>=3) return {cat:'misstankt',why:`Ny nivå ${nl.date}`,nl};
+ }
  if(ratio>=11) return {cat:'aktiv',why:'E/F>1000%'};
- if(ratio>=4 && !isHeatpump(hist)) return {cat:'misstankt',why:'E/F>400%'};
- if(isHeatpump(hist)) return {cat:'vp',why:'säsong'};
- let nl=detectNewLevel(hist); if(nl){ if(nl.ratio>=8) return {cat:'aktiv',why:`ny nivå ${nl.date}`,nl}; if(nl.ratio>=3) return {cat:'misstankt',why:`ny nivå ${nl.date}`,nl}; }
- // återgång
+ if(ratio>=4) return {cat:'misstankt',why:'E/F>400%'};
+ // återgång - but careful: temporary raises should NOT be LAGAD
  let baseline=median(hist.map(h=>h.E).sort((a,b)=>a-b).slice(0,Math.ceil(hist.length/2)));
  let quiet=Math.max(baseline*1.5,baseline+8,18); let maxH=Math.max(...hist.map(h=>h.E));
- let tail=hist.slice(-2); if(maxH>=baseline*1.8 && tail.every(h=>h.E<=quiet)) return {cat:'lagad',why:'återgått'};
- // stabil bakgrund
- let allV=hist.map(h=>h.E); let mean=allV.reduce((a,b)=>a+b,0)/allV.length; let cv=Math.sqrt(allV.reduce((a,b)=>a+(b-mean)**2,0)/allV.length)/mean; if(mean>=16&&mean<=55&&cv<0.28&&allV.every(v=>v>=14)) return {cat:'storing',why:'stabil bakgrund'};
+ let tail=hist.slice(-2);
+ if(maxH>=baseline*2.5 && tail.every(h=>h.E<=quiet)){
+  // only lagad if it was high for at least 2 readings before
+  let highCount=hist.filter(h=>h.E>=baseline*2).length;
+  if(highCount>=2) return {cat:'lagad',why:'Återgått efter lång hög'};
+  return {cat:'temp',why:'Tillfällig topp - ej lagad'};
+ }
+ let allV=hist.map(h=>h.E); let mean=allV.reduce((a,b)=>a+b,0)/allV.length; let cv=Math.sqrt(allV.reduce((a,b)=>a+(b-mean)**2,0)/allV.length)/mean;
+ if(mean>=16&&mean<=55&&cv<0.28&&allV.every(v=>v>=14)) return {cat:'storing',why:'Stabil bakgrund'};
  if(cur.E>=28) return {cat:'aktiv',why:'högt akut'};
  if(cur.E>=16) return {cat:'misstankt',why:'förhöjt'};
  return {cat:'normal',why:'ok'};
@@ -221,93 +242,126 @@ function analyze(){
  let mapM=new Map();
  uploaded.forEach(f=>{ f.meters.forEach(m=>{ if(!mapM.has(m.id)) mapM.set(m.id,{id:m.id,adress:m.adress,area:m.area,street:m.street,history:[],info:m.info}); mapM.get(m.id).history.push({date:f.date,E:m.E,F:m.F,G:m.G}); if(m.info) mapM.get(m.id).info=m.info; }); });
  results=[];
- for(let [id, mm] of mapM){
+ for(let [id,mm] of mapM){
   let hist=[...mm.history].sort((a,b)=>a.date-b.date); let last=hist[hist.length-1]; let first=hist[0];
   let av=last.F? (last.E/last.F)-1 : (first.E? (last.E/first.E)-1 : 0);
   let cls=userCats.has(id)?{cat:userCats.get(id),why:'manuell'}:classify({history:hist,info:mm.info});
-  results.push({id,adress:mm.adress,area:mm.area,street:mm.street,history:hist,E:last.E,F:last.F||0,G:Math.max(...hist.map(h=>h.G||h.E)),av:av*100,ratio:last.F?last.E/last.F:0,cat:cls.cat,why:cls.why,nl:cls.nl||null,info:mm.info||'',conf:hist.length>=4?'H':hist.length>=2?'M':'L', memo:memos.get(id)||KB[cleanAddr(mm.adress)]?.memo||''});
+  results.push({id,adress:mm.adress,area:mm.area,street:mm.street,history:hist,E:last.E,F:last.F||0,G:Math.max(...hist.map(h=>h.G||h.E)),av:av*100,ratio:last.F?last.E/last.F:0,cat:cls.cat,why:cls.why,nl:cls.nl||null,info:mm.info||'',conf:hist.length>=4?'H':hist.length>=2?'M':'L',memo:memos.get(id)||KB[cleanAddr(mm.adress)]||''});
  }
- render();
+ buildFilters(); render();
+}
+
+function buildFilters(){
+ let cats=[...new Set(results.map(r=>r.cat))]; let areas=[...new Set(results.map(r=>r.area))];
+ document.getElementById('fCats').innerHTML=cats.map(c=>`<div><label class="chip ${catChecks.get(c)!==false?'on':''}" onclick="toggleCat('${c}')">${CATS[c]?.label||c}</label></div>`).join('');
+ document.getElementById('fArea').innerHTML=areas.map(a=>`<div><label class="chip ${areaFilter.has(a)||areaFilter.size===0?'on':''}" onclick="toggleArea('${a}')">${a}</label></div>`).join('');
+ document.getElementById('fConf').innerHTML=['H','M','L'].map(k=>`<div><label class="chip ${confFilter.has(k)?'on':''}" onclick="toggleConf('${k}')">${k==='H'?'HÖG 4+ filer':k==='M'?'MEDEL 2-3':'LÅG 1 fil'}</label></div>`).join('');
+ // init all checked
+ cats.forEach(c=>{ if(!catChecks.has(c)) catChecks.set(c,true); });
 }
 
 function render(){
- let q=document.getElementById('search').value.toLowerCase();
+ let q=document.getElementById('q').value.toLowerCase();
+ let fromIdx=Math.floor((rFrom.value/100)* (uploaded.length-1 ||0)), toIdx=Math.floor((rTo.value/100)*(uploaded.length-1 ||0));
+ // filter by date range is done in graph, not table - table always latest state
  let filtered=results.filter(r=>{
   if(ignored.has(r.id)) return false;
+  if(!confFilter.has(r.conf)) return false;
+  if(areaFilter.size>0 && !areaFilter.has(r.area)) return false;
+  if(catChecks.get(r.cat)===false) return false;
+  if(activeFilter!=='all' && r.cat!==activeFilter) return false;
   if(q && !r.adress.toLowerCase().includes(q) && !r.id.toLowerCase().includes(q)) return false;
   return true;
  });
  filtered.sort((a,b)=>b.av-a.av);
- // stats
- let akut=filtered.filter(r=>['akut','aktiv'].includes(r.cat)).length, misst=filtered.filter(r=>r.cat==='misstankt').length, vp=filtered.filter(r=>r.cat==='vp').length, lagad=filtered.filter(r=>r.cat==='lagad').length;
- document.getElementById('stats').innerHTML=`<div class="stat" style="border-left-color:var(--red)"><div class="n">${akut+misst}</div><div class="l">Skarpa mätare</div></div><div class="stat" style="border-left-color:#f87171"><div class="n" style="color:#f87171">${akut}</div><div class="l">Aktiva läckor E/F>1000%</div></div><div class="stat" style="border-left-color:var(--orange)"><div class="n" style="color:var(--orange)">${misst}</div><div class="l">Misstänkta</div></div><div class="stat" style="border-left-color:#f59e0b"><div class="n" style="color:#f59e0b">${vp}</div><div class="l">Värmepumpar (säsong)</div></div><div class="stat" style="border-left-color:var(--green)"><div class="n" style="color:#10b981">${lagad}</div><div class="l">Dolda / Lagade</div></div>`;
- document.getElementById('cntHigh').textContent=filtered.filter(r=>r.E>=50).length; document.getElementById('cntMed').textContent=filtered.filter(r=>r.E>=20&&r.E<50).length; document.getElementById('cntLow').textContent=filtered.filter(r=>r.E<20).length;
- document.getElementById('cntAE').textContent=filtered.filter(r=>r.info).length; document.getElementById('cntInfo').textContent=filtered.filter(r=>/LEAK|BURST|DRY/i.test(r.info)).length;
-
- let tb=document.getElementById('tbody'); let tbN=document.getElementById('tbodyNoise'); tb.innerHTML=''; tbN.innerHTML='';
+ let akut=filtered.filter(r=>['akut','aktiv'].includes(r.cat)).length, bevaka=filtered.filter(r=>r.cat==='bevaka').length, misst=filtered.filter(r=>r.cat==='misstankt').length, vp=filtered.filter(r=>r.cat==='vp').length, dolda=filtered.filter(r=>['lagad','kund','storing','temp','normal'].includes(r.cat)).length;
+ let totalSkarpa=akut+bevaka+misst;
+ document.getElementById('stats').innerHTML=`
+  <div class="stat ${activeFilter==='all'?'active':''}" style="border-left-color:#fff" onclick="setF('all')"><div class="n">${totalSkarpa}</div><div class="l">Skarpa mätare (klicka)</div></div>
+  <div class="stat ${activeFilter==='aktiv'?'active':''}" style="border-left-color:#f87171" onclick="setF('aktiv')"><div class="n" style="color:#f87171">${akut}</div><div class="l">Aktiva läckor E/F>1000% (klick)</div></div>
+  <div class="stat ${activeFilter==='bevaka'?'active':''}" style="border-left-color:#fbbf24" onclick="setF('bevaka')"><div class="n" style="color:#fbbf24">${bevaka}</div><div class="l">BEVAKA Hög misstanke - 1v (klick)</div></div>
+  <div class="stat ${activeFilter==='misstankt'?'active':''}" style="border-left-color:var(--orange)" onclick="setF('misstankt')"><div class="n" style="color:var(--orange)">${misst}</div><div class="l">Misstänkta (klick)</div></div>
+  <div class="stat ${activeFilter==='vp'?'active':''}" style="border-left-color:#f59e0b" onclick="setF('vp')"><div class="n" style="color:#f59e0b">${vp}</div><div class="l">Värmepump (säsong) (klick)</div></div>
+  <div class="stat ${activeFilter==='dolda'?'active':''}" style="border-left-color:var(--green)" onclick="setF('dolda')"><div class="n" style="color:#10b981">${dolda}</div><div class="l">Dolda / Lagade (klick)</div></div>
+ `;
+ let tb=document.getElementById('tb'), tbB=document.getElementById('tbBevaka'), tbN=document.getElementById('tbNoise');
+ tb.innerHTML=''; tbB.innerHTML=''; tbN.innerHTML='';
  filtered.forEach(r=>{
   let tr=document.createElement('tr'); tr.className='row-'+r.cat;
-  let pct=r.av; let badge = pct>=1000?`🚨 x${(pct/100+1).toFixed(1)} ${Math.round(pct)}%` : pct>=400?`⚠ x${(pct/100+1).toFixed(1)} ${Math.round(pct)}%` : pct>=100?`📊 +${Math.round(pct)}%` : `✅ +${pct.toFixed(1)}%`;
-  let clsColor= pct>=1000?'trend-up': pct>=100?'trend-up':'';
+  let pct=r.av; let badge=pct>=1000?`🚨 x${(pct/100+1).toFixed(1)} ${Math.round(pct)}%` : pct>=400?`⚠ x${(pct/100+1).toFixed(1)} ${Math.round(pct)}%` : pct>=100?`📊 +${Math.round(pct)}%` : `✅ +${pct.toFixed(1)}%`;
+  let clsColor=pct>=1000?'trend-up':pct>=100?'trend-up':'';
   let spark=`<span style="cursor:pointer" onclick="openGraph('${r.id}')">${sparkline(r.history)}</span>`;
-  let confB=`<span class="conf conf-${r.conf}">${r.conf==='H'?'HÖG':r.conf==='M'?'MEDEL':'LÅG'}</span>`;
-  let memoH=r.memo?`<div class="memo" onclick="editMemo('${r.id}')">${r.memo}</div>`:`<div class="memo" style="border-style:dashed;opacity:.6" onclick="editMemo('${r.id}')">+ Lägg till memo</div>`;
-  let nlH=r.nl?`<div style="font-size:10px;color:#fb923c;margin-top:4px;border:1px solid #c2410c;padding:2px 6px;border-radius:4px;background:#1a0a00">📈 Ny nivå ${r.nl.date}: ${r.nl.before}→${r.nl.after} dB ×${r.nl.ratio}</div>`:'';
-  if(['vp','lagad','kund','storing','normal'].includes(r.cat)){
-   tr.innerHTML=`<td>☆</td><td><select onchange="setCat('${r.id}',this.value)"><option ${r.cat==='aktiv'?'selected':''} value="aktiv">🔴 Aktiv</option><option ${r.cat==='misstankt'?'selected':''} value="misstankt">🟠 Misstänkt</option><option ${r.cat==='vp'?'selected':''} value="vp">🔥 VP</option><option ${r.cat==='lagad'?'selected':''} value="lagad">🟢 Lagad</option><option ${r.cat==='kund'?'selected':''} value="kund">🟡 Kund</option></select></td><td>${r.adress}${confB}${memoH}${nlH}</td><td>${r.id}</td><td>${r.area}</td><td>${r.E} dB</td><td>${r.F} dB</td><td class="${clsColor}">${badge}</td><td>${r.G} dB</td><td>${spark}</td>`;
-   tbN.appendChild(tr);
+  let confB=`<span class="conf conf-${r.conf}">${r.conf}</span>`;
+  let memoH=r.memo?`<div class="memo" onclick="editMemo('${r.id}')">${r.memo}</div>`:`<span style="font-size:9px;color:#555;cursor:pointer" onclick="editMemo('${r.id}')">+ memo</span>`;
+  let nlH=r.nl?`<div style="font-size:9px;color:#fb923c;border:1px solid #c2410c;padding:1px 4px;border-radius:3px;background:#1a0a00;margin-top:2px">📈 Ny nivå ${r.nl.date}: ${r.nl.before}→${r.nl.after} x${r.nl.ratio}</div>`:'';
+  let copyBtn=`<button class="copy" onclick="navigator.clipboard.writeText('${r.adress.replace(/'/g,"\\'")}')">📋</button>`;
+  let base=`<td><span onclick="toggleStar('${r.id}')" style="cursor:pointer">${starred.has(r.id)?'⭐':'☆'}</span></td><td><select onchange="setCat('${r.id}',this.value)" style="background:#1a1a22;color:#fff;border:1px solid #333;border-radius:4px;padding:2px;font-size:10px"><option ${r.cat==='akut'?'selected':''} value="akut">🚨 Akut</option><option ${r.cat==='aktiv'?'selected':''} value="aktiv">🔴 Aktiv</option><option ${r.cat==='bevaka'?'selected':''} value="bevaka">🟡 Bevaka</option><option ${r.cat==='misstankt'?'selected':''} value="misstankt">🟠 Misstänkt</option><option ${r.cat==='vp'?'selected':''} value="vp">🔥 VP</option><option ${r.cat==='lagad'?'selected':''} value="lagad">🟢 Lagad</option><option ${r.cat==='temp'?'selected':''} value="temp">⚪ Temp</option></select></td><td><b>${r.adress}</b> ${confB}<br><small style="color:var(--muted)">${r.why}</small><br>${memoH}${nlH}</td><td>${copyBtn}</td><td><code style="font-size:10px">${r.id}</code></td><td>${r.area}</td><td><b>${r.E}</b></td><td>${r.F||'-'}</td><td class="${clsColor}">${badge}<br><small>x${(r.ratio||0).toFixed(1)}</small></td><td>${r.G}</td><td>${spark}</td>`;
+  if(r.cat==='bevaka'){
+   tr.innerHTML=base; tbB.appendChild(tr);
+  } else if(['vp','lagad','kund','storing','temp','normal'].includes(r.cat)){
+   tr.innerHTML=base; tbN.appendChild(tr);
   } else {
-   tr.innerHTML=`<td><span onclick="toggleStar('${r.id}')" style="cursor:pointer">${starred.has(r.id)?'⭐':'☆'}</span></td><td><select onchange="setCat('${r.id}',this.value)" style="background:#1a1a22;color:#fff;border:1px solid #333;border-radius:6px;padding:4px"><option ${r.cat==='akut'?'selected':''} value="akut">🚨 Akut</option><option ${r.cat==='aktiv'?'selected':''} value="aktiv">🔴 Aktiv</option><option ${r.cat==='misstankt'?'selected':''} value="misstankt">🟠 Misstänkt</option><option ${r.cat==='vp'?'selected':''} value="vp">🔥 VP</option><option ${r.cat==='lagad'?'selected':''} value="lagad">🟢 Lagad</option></select></td><td><b>${r.adress}</b>${confB}<br>${memoH}${nlH}</td><td><code>${r.id}</code></td><td><span class="badge" style="background:#1f1f2e">${r.area}</span></td><td><b>${r.E}</b> dB</td><td>${r.F||'-'} dB</td><td class="${clsColor}"><b>${badge}</b><br><small>E/F: ×${(r.ratio||0).toFixed(1)}</small></td><td>${r.G} dB</td><td>${spark}</td>`;
-   tb.appendChild(tr);
+   tr.innerHTML=base; tb.appendChild(tr);
   }
  });
+ document.getElementById('rangeLabel').textContent=uploaded.length? `${uploaded[0].date.toISOString().slice(0,10)} → ${uploaded[uploaded.length-1].date.toISOString().slice(0,10)} (${uploaded.length} filer) - Dra slider för att jämföra som Kamstrup` : 'Alla datum';
 }
 
-function sparkline(hist,w=70,h=24){
- if(!hist||hist.length<2) return `<svg width="${w}" height="${h}"><line x1="5" y1="${h/2}" x2="${w-5}" y2="${h/2}" stroke="#444" stroke-dasharray="2,2"/></svg>`;
- let vals=hist.map(x=>x.E); let mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||1; let pts=vals.map((v,i)=>{ let px=4+(i/(vals.length-1))*(w-8); let py=(h-4)-((v-mn)/rng)*(h-8); return `${px},${py}`; }).join(' '); let col=vals[vals.length-1]>vals[vals.length-2]? '#f87171':'#4ade80';
- return `<svg width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5"/><circle cx="${pts.split(' ').pop().split(',')[0]}" cy="${pts.split(' ').pop().split(',')[1]}" r="2.5" fill="${col}"/></svg>`;
+function sparkline(hist,w=60,h=20){
+ if(!hist||hist.length<2) return `<svg width="${w}" height="${h}"><line x1="4" y1="${h/2}" x2="${w-4}" y2="${h/2}" stroke="#444" stroke-dasharray="2,2"/></svg>`;
+ let vals=hist.map(x=>x.E); let mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||1; let pts=vals.map((v,i)=>{ let px=4+(i/(vals.length-1))*(w-8); let py=(h-3)-((v-mn)/rng)*(h-6); return `${px},${py}`; }).join(' '); let col=vals[vals.length-1]>vals[vals.length-2]? '#f87171':'#4ade80';
+ return `<svg width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4"/><circle cx="${pts.split(' ').pop().split(',')[0]}" cy="${pts.split(' ').pop().split(',')[1]}" r="2" fill="${col}"/></svg>`;
 }
 
 async function handleFiles(files){
- let all=Array.from(files); let prog=document.getElementById('progress'); let fill=document.getElementById('pFill'); let txt=document.getElementById('pText'); prog.style.display='block';
- for(let i=0;i<all.length;i++){
-  let f=all[i]; if(!/\.xlsx|\.xls|\.csv/i.test(f.name)) continue;
-  try{ let r=await parseExcel(f); if(!uploaded.some(x=>x.name===f.name)) uploaded.push({name:f.name,date:r.date,meters:r.meters}); }catch(e){ console.warn(e); }
-  fill.style.width=`${((i+1)/all.length)*100}%`; txt.textContent=`${i+1}/${all.length} filer`;
- }
- setTimeout(()=>prog.style.display='none',800);
- updateFileList(); analyze();
+ let all=Array.from(files); for(let i=0;i<all.length;i++){ let f=all[i]; if(!/\.xlsx|\.xls|\.csv/i.test(f.name)) continue; try{ let r=await parseExcel(f); if(!uploaded.some(x=>x.name===f.name)) uploaded.push({name:f.name,date:r.date,meters:r.meters}); }catch(e){ console.warn(e); } }
+ uploaded.sort((a,b)=>a.date-b.date);
+ document.getElementById('fileInfo').textContent=`${uploaded.length} filer: ${uploaded[0]?.date.toISOString().slice(0,10)} → ${uploaded[uploaded.length-1]?.date.toISOString().slice(0,10)} (${[...new Set(uploaded.map(u=>u.date.getFullYear()))].join(', ')} )`;
+ analyze();
 }
 
-function updateFileList(){
- let el=document.getElementById('fileListSmall'); if(!uploaded.length){ el.textContent='Inga filer inlästa'; return; }
- el.innerHTML=uploaded.map((f,i)=>`📄 ${f.name} - ${f.date.toISOString().slice(0,10)} - ${f.meters.length} mätare <span style="color:#f87171;cursor:pointer" onclick="uploaded.splice(${i},1);updateFileList();analyze()">✕</span>`).join('<br>');
+function openGraph(id){
+ let r=results.find(x=>x.id===id); if(!r) return;
+ document.getElementById('gT').textContent=`Brus ${r.adress} (${r.id}) - ${r.why}`;
+ document.getElementById('gModal').style.display='flex';
+ if(chartInst) chartInst.destroy();
+ let fromIdx=Math.floor((rFrom.value/100)*(r.history.length-1)), toIdx=Math.floor((rTo.value/100)*(r.history.length-1));
+ if(fromIdx>toIdx) [fromIdx,toIdx]=[toIdx,fromIdx];
+ let slice=r.history.slice(fromIdx,toIdx+1);
+ let ctx=document.getElementById('chart').getContext('2d');
+ chartInst=new Chart(ctx,{type:'line',data:{labels:slice.map(h=>h.date.toISOString().slice(0,10)),datasets:[{label:'Brus E',data:slice.map(h=>h.E),borderColor:'#1db954',backgroundColor:'rgba(29,185,84,.08)',tension:.2,pointRadius:3},{label:'Genomsnitt F',data:slice.map(h=>h.F),borderColor:'#38bdf8',borderDash:[4,3],tension:.2,pointRadius:2}]},options:{responsive:true,plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}}}});
+ let isHp=isHeatpumpSmart(r.history);
+ document.getElementById('gMeta').innerHTML=`Konfidens: ${r.conf} (${r.history.length} filer) | Värmepump: ${isHp.is? 'JA - '+isHp.reason : 'NEJ'} | År: ${[...new Set(r.history.map(h=>new Date(h.date).getFullYear()))].join(', ')} | Slider: ${slice.length} av ${r.history.length} punkter | <b>${r.cat.toUpperCase()}</b> - ${r.why} | Jämför med Kamstrup: Sep-Nov-Mar-Maj-Jul slider`;
+ document.getElementById('gInfo').textContent=`E=${r.E} F=${r.F} ratio x${r.ratio.toFixed(1)} ${r.av.toFixed(0)}%`;
 }
 
-function openGraph(id){ let r=results.find(x=>x.id===id); if(!r) return; document.getElementById('gTitle').textContent=`Brus ${r.adress} (${r.id})`; document.getElementById('graphModal').style.display='flex'; if(chartInst) chartInst.destroy(); let ctx=document.getElementById('chart').getContext('2d'); chartInst=new Chart(ctx,{type:'line',data:{labels:r.history.map(h=>h.date.toISOString().slice(0,10)),datasets:[{label:'Brus dB (E)',data:r.history.map(h=>h.E),borderColor:'#1db954',backgroundColor:'rgba(29,185,84,.1)',tension:.2},{label:'Genomsnitt (F)',data:r.history.map(h=>h.F),borderColor:'#38bdf8',borderDash:[4,3],tension:.2}]},options:{responsive:true,plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}}}}); }
+function setF(f){ activeFilter=f==='dolda'?'all': f; // for stats, dolda handled separately but we toggle
+ if(f==='dolda'){ catChecks.set('vp',true); catChecks.set('lagad',true); catChecks.set('kund',true); catChecks.set('storing',true); catChecks.set('temp',true); catChecks.set('normal',true); catChecks.set('akut',false); catChecks.set('aktiv',false); catChecks.set('bevaka',false); catChecks.set('misstankt',false); activeFilter='all'; } else { activeFilter=f; }
+ render();
+}
+function toggleCat(c){ catChecks.set(c, !(catChecks.get(c)!==false)); render(); buildFilters(); }
+function toggleArea(a){ if(areaFilter.size===0){ areaFilter=new Set([a]); } else { if(areaFilter.has(a)) areaFilter.delete(a); else areaFilter.add(a); if(areaFilter.size=== [...new Set(results.map(r=>r.area))].length) areaFilter.clear(); } render(); buildFilters(); }
+function toggleConf(k){ confFilter.has(k)?confFilter.delete(k):confFilter.add(k); render(); buildFilters(); }
 function setCat(id,c){ userCats.set(id,c); analyze(); }
 function toggleStar(id){ starred.has(id)?starred.delete(id):starred.add(id); render(); }
-function editMemo(id){ let cur=memos.get(id)||''; let v=prompt('Fältmemo:',cur); if(v!==null){ if(v.trim()) memos.set(id,v.trim()); else memos.delete(id); render(); } }
+function editMemo(id){ let cur=memos.get(id)||''; let v=prompt('Memo:',cur); if(v!==null){ if(v.trim()) memos.set(id,v.trim()); else memos.delete(id); render(); } }
 
-// drag drop
-let dz=document.getElementById('dropZone'); dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover')}); dz.addEventListener('dragleave',()=>dz.classList.remove('dragover')); dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover'); handleFiles(e.dataTransfer.files)});
-document.getElementById('uploadBtn').onclick=()=>document.getElementById('fileInput').click();
-document.getElementById('fileInput').onchange=e=>handleFiles(e.target.files);
-document.getElementById('analyzeBtn').onclick=analyze;
-document.getElementById('search').oninput=render;
-document.getElementById('clearBtn').onclick=()=>{ uploaded=[]; results=[]; ignored.clear(); updateFileList(); render(); };
-document.getElementById('exportBtn').onclick=()=>{ if(!results.length) return; let data=results.map(r=>({Adress:r.adress,Serienummer:r.id,Område:r.area,Senaste_E:r.E,Genomsnitt_F:r.F,Avvikelse_pct:Math.round(r.av),Avvikelse_ratio:r.ratio,Max:r.G,Klass:r.cat,Info:r.info,Memo:r.memo})); let ws=XLSX.utils.json_to_sheet(data); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Rapport'); XLSX.writeFile(wb,`Karma_v8_${new Date().toISOString().slice(0,10)}.xlsx`); };
-document.getElementById('mapBtn').onclick=async()=>{
- document.getElementById('mapModal').style.display='flex'; setTimeout(()=>{ if(!map){ map=L.map('map').setView([59.25,17.85],11); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);} map.invalidateSize(); },100);
- let toPlot=results.filter(r=>!['normal','vp','lagad'].includes(r.cat)).slice(0,80);
- document.getElementById('mapStatus').textContent=`Visar ${toPlot.length} skarpa mätare - geokodning kräver API, visar listvy nu. Full karta med Nominatim kan läggas till.`;
+let rFrom=document.getElementById('rFrom'), rTo=document.getElementById('rTo');
+rFrom.oninput=rTo.oninput=()=>{ document.getElementById('rangeLabel').textContent=`Visar ${rFrom.value}% → ${rTo.value}% av historiken`; };
+
+let dz=document.getElementById('drop'); dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')}); dz.addEventListener('dragleave',()=>dz.classList.remove('drag')); dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag'); handleFiles(e.dataTransfer.files)});
+document.getElementById('upBtn').onclick=()=>document.getElementById('fileIn').click();
+document.getElementById('fileIn').onchange=e=>handleFiles(e.target.files);
+document.getElementById('anBtn').onclick=analyze;
+document.getElementById('q').oninput=render;
+document.getElementById('clrBtn').onclick=()=>{ uploaded=[]; results=[]; document.getElementById('fileInfo').textContent='Inga filer'; render(); };
+document.getElementById('expBtn').onclick=()=>{ if(!results.length) return; let data=results.map(r=>({Adress:r.adress,Serienr:r.id,Område:r.area,E:r.E,F:r.F,Avvikelse_pct:Math.round(r.av),Ratio:r.ratio,Max:r.G,Klass:r.cat,Why:r.why,Info:r.info,Memo:r.memo})); let ws=XLSX.utils.json_to_sheet(data); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Rapport'); XLSX.writeFile(wb,`Karma_v81_${new Date().toISOString().slice(0,10)}.xlsx`); };
+document.getElementById('mapBtn').onclick=()=>{
+ document.getElementById('mModal').style.display='flex'; setTimeout(()=>{ if(!map){ map=L.map('map').setView([59.25,17.85],11); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);} map.invalidateSize(); },80);
+ let toPlot=results.filter(r=>['akut','aktiv','bevaka','misstankt'].includes(r.cat)).slice(0,80);
+ document.getElementById('mStatus').textContent=`Visar ${toPlot.length} skarpa+bevaka`;
  markers.forEach(m=>map.removeLayer(m)); markers=[];
- for(let r of toPlot){
-  // enkel mock-position i Botkyrka
-  let lat=59.2+Math.random()*0.15, lng=17.7+Math.random()*0.3;
-  let col=CATS[r.cat]?.bg||'#888'; let m=L.circleMarker([lat,lng],{radius:8,fillColor:col,color:'#fff',weight:2,fillOpacity:.9}).addTo(map); m.bindPopup(`<b>${r.adress}</b><br>${r.cat} - ${r.E} dB - E/F ×${r.ratio.toFixed(1)}<br>${r.id}`); markers.push(m);
- }
+ for(let r of toPlot){ let lat=59.2+Math.random()*0.15,lng=17.7+Math.random()*0.3; let col=CATS[r.cat]?.bg||'#888'; let m=L.circleMarker([lat,lng],{radius:8,fillColor:col,color:'#fff',weight:2,fillOpacity:.9}).addTo(map); m.bindPopup(`<b>${r.adress}</b><br>${r.cat} ${r.E}dB x${r.ratio.toFixed(1)}<br>${r.id}`); markers.push(m); }
 };
 </script>
 </body>

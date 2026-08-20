@@ -1,1761 +1,314 @@
-
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karma - Läcksök Pro v7.3</title>
-
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <style>
-        :root {
-            --bg-main: #0a0a0c;
-            --bg-card: #121216;
-            --bg-card-hover: #1c1c24;
-            --bg-input: #1a1a22;
-            --text-main: #ffffff;
-            --text-muted: #a0a0ab;
-            --primary: #1db954;
-            --primary-hover: #1ed760;
-            --border-color: #22222a;
-            --focus-outline: #22c55e;
-            --clr-extreme: #dc2626;
-            --clr-aktiv-lacka: #f87171;
-            --clr-misstankt: #f97316;
-            --clr-leak: #eab308;
-            --clr-storing: #38bdf8;
-            --clr-ny-matare: #c084fc;
-            --clr-heatpump: #f59e0b;
-            --clr-lagad: #10b981;
-            --clr-normal: #27272a;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-main); color: var(--text-main); padding: 32px; line-height: 1.5; }
-
-        .app-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
-        .app-title-area h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #ffffff 0%, #a0a0ab 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .app-title-area .subtitle { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
-
-        .upload-section { background-color: var(--bg-card); border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid var(--border-color); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-        .btn-group { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-
-        button { background-color: var(--primary); color: #ffffff; border: none; padding: 11px 24px; font-size: 14px; font-weight: 700; border-radius: 50px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; user-select: none; transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s; }
-        button:hover { transform: scale(1.03); background-color: var(--primary-hover); }
-        button:active { transform: scale(0.98); }
-        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
-        button.secondary { background-color: transparent; border: 1px solid var(--text-muted); color: var(--text-main); }
-        button.secondary:hover { background-color: rgba(255,255,255,0.06); border-color: #ffffff; }
-        button.danger { background-color: #5f1a1a; border: 1px solid #991b1b; }
-        button.danger:hover { background-color: #991b1b; }
-
-        .accordion-trigger { background: #181822; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-top: 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: fit-content; gap: 12px; user-select: none; transition: background 0.2s; }
-        .accordion-trigger:hover { background: #222230; }
-        .file-grid-container { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1); }
-        .file-grid-container.open { max-height: 500px; overflow-y: auto; margin-top: 10px; }
-        .file-grid-compact { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: #09090d; border-radius: 8px; border: 1px solid var(--border-color); }
-        .file-list-row { display: grid; grid-template-columns: 20px 1fr 80px 80px auto 28px; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; background: #111118; border: 1px solid #1e1e2e; transition: background 0.15s; }
-        .file-list-row:hover { background: #181828; }
-        .file-list-icon { font-size: 13px; }
-        .file-list-name { font-size: 12px; font-weight: 500; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .file-list-date { font-size: 11px; color: var(--text-muted); text-align: right; }
-        .file-list-count { font-size: 11px; color: #60a5fa; text-align: right; font-weight: 600; }
-        .file-list-remove { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 14px; font-weight: 700; padding: 2px 4px; border-radius: 4px; line-height: 1; }
-        .file-list-remove:hover { background: #2a1010; color: #f87171; }
-
-        .progress-container { background: #1a1a22; border-radius: 8px; margin-top: 16px; padding: 12px; }
-        .progress-bar-bg { background: #2a2a32; border-radius: 20px; height: 8px; overflow: hidden; }
-        .progress-fill { background: var(--primary); width: 0%; height: 8px; border-radius: 20px; transition: width 0.3s ease; }
-        .progress-text { font-size: 12px; color: var(--text-muted); margin-top: 8px; text-align: center; }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 32px; }
-        .stat-card { background-color: var(--bg-card); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; user-select: none; transition: background 0.2s, transform 0.15s, border-color 0.2s; }
-        .stat-card:hover { background-color: var(--bg-card-hover); transform: translateY(-2px); }
-        .stat-card.active { border: 2px solid var(--primary); background: rgba(29,185,84,0.04); }
-        .stat-card .num { font-size: 30px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.03em; }
-        .stat-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
-        .stat-card.color-total    { border-left: 4px solid var(--text-main); }
-        .stat-card.color-aktiv-lacka { border-left: 4px solid var(--clr-aktiv-lacka); }
-        .stat-card.color-misstankt { border-left: 4px solid var(--clr-misstankt); }
-        .stat-card.color-heatpump  { border-left: 4px solid var(--clr-heatpump); }
-        .stat-card.color-noise     { border-left: 4px solid var(--clr-storing); }
-
-        .daily-bar { background: linear-gradient(135deg,#0c1118,#111827); border: 1px solid #1e3a5f; border-radius: 10px; padding: 12px 20px; margin-bottom: 18px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; font-size: 13px; }
-        .daily-bar-label { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
-        .daily-delta { display: inline-flex; align-items: center; gap: 5px; }
-        .d-up { color: #f87171; font-weight: 800; }
-        .d-dn { color: #34d399; font-weight: 800; }
-        .d-eq { color: #a0a0ab; }
-        .daily-date { margin-left: auto; color: #555; font-size: 11px; }
-
-        .insight-box { padding: 16px 20px; border-radius: 10px; font-size: 14px; margin-bottom: 32px; border-left: 4px solid var(--primary); background-color: var(--bg-card); line-height: 1.6; }
-        .insight-box strong { color: #fff; }
-
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 14px; flex-wrap: wrap; }
-        .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: 100%; }
-        .search-input { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 11px 22px; border-radius: 50px; width: 300px; font-size: 14px; outline: none; transition: border-color 0.2s; }
-        .search-input:focus { border-color: var(--focus-outline); }
-        .filter-select { background-color: var(--bg-card); border: 1px solid var(--border-color); color: #ffffff; padding: 11px 22px; border-radius: 50px; font-size: 14px; outline: none; cursor: pointer; }
-
-        .section-title { font-size: 17px; font-weight: 800; margin: 36px 0 14px 0; display: flex; align-items: center; gap: 10px; letter-spacing: -0.01em; }
-        .results-container { background-color: var(--bg-card); border-radius: 12px; padding: 18px; border: 1px solid var(--border-color); overflow-x: auto; box-shadow: 0 6px 24px rgba(0,0,0,0.3); margin-bottom: 32px; }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; padding: 14px 12px; border-bottom: 2px solid var(--border-color); cursor: pointer; user-select: none; transition: color 0.2s; }
-        th:hover { color: #ffffff; }
-        th.active-sort { color: var(--primary); }
-        td { padding: 14px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; vertical-align: middle; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover td { background-color: rgba(255,255,255,0.015); }
-
-        .row-extreme td:first-child     { border-left: 4px solid var(--clr-extreme); }
-        .row-aktiv_lacka td:first-child  { border-left: 4px solid var(--clr-aktiv-lacka); }
-        .row-ny_matare td:first-child    { border-left: 4px solid var(--clr-ny-matare); }
-        .row-misstankt td:first-child    { border-left: 4px solid var(--clr-misstankt); }
-        .row-leak_code td:first-child    { border-left: 4px solid var(--clr-leak); }
-        .row-storing td:first-child      { border-left: 4px solid var(--clr-storing); }
-        .row-heatpump td:first-child     { border-left: 4px solid var(--clr-heatpump); }
-        .row-lagad td:first-child        { border-left: 4px solid var(--clr-lagad); }
-        .row-normal td:first-child       { border-left: 4px solid var(--clr-normal); }
-
-        .table-adress-text { font-weight: 700; font-size: 14px; color: #ffffff; }
-        .field-memo-tag { display: inline-block; background: #14141e; border: 1px solid #2e2e3e; color: #2dd4bf; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 5px; margin-top: 5px; max-width: 460px; line-height: 1.4; }
-        .new-level-tag  { display: inline-block; background: linear-gradient(90deg,#1a0a00,#1f1000); border: 1px solid #c2410c; color: #fb923c; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 5px; margin-top: 5px; letter-spacing: 0.02em; }
-        .copy-btn { background: #1c1c24; border: 1px solid var(--border-color); color: var(--text-muted); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
-        .copy-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
-        .badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; display: inline-block; }
-        .category-select-compact { background: #161620; color: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 600; outline: none; cursor: pointer; }
-        .action-btn { background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 6px; user-select: none; transition: transform 0.1s; }
-        .action-btn:hover { transform: scale(1.2); }
-        .trend-up { color: #f87171; font-weight: 800; }
-        .trend-down { color: #34d399; font-weight: 600; }
-
-        .noise-accordion-box { background: #0d0d11; border: 1px dashed #2e2e3e; border-radius: 12px; padding: 20px; margin-top: 36px; }
-
-        /* ── Sparklines ──────────────────────────────────────────────────────── */
-        .spark-cell { display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .spark-cell:hover polyline { stroke-width: 2.5; }
-
-        /* ── Graph modal ─────────────────────────────────────────────────────── */
-        .graph-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
-        .graph-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 700px; padding: 24px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-        .close-modal-btn { position: absolute; top: 14px; right: 18px; font-size: 24px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
-        .close-modal-btn:hover { color: #fff; }
-
-        /* ── Map modal ───────────────────────────────────────────────────────── */
-        .map-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
-        .map-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 1060px; height: 640px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-        #leafletMap { flex: 1; border-radius: 10px; min-height: 0; }
-        .map-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
-        .map-legend-item { display: flex; align-items: center; gap: 6px; }
-        .map-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-        .route-bar { display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; padding: 8px 12px; background: #0c1520; border: 1px solid #1e3a5f; border-radius: 8px; }
-        .route-count { font-size: 12px; color: #60a5fa; font-weight: 700; }
-        .btn-route { background: #1a3a6a; border: 1px solid #3b82f6; color: #93c5fd; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-route:hover { background: #1e4080; border-color: #60a5fa; color: #fff; transform: scale(1.02); }
-        .btn-route:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-        .route-star-hint { font-size: 11px; color: var(--text-muted); }
-
-        /* ── Mobile ──────────────────────────────────────────────────────────── */
-        @media (max-width: 768px) {
-            body { padding: 14px; }
-            .app-header { flex-direction: column; gap: 10px; }
-            .app-title-area h1 { font-size: 22px; }
-            .btn-group { flex-direction: column; }
-            .btn-group button { justify-content: center; padding: 14px 20px; font-size: 15px; border-radius: 12px; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .stat-card .num { font-size: 24px; }
-            .stat-card { padding: 12px; }
-            .search-input, .filter-select { width: 100%; }
-            .toolbar-left { flex-direction: column; align-items: stretch; }
-            .results-container { padding: 6px; }
-            th, td { padding: 9px 6px; font-size: 12px; }
-            .section-title { font-size: 14px; }
-            .map-modal-content { height: 90vh; }
-        }
-
-        /* ── Print ───────────────────────────────────────────────────────────── */
-        @media print {
-            body { background: #fff; color: #000; padding: 18px; }
-            .upload-section, .toolbar, .file-grid-container, .accordion-trigger,
-            .noise-accordion-box, .graph-modal, .map-modal, .progress-container,
-            .action-btn, .copy-btn, .category-select-compact,
-            #exportBtn, #clearBtn, #mapBtn, #printBtn { display: none !important; }
-            .app-header { border-bottom: 2px solid #000; margin-bottom: 14px; }
-            .app-title-area h1 { -webkit-text-fill-color: #000; font-size: 22px; background: none; color: #000; }
-            .stat-card { background: #fff; border: 1px solid #ccc; }
-            .stat-card .num, .stat-card .label { color: #000; }
-            .results-container { box-shadow: none; border: 1px solid #ccc; background: #fff; }
-            table { font-size: 11px; }
-            th { color: #333; border-bottom: 2px solid #000; }
-            td { border-bottom: 1px solid #ddd; color: #000; }
-            tr { page-break-inside: avoid; }
-            .badge { background: #eee !important; color: #000 !important; border: 1px solid #ccc; }
-            .section-title { color: #000; font-size: 14px; }
-            .insight-box { border: 1px solid #ccc; background: #f9f9f9; color: #000; }
-            .daily-bar { background: #f9f9f9; border: 1px solid #ccc; color: #000; }
-            @page { margin: 1.5cm; }
-        }
-
-        /* ── Confidence badges ──────────────────────────────────────────────── */
-        .conf-badge { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
-        .conf-low    { background: #3f1212; color: #f87171; }
-        .conf-medium { background: #2e2000; color: #fbbf24; }
-        .conf-high   { background: #0a2e16; color: #4ade80; }
-
-        /* ── Editable memo ──────────────────────────────────────────────────── */
-        .field-memo-tag { cursor: pointer; }
-        .field-memo-tag:hover { border-color: #3dd4bf; }
-        .memo-add-btn { display: inline-block; background: transparent; border: 1px dashed #2e3e3e; color: #2dd4bf; font-size: 11px; padding: 3px 8px; border-radius: 5px; margin-top: 4px; cursor: pointer; transition: all 0.15s; }
-        .memo-add-btn:hover { background: #0a1e1e; border-style: solid; }
-        .memo-edit-input { background: #0a1e1e; border: 1px solid #2dd4bf; color: #2dd4bf; font-size: 11px; padding: 4px 8px; border-radius: 5px; width: 380px; max-width: 100%; outline: none; font-family: inherit; }
-
-        /* ── Toolbar extra buttons ──────────────────────────────────────────── */
-        .btn-star-filter { background: transparent; border: 1px solid #4f46e5; color: #818cf8; padding: 9px 18px; border-radius: 50px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
-        .btn-star-filter:hover { background: #1e1a40; border-color: #818cf8; }
-        .btn-star-filter.active { background: #1e1a40; border-color: #818cf8; color: #c7d2fe; }
-        .btn-bulk-star { background: transparent; border: 1px solid #374151; color: #9ca3af; padding: 9px 18px; border-radius: 50px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
-        .btn-bulk-star:hover { background: #1c1c24; border-color: #6b7280; color: #d1d5db; }
-
-        /* ── Parse warning chip ─────────────────────────────────────────────── */
-        .parse-warn { display: inline-block; background: #2d1a00; border: 1px solid #92400e; color: #fbbf24; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; }
-        .parse-ok   { display: inline-block; background: #0a2e16; border: 1px solid #166534; color: #4ade80; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; }
-
-        /* ── Tolkningsguide modal ───────────────────────────────────────────── */
-        .guide-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 3000; justify-content: center; align-items: center; padding: 20px; }
-        .guide-modal-content { background: #121218; border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 640px; max-height: 85vh; overflow-y: auto; padding: 28px; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
-        .guide-section { margin-bottom: 20px; }
-        .guide-section h4 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 10px; }
-        .guide-row { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
-        .guide-row:last-child { border-bottom: none; }
-        .guide-badge { flex-shrink: 0; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 800; min-width: 90px; text-align: center; }
-        .guide-desc { font-size: 13px; color: #d1d5db; line-height: 1.5; }
-
-        /* ── ny_matare highlight ────────────────────────────────────────────── */
-        .row-ny_matare td:first-child { border-left: 4px solid var(--clr-ny-matare); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - Läcksök Pro v8.0 - Full Kamstrup Clone</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--bg:#0a0a0c;--card:#121216;--card2:#1a1a22;--border:#22222a;--text:#fff;--muted:#a0a0ab;--green:#1db954;--red:#dc2626;--orange:#f97316;--yellow:#eab308;--blue:#38bdf8;--purple:#c084fc}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);padding:18px;line-height:1.45}
+.header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:18px}
+.header h1{font-size:24px;font-weight:800} .header .sub{font-size:12px;color:var(--muted)}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.btn{border:none;padding:10px 18px;border-radius:50px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;gap:6px;align-items:center;transition:.15s}
+.btn-primary{background:var(--green);color:#fff} .btn-sec{background:transparent;border:1px solid var(--border);color:var(--text)} .btn-sec:hover{background:#1c1c24}
+.btn-danger{background:#5f1a1a;border:1px solid #991b1b;color:#fff}
+.upload-zone{border:2px dashed #2a2a32;border-radius:16px;padding:28px;text-align:center;cursor:pointer;transition:.2s;background:#0f0f14}
+.upload-zone.dragover{border-color:var(--green);background:#0f1a12}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;border-left:4px solid var(--text)}
+.stat .n{font-size:28px;font-weight:800} .stat .l{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:700}
+.grid2{display:grid;grid-template-columns:280px 1fr;gap:16px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.kamstrup-sidebar{background:#0d0d11;border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px}
+.kamstrup-sidebar h4{font-size:11px;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;letter-spacing:.05em}
+.slider-row{display:flex;justify-content:space-between;margin:4px 0}
+.filter-check{display:flex;align-items:center;gap:8px;margin:6px 0}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px} th{color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:.05em;padding:10px 8px;border-bottom:2px solid var(--border);cursor:pointer;position:sticky;top:0;background:var(--card);z-index:1}
+td{padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.03)}
+.badge{padding:2px 7px;border-radius:4px;font-size:10px;font-weight:800;text-transform:uppercase}
+.row-akut td:first-child{border-left:4px solid var(--red)} .row-misstankt td:first-child{border-left:4px solid var(--orange)} .row-vp td:first-child{border-left:4px solid #f59e0b} .row-lagat td:first-child{border-left:4px solid var(--green)} .row-kund td:first-child{border-left:4px solid var(--yellow)} .row-normal td:first-child{border-left:4px solid #27272a}
+.memo{font-size:11px;color:#2dd4bf;background:#0a1e1e;border:1px solid #1a3a3a;padding:3px 7px;border-radius:5px;margin-top:4px;display:inline-block;cursor:pointer}
+.trend-up{color:#f87171;font-weight:800} .trend-down{color:#34d399}
+.conf{font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;margin-left:6px}
+.conf-H{background:#0a2e16;color:#4ade80} .conf-M{background:#2e2000;color:#fbbf24} .conf-L{background:#3f1212;color:#f87171}
+#map{height:520px;border-radius:10px;background:#111}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;justify-content:center;align-items:center;z-index:9999;padding:16px}
+.modal-box{background:#121218;border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:900px;max-height:90vh;overflow:auto}
+.search{width:100%;padding:10px 16px;border-radius:50px;border:1px solid var(--border);background:var(--card2);color:#fff;outline:none}
+</style>
 </head>
 <body>
-
-    <div class="app-header">
-        <div class="app-title-area">
-            <h1>Karma - Läcksök Pro</h1>
-            <div class="subtitle">PDF-stöd · Batch-bearbetning · Värmepumpsdetektering · Kartintegration · Superanalys · Återgångsdetektering · v7.3</div>
-        </div>
-    </div>
-
-    <div class="upload-section">
-        <div class="btn-group">
-            <button id="uploadBtn">📁 Välj Mätarfiler (Excel/CSV/PDF)</button>
-            <button id="analyzeBtn" class="secondary">⚡ Kör Morgonanalys</button>
-            <button id="mapBtn" class="secondary">🗺️ Visa Karta</button>
-            <button id="exportBtn" class="secondary">📥 Exportera Rapport</button>
-            <button id="printBtn" class="secondary">🖨️ Skriv ut</button>
-            <button id="clearBtn" class="secondary danger">🗑️ Nollställ</button>
-            <button id="guideBtn" class="secondary">📖 Tolkningsguide</button>
-            <input type="file" id="fileInput" multiple style="display:none;" accept=".xlsx,.xls,.csv,.pdf">
-        </div>
-        <div class="accordion-trigger" id="accordionTrigger">
-            <span>📂 Visa ackumulerade datafiler (<span id="fileCountText">0</span> st inlästa)</span>
-            <span id="arrowIndicator">▸</span>
-        </div>
-        <div class="file-grid-container" id="fileGridContainer">
-            <div class="file-grid-compact" id="fileList">
-                <span style="color:var(--text-muted);font-size:12px;">Inga filer laddade än.</span>
-            </div>
-        </div>
-        <div id="progressContainer" style="display:none;" class="progress-container">
-            <div class="progress-bar-bg"><div id="progressFill" class="progress-fill"></div></div>
-            <div id="progressText" class="progress-text">0 filer bearbetade</div>
-        </div>
-    </div>
-
-    <div id="results" style="display:none;">
-        <div class="stats-grid" id="statsGrid"></div>
-        <div id="dailySummaryBar" style="display:none;" class="daily-bar"></div>
-        <div class="insight-box" id="insightBox"></div>
-
-        <div class="toolbar">
-            <div class="toolbar-left">
-                <input type="text" id="searchInput" class="search-input" placeholder="Sök adress, fastighet eller mätarnummer...">
-                <select id="areaFilter" class="filter-select">
-                    <option value="all">Alla kommundelar (Hela Botkyrka)</option>
-                    <option value="TULLINGE">Tullinge</option>
-                    <option value="TUMBA">Tumba</option>
-                    <option value="NORSBORG">Norsborg</option>
-                    <option value="FITTJA">Fittja</option>
-                    <option value="UTTRAN">Uttran</option>
-                    <option value="GRÖDINGE">Grödinge</option>
-                    <option value="ÖVRIGT">Övriga områden</option>
-                </select>
-                <button class="btn-star-filter" id="starFilterBtn" onclick="toggleStarredFilter()">⭐ Visa markerade</button>
-                <button class="btn-bulk-star" id="bulkStarBtn" onclick="bulkStarVisible()">☆ Markera synliga</button>
-            </div>
-        </div>
-
-        <div class="section-title">🎯 SKARPA LÄCKOR & MISSTÄNKTA (Prioriterad lyssningslista)</div>
-        <div class="results-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:50px;text-align:center;">Märk</th>
-                        <th style="width:50px;text-align:center;">Dölj</th>
-                        <th style="width:140px;">Klassificering</th>
-                        <th id="th-adress">Adress / Fastighet ↕</th>
-                        <th style="width:90px;text-align:center;">Urklipp</th>
-                        <th id="th-serienummer">Mätarnummer ↕</th>
-                        <th id="th-area">Kommundel ↕</th>
-                        <th id="th-change" class="active-sort">Avvikelse (E/F-1) ↕</th>
-                        <th id="th-max">Maxavläsning ↕</th>
-                        <th style="width:80px;text-align:center;">Trend</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-        </div>
-
-        <div class="noise-accordion-box">
-            <div class="accordion-trigger" id="noiseAccordionTrigger" style="margin-top:0;width:100%;background:transparent;border:none;padding:0;">
-                <span>⚙️ Gömda — Störningar, Värmepumpar, LEAK-larm & Lagade (<span id="noiseCountText">0</span> st dolda)</span>
-                <span id="noiseArrowIndicator">▸</span>
-            </div>
-            <div class="file-grid-container" id="noiseGridContainer">
-                <div class="results-container" style="background:#09090d;margin-top:14px;border-color:#222230;padding:10px;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width:140px;">Flytta/Klassa</th>
-                                <th>Adress / Fastighet</th>
-                                <th>Mätarnummer</th>
-                                <th>Senaste / Max</th>
-                                <th>Systemkommentar</th>
-                            </tr>
-                        </thead>
-                        <tbody id="noiseTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="map-modal" id="mapModal">
-        <div class="map-modal-content">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-                <h3 style="font-size:17px;font-weight:800;">🗺️ Mätarkarta — Botkyrka distributionsnät</h3>
-                <button class="close-modal-btn" style="position:static;" onclick="document.getElementById('mapModal').style.display='none'">&times;</button>
-            </div>
-            <div id="mapStatusText" style="font-size:12px;color:var(--text-muted);flex-shrink:0;">Kör analys och öppna kartan för att geokoda mätare.</div>
-            <div class="route-bar" id="routeBar">
-                <span class="route-count" id="routeCount">⭐ 0 markerade mätare</span>
-                <button class="btn-route" id="routeBtn" disabled>🚗 Kör rutt i Google Maps</button>
-                <button class="btn-route" id="routeMapBtn" disabled style="background:#0f2a1a;border-color:#22c55e;color:#86efac;">📍 Visa enbart markerade på karta</button>
-                <span class="route-star-hint" id="routeHint">Markera mätare med ⭐ i tabellen för att bygga en körrutt</span>
-            </div>
-            <div id="leafletMap"></div>
-            <div class="map-legend">
-                <div class="map-legend-item"><div class="map-legend-dot" style="background:#dc2626;"></div>Akut Huvudledning</div>
-                <div class="map-legend-item"><div class="map-legend-dot" style="background:#f87171;"></div>Aktiv läcka</div>
-                <div class="map-legend-item"><div class="map-legend-dot" style="background:#f97316;"></div>Misstänkt</div>
-                <div class="map-legend-item"><div class="map-legend-dot" style="background:#c084fc;"></div>Säsongsanalys</div>
-                <div class="map-legend-item"><div class="map-legend-dot" style="background:#f59e0b;"></div>Värmepump</div>
-                <div class="map-legend-item"><div class="map-legend-dot" style="background:#38bdf8;"></div>Störning</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="guide-modal" id="guideModal">
-        <div class="guide-modal-content">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                <h3 style="font-size:20px;font-weight:800;">📖 Tolkningsguide — Karma Läcksök</h3>
-                <button class="close-modal-btn" style="position:static;" onclick="document.getElementById('guideModal').style.display='none'">&times;</button>
-            </div>
-            <div class="guide-section">
-                <h4>Avvikelse (E/F − 1) = Aktuellt brus ÷ Genomsnitt</h4>
-                <div class="guide-row"><span class="guide-badge" style="background:#dc2626;color:#fff;">🚨 &gt;1000%</span><div class="guide-desc"><strong>AKUT</strong> — Extremt högt. Sannolikt brott på kommunens ledning. Åk ut omgående.</div></div>
-                <div class="guide-row"><span class="guide-badge" style="background:#f87171;color:#000;">🔴 400–1000%</span><div class="guide-desc"><strong>Aktiv läcka</strong> — Trolig servis- eller ledningsläcka. Prioritera fältkontroll.</div></div>
-                <div class="guide-row"><span class="guide-badge" style="background:#f97316;color:#fff;">🟠 100–400%</span><div class="guide-desc"><strong>Misstänkt</strong> — Förhöjt och ihållande. Planera läcklyssning.</div></div>
-                <div class="guide-row"><span class="guide-badge" style="background:#eab308;color:#000;">🟡 LEAK-kod</span><div class="guide-desc"><strong>Abonnentkod</strong> — Mätaren rapporterar LEAK. Troligen kundens sida. Kontakta fastighetsägare.</div></div>
-                <div class="guide-row"><span class="guide-badge" style="background:#c084fc;color:#fff;">🟣 Ny mätare</span><div class="guide-desc"><strong>Otillräcklig data</strong> — För lite historik för säker klassning. Bevaka nästa period.</div></div>
-                <div class="guide-row"><span class="guide-badge" style="background:#10b981;color:#fff;">🟢 Lagad</span><div class="guide-desc">Bekräftad och åtgärdad läcka. Fortsatt tyst historik.</div></div>
-                <div class="guide-row"><span class="guide-badge" style="background:#38bdf8;color:#fff;">🔵 Störning</span><div class="guide-desc">Ej klassbar som läcka — industriprocess, pump eller fjärrvärma.</div></div>
-                <div class="guide-row"><span class="guide-badge" style="background:#f59e0b;color:#fff;">🔥 Värmepump</span><div class="guide-desc">Säsongsmönster: högt brus vinter, lågt sommar. Inget läckage.</div></div>
-            </div>
-            <div class="guide-section">
-                <h4>Datakvalitet</h4>
-                <div class="guide-row"><span class="conf-badge conf-high" style="margin-left:0;">HÖG</span><div class="guide-desc">4+ datafiler — trygg klassificering med trend.</div></div>
-                <div class="guide-row"><span class="conf-badge conf-medium" style="margin-left:0;">MEDEL</span><div class="guide-desc">2–3 datafiler — tillräckligt för att se riktning.</div></div>
-                <div class="guide-row"><span class="conf-badge conf-low" style="margin-left:0;">LÅG</span><div class="guide-desc">1 fil — ögonblicksbild endast, bekräfta manuellt.</div></div>
-            </div>
-            <div class="guide-section">
-                <h4>Fältmemos</h4>
-                <div class="guide-row" style="border:none;"><div class="guide-desc">Klicka på ett memo i tabellen för att redigera det. Klicka på <em>+ Lägg till memo</em> för att skapa ett nytt. Sparas automatiskt i webbläsaren.</div></div>
-            </div>
-            <div class="guide-section">
-                <h4>Återgång till normal vs. bestående höjning</h4>
-                <div class="guide-row"><span class="guide-badge" style="background:#27272a;color:#bbb;">⚪ Tystnat</span><div class="guide-desc">Mätaren gick upp men de <strong>senaste mätningarna</strong> ligger tillbaka nära sin egen normalnivå → klassas som normal/lagad, <strong>ingen varning</strong>.</div></div>
-                <div class="guide-row"><span class="guide-badge" style="background:#f87171;color:#000;">🔴 Stannar kvar</span><div class="guide-desc">Mätaren gick upp och <strong>stannar</strong> på en ny, högre nivå (sjunker inte tillbaka) → klassas som misstänkt/aktiv läcka, <strong>varnar</strong>.</div></div>
-                <div class="guide-row"><span class="guide-badge" style="background:#38bdf8;color:#fff;">🔵 Alltid på</span><div class="guide-desc">Stabilt, måttligt brus i <strong>hela</strong> historiken (aldrig haft en tyst period) → troligen värmepanna/cirkulationspump, ej läckage.</div></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="graph-modal" id="graphModal">
-        <div class="graph-modal-content">
-            <button class="close-modal-btn" id="closeModalBtn">&times;</button>
-            <h3 id="modalTitle" style="margin-bottom:12px;font-size:18px;font-weight:800;">Brustrend över tid</h3>
-            <div style="width:100%;height:300px;position:relative;">
-                <canvas id="trendChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // PDF.js worker
-        if (window['pdfjs-dist/build/pdf']) {
-            window['pdfjs-dist/build/pdf'].GlobalWorkerOptions.workerSrc =
-                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        }
-
-        // ── Global state ──────────────────────────────────────────────────────────
-        let uploadedFiles    = [];
-        let currentResults   = [];
-        let ignoredIds       = new Set();
-        let interestingIds   = new Set();
-        let userCategories   = new Map();
-        let activeChartInstance = null;
-        let currentSort      = { column: 'change', direction: 'desc' };
-        let currentAreaFilter     = 'all';
-        let currentCategoryFilter = 'all';
-        let geocache        = new Map();
-        let leafletMap      = null;
-        let mapMarkers      = [];
-        let userMemos       = new Map();
-        let showStarredOnly = false;
-        let parseWarnings   = new Map();
-
-        const BOTTOM_PANEL_CATS = new Set(['storing', 'heatpump', 'leak_code', 'lagad']);
-        const HIDDEN_CATS       = new Set(['normal']);
-
-        // ── Kunskapsbas (merged) ──────────────────────────────────────────────────
-        const fieldKnowledgeBase = {
-            "GRANBACKEN 2":        { cat: "aktiv_lacka", memo: "🚨 FLÖDESEXPLOSION! Bruset sköt upp spikrakt till 73 dB i juni. Åk ut direkt!" },
-            "HÖGBRINKSVÄGEN":      { cat: "storing",     memo: "🔊 Industri/Pumpstörning: Hoppar extremt (upp till 275 dB)." },
-            "ÖDLEVÄGEN 15A":       { cat: "aktiv_lacka", memo: "⚠️ Läcka på servis! Gemensam servis 11/13/15A/15B. 15A varnar mest." },
-            "KASTANJEVÄGEN 14":    { cat: "leak_code",   memo: "📋 Kunds sida (LEAK). Skickat till Jimmy. Kund ej informerad." },
-            "LAXVÄGEN 8":          { cat: "leak_code",   memo: "📋 Kunds sida (LEAK). Skickat till Jimmy." },
-            "LINDHOVSVÄGEN 3":     { cat: "leak_code",   memo: "📋 Kunds sida (LEAK) - Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "LINDHOVSVÄGEN 5":     { cat: "leak_code",   memo: "📋 Kunds sida (LEAK) - Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "LINDHOVSVÄGEN 7":     { cat: "leak_code",   memo: "📋 Kunds sida (LEAK) - Gemensam servis 3/5/7. Skickat till Jimmy." },
-            "MALMSJÖVÄGEN 25":     { cat: "lagad",      memo: "🟢 LAGAD - Kunds läcka åtgärdad, kund informerad." },
-            "VATTRAVÄGEN 8":       { cat: "leak_code",   memo: "✔ Kunds sida (LEAK) - KUND INFORMERAD." },
-            "NIBBLEBACKEN 40":     { cat: "extreme",     memo: "🚨 KONSTATERAD LÄCKA PÅ VÅR SIDA (Kommunens ledning)." },
-            "BJÖRKVÄNDAN 7":       { cat: "normal",      memo: "👌 Provstängd & läcklyssnad: Inga servisläckor." },
-            "UGGLEVÄGEN 24":       { cat: "normal",      memo: "👌 Provstängd & läcklyssnad: Inga servisläckor." },
-            "UGGLEVÄGEN 169":      { cat: "normal",      memo: "👌 Provstängd & läcklyssnad: Inga servisläckor." },
-            "UDDVÄGEN 5":          { cat: "storing",     memo: "🔍 Ljud hörs men ingenting på servisen vid provstängning." },
-            "FALKVÄGEN 3":         { cat: "storing",     memo: "🔊 Inga läckljud. Värmepannan stör mätaren konstant." },
-            "ÅSVÄGEN 7":           { cat: "normal",      memo: "👌 Provstängd & läcklyssnad: Ok." },
-            "VIAD 1":              { cat: "leak_code",   memo: "📞 Efter mätare: Kontakta fastighetsägare/förening." },
-            "NORRBYVRETSVÄGEN 18": { cat: "leak_code",   memo: "📞 Efter mätare: Kontakta förening?" },
-            "DALKÄRRSVÄGEN 11":    { cat: "lagad",       memo: "🟢 LAGAD - Läcka på kundens servisledning." },
-            "ENGWALLS VÄG 13":     { cat: "lagad",       memo: "🟢 LAGAD - Konstaterad läcka på SV till kund." },
-            "BROÄNGSVÄGEN 22":     { cat: "lagad",       memo: "🟢 LAGAD - Historisk läcka åtgärdad." },
-            "STORVRETSVÄGEN 97":   { cat: "lagad",       memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
-            "LÖVHOLMENVÄGEN 15":   { cat: "lagad",       memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." },
-            "JAKTVÄGEN 2":         { cat: "lagad",       memo: "🟢 LAGAD - Huvudledningsläcka åtgärdad." }
-        };
-
-        const categories = {
-            extreme:     { label: 'Akut Huvudledning',         bg: '#dc2626', color: '#fff', symbol: '🚨' },
-            aktiv_lacka: { label: 'Aktiv läcka (Servis)',       bg: '#f87171', color: '#000', symbol: '🔴' },
-            misstankt:   { label: 'Misstänkt / Läcklyssna',    bg: '#f97316', color: '#fff', symbol: '🟠' },
-            ny_matare:   { label: 'Säsongsanalys krävs',        bg: '#c084fc', color: '#fff', symbol: '🟣' },
-            leak_code:   { label: 'Efter mätare (LEAK)',        bg: '#eab308', color: '#000', symbol: '🟡' },
-            storing:     { label: 'Störning / Pump',            bg: '#38bdf8', color: '#fff', symbol: '🔵' },
-            heatpump:    { label: 'Värmepump (säsong)',         bg: '#f59e0b', color: '#fff', symbol: '🔥' },
-            lagad:       { label: 'Markerad lagad',             bg: '#10b981', color: '#fff', symbol: '🟢' },
-            normal:      { label: 'Normal bakgrund',            bg: '#27272a', color: '#bbb', symbol: '⚪' }
-        };
-
-        // ── DOM accordion ─────────────────────────────────────────────────────────
-        document.getElementById('accordionTrigger').onclick = () => {
-            document.getElementById('fileGridContainer').classList.toggle('open');
-            document.getElementById('arrowIndicator').innerText =
-                document.getElementById('fileGridContainer').classList.contains('open') ? '▾' : '▸';
-        };
-        document.getElementById('noiseAccordionTrigger').onclick = () => {
-            document.getElementById('noiseGridContainer').classList.toggle('open');
-            document.getElementById('noiseArrowIndicator').innerText =
-                document.getElementById('noiseGridContainer').classList.contains('open') ? '▾' : '▸';
-        };
-
-        // ── Hjälpfunktioner ───────────────────────────────────────────────────────
-        function extractDateFromFilename(name) {
-            const m = name.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
-            return m ? new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])) : null;
-        }
-
-        function parseSwedishDate(day, monthStr, year) {
-            const map = {
-                jan:0, feb:1, mar:2, apr:3, maj:4, jun:5, jul:6, aug:7, sep:8, okt:9, nov:10, dec:11,
-                // Full names + common OCR variants
-                januari:0, februari:1, mars:2, april:3, juni:5, juli:6,
-                augusti:7, september:8, oktober:9, november:10, december:11
-            };
-            const key = monthStr.toLowerCase().replace(/[^a-zåäö]/g, '');
-            const mo = map[key] !== undefined ? map[key] : map[key.slice(0,3)];
-            return mo !== undefined ? new Date(parseInt(year), mo, parseInt(day)) : null;
-        }
-
-        function formatShortDate(d) { return d.toISOString().slice(0,10); }
-
-        function cleanStreetName(addr) {
-            if (!addr) return 'OKÄND GATA';
-            return addr.split(/\d+/)[0].trim().toUpperCase();
-        }
-
-        function identifyArea(addrStr, rawArea) {
-            const t = (addrStr + ' ' + rawArea).toUpperCase();
-            if (t.includes('TULLINGE')) return 'TULLINGE';
-            if (t.includes('TUMBA'))    return 'TUMBA';
-            if (t.includes('NORSBORG')) return 'NORSBORG';
-            if (t.includes('FITTJA'))   return 'FITTJA';
-            if (t.includes('UTTRAN'))   return 'UTTRAN';
-            if (t.includes('GRÖDINGE')) return 'GRÖDINGE';
-            return 'ÖVRIGT';
-        }
-
-        function extractCleanAddressOnly(fullAddr) {
-            if (!fullAddr) return '';
-            return fullAddr
-                .replace(/\b(TUMBA|TULLINGE|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\d{3}\s?\d{2})\b/gi, '')
-                .trim().replace(/\s+/g, ' ').toUpperCase();
-        }
-
-        function avg(readings) {
-            return readings.reduce((s, h) => s + h.value, 0) / readings.length;
-        }
-
-        function median(vals) {
-            const s = [...vals].sort((a, b) => a - b);
-            const mid = Math.floor(s.length / 2);
-            return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
-        }
-
-        // Robust baseline: medianen av den tystare hälften av historiken.
-        // Resistent mot en enstaka spik (läcka/störning) som annars skulle dra upp ett vanligt snitt.
-        function robustBaseline(history) {
-            const vals = history.map(h => h.value).sort((a, b) => a - b);
-            const quietHalf = vals.slice(0, Math.max(1, Math.ceil(vals.length / 2)));
-            return median(quietHalf);
-        }
-
-        // ── Excel-parser ──────────────────────────────────────────────────────────
-        function parseExcelFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    try {
-                        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                        const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
-
-                        // Kamstrup files often have a title row before the real header row.
-                        // Scan first 10 rows to find the actual header row (contains 'adress' AND 'serienummer').
-                        let headerIdx = -1;
-                        for (let i = 0; i < Math.min(10, rawRows.length); i++) {
-                            const lower = rawRows[i].map(c => c.toString().toLowerCase());
-                            if (lower.some(c => c.includes('adress')) && lower.some(c => c.includes('serienummer'))) {
-                                headerIdx = i;
-                                break;
-                            }
-                        }
-
-                        // Rapportens EGEN genereringstidsstämpel (t.ex. cell N1: "2026-07-02T07:28:04+02:00")
-                        // finns i title-raderna FÖRE headern. Detta är den enda tillförlitliga "filens datum" —
-                        // till skillnad från en enskild mätares "Senaste avläsning", som kan råka vara samma
-                        // datum i flera olika dagsexporter om just den mätaren inte rapporterat något nytt.
-                        let reportGeneratedDate = null;
-                        for (let i = 0; i < Math.min(6, rawRows.length) && !reportGeneratedDate; i++) {
-                            for (const cell of rawRows[i]) {
-                                const s = cell.toString();
-                                const m = s.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-                                if (m) { reportGeneratedDate = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]); break; }
-                            }
-                        }
-
-                        // Build column-index lookup from the detected header row
-                        let colIdx = null;
-                        if (headerIdx >= 0) {
-                            const hdr = rawRows[headerIdx].map(c => c.toString().toLowerCase());
-                            const fi = key => hdr.findIndex(h => h.includes(key));
-                            colIdx = {
-                                id:      fi('serienummer') >= 0 ? fi('serienummer') : fi('mätarnummer'),
-                                addr:    fi('adress') >= 0 ? fi('adress') : fi('mätarplats'),
-                                val:     fi('senaste värde') >= 0 ? fi('senaste värde') : fi('brus'),
-                                avg:     fi('genomsnittsvärde') >= 0 ? fi('genomsnittsvärde') : fi('medelvärde'),
-                                maxV:    fi('maxvärde') >= 0 ? fi('maxvärde') : fi('max'),
-                                info:    fi('aktiva händelser') >= 0 ? fi('aktiva händelser') : fi('infokod'),
-                                area:    fi('område') >= 0 ? fi('område') : fi('ort'),
-                                dateCol: fi('senaste avläsning')
-                            };
-                        }
-
-                        // Convert raw rows to named-column objects (fallback for normal files)
-                        let rows;
-                        if (colIdx && headerIdx >= 0) {
-                            rows = rawRows.slice(headerIdx + 1).map(r => ({
-                                '__Serienummer':       r[colIdx.id]   || '',
-                                '__Adress':            r[colIdx.addr] || '',
-                                '__SenasteVarde':      r[colIdx.val]  || '',
-                                '__Genomsnittsvarde':  r[colIdx.avg]  || '',
-                                '__Maxvarde':          r[colIdx.maxV] || '',
-                                '__Infokod':           r[colIdx.info] || '',
-                                '__Omrade':            r[colIdx.area] || '',
-                                '__Lasning':           colIdx.dateCol >= 0 ? (r[colIdx.dateCol] || '') : ''
-                            }));
-                        } else {
-                            rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
-                        }
-
-                        const meters = [];
-                        let fileReadingDate = null;
-                        let skipped = 0;
-                        rows.forEach(row => {
-                            const id      = row['__Serienummer'] || row['Serienummer'] || row['Mätarnummer'] || row['Mätare ID'] || row['id'] || row['Device ID'];
-                            const address = row['__Adress'] || row['Adress'] || row['Plats'] || row['address'] || row['Mätarplats'];
-                            // E = Senaste värde (aktuellt ALD-brus)
-                            const rawE    = row['__SenasteVarde'] || row['Senaste värde'] || row['Brus'] || row['value'] || '0';
-                            const value   = parseInt(rawE.toString().replace(/[^0-9]/g, '')) || 0;
-                            // F = Genomsnittsvärde (Kamstrups historiska snitt — nyckelkolumn!)
-                            const rawF    = row['__Genomsnittsvarde'] || row['Genomsnittsvärde'] || row['Medelvärde'] || '0';
-                            const avgVal  = parseInt(rawF.toString().replace(/[^0-9]/g, '')) || 0;
-                            // G = Maxvärde
-                            const rawG    = row['__Maxvarde'] || row['Maxvärde'] || row['Max'] || '0';
-                            const maxVal  = parseInt(rawG.toString().replace(/[^0-9]/g, '')) || value;
-                            // H = Infokod,  I = Aktiva händelser
-                            const infokod = [row['__Infokod'], row['Infokod'], row['Aktiva händelser'], row['Felkod'], row['Status']].filter(Boolean).join(' ').trim();
-                            const rawArea = row['__Omrade'] || row['Område'] || row['Ort'] || '';
-                            // D = Senaste avläsning — extrahera datum
-                            const readingDateStr = row['__Lasning'] || row['Senaste avläsning'] || '';
-                            if (!fileReadingDate && readingDateStr) {
-                                const m = readingDateStr.toString().match(/(\d{4})-(\d{2})-(\d{2})/);
-                                if (m) fileReadingDate = new Date(+m[1], +m[2]-1, +m[3]);
-                            }
-                            if (id) {
-                                meters.push({
-                                    id: id.toString().trim(),
-                                    adress: address ? address.toString().trim() : 'Saknar adress',
-                                    serienummer: id.toString().trim(),
-                                    value,
-                                    avgVal,
-                                    maxVal,
-                                    infokod,
-                                    area: identifyArea(address ? address.toString() : '', rawArea.toString()),
-                                    street: cleanStreetName(address)
-                                });
-                            }
-                        });
-                        resolve({ meters, fileReadingDate, reportGeneratedDate });
-                    } catch(err) { reject(err); }
-                };
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        // ── PDF-parser (Kamstrup "Filtrerade mätare") ─────────────────────────────
-        function parsePDFFile(file, onProgress) {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    const pdfjsLib = window['pdfjs-dist/build/pdf'];
-                    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-                    const meters = [];
-                    let reportDate = null;
-
-                    for (let pg = 1; pg <= pdf.numPages; pg++) {
-                        if (onProgress) onProgress(pg, pdf.numPages);
-                        const tc = await (await pdf.getPage(pg)).getTextContent();
-                        const items = tc.items.filter(i => i.str.trim()).map(i => ({ str: i.str.trim(), x: i.transform[4], y: i.transform[5] }));
-                        const rows = groupPDFRows(items, 4);
-                        let pendingCity = null;
-
-                        for (const row of rows) {
-                            const joined = row.map(i => i.str).join(' ');
-                            if (!reportDate) {
-                                const dm = joined.match(/Rapport utfärdad den (\d{1,2})\s+(\w+)\s+(\d{4})/i);
-                                if (dm) reportDate = parseSwedishDate(dm[1], dm[2], dm[3]);
-                                // Also try ISO date format in headers
-                                if (!reportDate) {
-                                    const iso = joined.match(/(\d{4})-(\d{2})-(\d{2})/);
-                                    if (iso) reportDate = new Date(+iso[1], +iso[2]-1, +iso[3]);
-                                }
-                            }
-                            if (row.some(i => i.str === 'Serienummer' || i.str === 'Adress')) { pendingCity = null; continue; }
-                            if (/Rapport utfärdad|Sida \d+|Filtrerade mätare/i.test(joined) && row.length <= 5) { pendingCity = null; continue; }
-
-                            const snItem = row.find(i => /^\d{7,10}$/.test(i.str));
-                            if (snItem) {
-                                const m = buildMeterFromPDFRow(row, snItem, pendingCity);
-                                if (m) meters.push(m);
-                                pendingCity = null;
-                            } else {
-                                const hasCityOrPostal = /(TULLINGE|TUMBA|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|\b\d{5}\b)/i.test(joined);
-                                if (hasCityOrPostal && !/\d{4}-\d{2}-\d{2}/.test(joined) && row.filter(i => i.str.length > 2).length <= 3) {
-                                    pendingCity = row.filter(i => /[A-ZÅÄÖ]/i.test(i.str)).map(i => i.str).join(' ');
-                                } else { pendingCity = null; }
-                            }
-                        }
-                    }
-                    resolve({ meters, reportDate });
-                } catch(err) { reject(err); }
-            });
-        }
-
-        function groupPDFRows(items, tol) {
-            if (!items.length) return [];
-            items.sort((a, b) => b.y - a.y || a.x - b.x);
-            const rows = [];
-            let cur = [items[0]], curY = items[0].y;
-            for (let i = 1; i < items.length; i++) {
-                if (Math.abs(items[i].y - curY) <= tol) { cur.push(items[i]); }
-                else { rows.push([...cur].sort((a, b) => a.x - b.x)); cur = [items[i]]; curY = items[i].y; }
-            }
-            if (cur.length) rows.push([...cur].sort((a, b) => a.x - b.x));
-            return rows;
-        }
-
-        function buildMeterFromPDFRow(row, snItem, pendingCity) {
-            const addrItems = row.filter(i => i.x < snItem.x - 5 && i.x > 20 && /[A-ZÅÄÖ\d]/i.test(i.str));
-            let adress = addrItems.map(i => i.str).join(' ').trim();
-            if (pendingCity) adress = adress ? adress + ' ' + pendingCity : pendingCity;
-            if (!adress) return null;
-            const afterSN = row.filter(i => i.x > snItem.x + 10).sort((a, b) => a.x - b.x);
-            let senasteVarde = 0, infokod = '', dateFound = false, numCount = 0;
-            for (const item of afterSN) {
-                const t = item.str;
-                if (/^\d{4}-\d{2}-\d{2}/.test(t)) { dateFound = true; continue; }
-                if (/^\d{1,2}:\d{2}$/.test(t)) continue;
-                if (dateFound) {
-                    if (/^\d+$/.test(t)) { numCount++; if (numCount === 1) senasteVarde = parseInt(t); }
-                    else if (t.length > 1) { infokod = infokod ? infokod + ' ' + t : t; }
-                }
-            }
-            return { id: snItem.str, adress, serienummer: snItem.str, value: senasteVarde, infokod: infokod.trim(), area: identifyArea(adress, ''), street: cleanStreetName(adress) };
-        }
-
-        // ── Värmepumpsdetektor ────────────────────────────────────────────────────
-        // Detekterar: högt brus höst/vinter → lågt vår/sommar → högt igen nästa höst
-        function isHeatpump(history) {
-            if (!history || history.length < 3) return false;
-
-            // Bygg månadsmedelvärden
-            const byMonth = {};
-            for (const h of history) {
-                const mo = new Date(h.date || h.dateStr).getMonth(); // 0-11
-                if (!byMonth[mo]) byMonth[mo] = [];
-                byMonth[mo].push(h.value);
-            }
-            const mAvg = mo => byMonth[mo] ? byMonth[mo].reduce((a,b)=>a+b,0)/byMonth[mo].length : null;
-
-            // Kalla månader = okt-apr (9,10,11,0,1,2,3), Varma = maj-sep (4,5,6,7,8)
-            const COLD = [9,10,11,0,1,2,3], WARM = [4,5,6,7,8];
-            const coldVals = COLD.map(mAvg).filter(v=>v!==null);
-            const warmVals = WARM.map(mAvg).filter(v=>v!==null);
-
-            if (coldVals.length === 0) return false;
-
-            // Mönster 1: Vi har BOTH varm och kall säsong — jämför direkt
-            if (warmVals.length >= 1) {
-                const coldA = coldVals.reduce((a,b)=>a+b,0)/coldVals.length;
-                const warmA = warmVals.reduce((a,b)=>a+b,0)/warmVals.length;
-                // Vinter minst 1.5x sommar, sommar lugn (<45), vinter förhöjt (>12)
-                return warmA < 45 && coldA > warmA * 1.5 && coldA > 12;
-            }
-
-            // Mönster 2: Bara vinterdata — kolla om det finns en tydlig säsongsstegring/nedgång
-            // Sortera historien kronologiskt och leta efter V-kurva (höst→vinter→vår) eller stigande höst
-            if (history.length >= 4) {
-                const sorted = [...history].sort((a,b)=>a.date-b.date);
-                const chronoVals = sorted.map(h=>h.value);
-                // Kolla om sista 2 mätningarna stiger relativt de 2 första (höst-uppgång)
-                const firstTwo = chronoVals.slice(0,2);
-                const lastTwo  = chronoVals.slice(-2);
-                const firstA   = firstTwo.reduce((a,b)=>a+b,0)/2;
-                const lastA    = lastTwo.reduce((a,b)=>a+b,0)/2;
-                // Värmepumpar skapar sällan brus över ~40 dB — högre värden talar för en läcka, inte säsong
-                const allMod   = chronoVals.every(v => v < 40);
-                // Kräver GRADVIS stegring — en enskild abrupt språng mellan två mätningar är
-                // detectNewLevels jobb att hitta (sannolik läcka), inte ett säsongsmönster
-                const noAbruptJump = chronoVals.every((v,i) => i === 0 || v <= chronoVals[i-1] * 1.8 + 5);
-                // Stiger gradvis från tidig höst mot vinter och värdena är måttliga → trolig värmepump
-                if (allMod && noAbruptJump && lastA > firstA * 1.3 && lastA > 15 && lastA < 40) return true;
-            }
-
-            return false;
-        }
-
-        // ── Ny-nivå-detektor ─────────────────────────────────────────────────────
-        // Hittar tydlig bryttpunkt: var tyst länge → plötslig extrem ökning → STANNAR på ny nivå
-        function detectNewLevel(history) {
-            if (!history || history.length < 4) return null;
-            // Kräver minst 2 distinkta datum — annars kan vi inte fastställa riktning
-            const distinctDates = new Set(history.map(h => h.dateStr)).size;
-            if (distinctDates < 2) return null;
-            const sorted = [...history].sort((a, b) => a.date - b.date);
-            const vals   = sorted.map(h => h.value);
-
-            // Prova varje bryttpunkt (minst 2 på varje sida)
-            for (let split = 2; split <= vals.length - 2; split++) {
-                const before = vals.slice(0, split);
-                const after  = vals.slice(split);
-                const avgB   = before.reduce((a,b)=>a+b,0) / before.length;
-                const avgA   = after.reduce((a,b)=>a+b,0) / after.length;
-                if (avgB <= 0 || avgA <= avgB) continue;
-
-                const jumpRatio   = avgA / avgB;
-                // Före-perioden var stabil och låg
-                const beforeStable = before.every(v => v <= Math.max(avgB * 1.6, avgB + 8));
-                // Efter-perioden håller sig kvar på den nya nivån (inget stor dipp tillbaka)
-                const afterStable  = after.every(v => v >= avgA * 0.55);
-                // Senaste mätningarna (svansen) jämförs mot URSPRUNGLIGA baseline (avgB), inte avgA.
-                // Detta är skillnaden mellan "gick upp och STANNAR" och "gick upp och kom TILLBAKA":
-                // om svansen har sjunkit ner mot ursprungsnivån igen ska det INTE räknas som ny nivå.
-                const tail = after.slice(-Math.min(3, after.length));
-                const tailAvg = tail.reduce((a,b)=>a+b,0) / tail.length;
-                const stillElevated = tailAvg >= avgB * 1.8;
-
-                if (jumpRatio >= 2.5 && avgA >= 15 && beforeStable && afterStable && stillElevated) {
-                    return {
-                        date:       sorted[split].dateStr,
-                        avgBefore:  Math.round(avgB),
-                        avgAfter:   Math.round(avgA),
-                        jumpRatio:  Math.round(jumpRatio * 10) / 10,
-                        splitIndex: split
-                    };
-                }
-            }
-            return null;
-        }
-
-        // ── Smart-classify ────────────────────────────────────────────────────────
-        function smartClassify(meter) {
-            const R = (cat, reason) => ({ cat, reason });
-            const cleanAddr = extractCleanAddressOnly(meter.adress);
-            // Kunskapsbasen overridar KUN bekräftade resolvedtillstånd (lagad/normal).
-            // Övriga kategorier låter sensordatan bestämma — memo visas ändå.
-            const kb = fieldKnowledgeBase[cleanAddr];
-            if (kb && (kb.cat === 'lagad' || kb.cat === 'normal')) return R(kb.cat, 'knowledge_base');
-
-            const info = (meter.infokod || '').toLowerCase();
-
-            // ny_matare: no historical average means we cannot classify — flag for manual review
-            const lastHist = meter.history?.length ? meter.history[meter.history.length - 1] : null;
-            if (!lastHist || !(lastHist.avgVal > 0)) {
-                const v = lastHist ? lastHist.value : (meter.value || 0);
-                if (info.includes('burst'))  return R('extreme',   'burst');
-                if (info.includes('leak') || info.includes('läcka') || info === 'ld') return R('leak_code', 'leak_alarm');
-                if (v >= 40) return R('aktiv_lacka', 'no_avg_high');
-                if (v >= 18) return R('ny_matare',   'no_avg');
-                return R('normal', 'no_avg_low');
-            }
-            if (info.includes('burst') || info.includes('rörbrott')) return R('extreme',   'burst');
-            if (info.includes('dry'))                                  return R('normal',    'dry');
-            if (info.includes('reverse'))                              return R('storing',   'reverse');
-            if (info.includes('leak') || info.includes('läcka') || info.includes('läckage') || info.includes('ld ') || info === 'ld') return R('leak_code', 'leak_alarm');
-            // Värmepanna / cirkulationspump — om fältet uttryckligen flaggar mekanisk källa
-            const mechKeyword = info.includes('panna') || info.includes('vvc') || info.includes('cirkulation') || info.includes('värmesystem');
-            if (mechKeyword) return R('storing', 'varmepanna_kod');
-
-            const hist = meter.history;
-            if (!hist || hist.length < 2) {
-                const h    = hist?.length ? hist[hist.length - 1] : { value: 0, avgVal: 0, maxVal: 0 };
-                const v    = h.value;
-                const aVal = h.avgVal || 0;
-                const mVal = h.maxVal || v;
-                // Kamstrup ratio (E/F): hur mycket aktuellt brus överstiger historiskt snitt
-                // Trösklar matchar manuell analys: >1000%=AKUT, 400-1000%=MISSTÄNKT, 100-400%=FÖLJ UPP
-                if (aVal > 0) {
-                    const ratio    = v / aVal;
-                    const isAtMax  = v >= mVal * 0.9;
-                    if (ratio >= 11 && isAtMax) return R('aktiv_lacka', 'high_ratio_new_peak');  // >1000%
-                    if (ratio >= 11)             return R('aktiv_lacka', 'high_ratio');
-                    if (ratio >= 4  && isAtMax)  return R('misstankt',   'elevated_ratio_new_peak'); // >300%
-                    if (ratio >= 4)              return R('misstankt',   'elevated_ratio');
-                    if (ratio >= 2)              return R('ny_matare',   'single_reading');          // >100%
-                }
-                if (v >= 25) return R('ny_matare', 'single_reading');
-                return R('normal', 'single_reading');
-            }
-
-            const history = [...hist].sort((a, b) => a.date - b.date);
-            const n = history.length;
-            const currentNoise  = history[n - 1].value;
-            const currentAvgVal = history[n - 1].avgVal || 0;
-            const currentRatio  = currentAvgVal > 0 ? currentNoise / currentAvgVal : 0;
-            const maxHistorical = Math.max(...history.map(h => Math.max(h.value, h.maxVal || 0)));
-
-            const WINTER = new Set([10, 11, 0, 1, 2]);
-            const SUMMER = new Set([4, 5, 6, 7, 8]);
-            const winterR = history.filter(h => WINTER.has(new Date(h.date).getMonth()));
-            const summerR = history.filter(h => SUMMER.has(new Date(h.date).getMonth()));
-            const winterAvg = winterR.length >= 2 ? avg(winterR) : null;
-            const summerAvg = summerR.length >= 2 ? avg(summerR) : null;
-
-            const last3 = history.slice(-3);
-            const isStableHigh = last3.length === 3 && (() => {
-                const vals = last3.map(h => h.value);
-                const mean = vals.reduce((a, b) => a + b, 0) / 3;
-                const maxDev = Math.max(...vals.map(v => Math.abs(v - mean)));
-                return mean > 18 && (mean > 0 ? maxDev / mean : 1) < 0.30;
-            })();
-
-            // Ratio-override: >1000%=AKUT alltid, >300%=MISSTÄNKT om inte värmepump
-            if (currentRatio >= 11) return R('aktiv_lacka',  'high_ratio');
-            if (currentRatio >= 4 && !isHeatpump(history)) return R('misstankt', 'elevated_ratio');
-
-            const baseline = robustBaseline(history);
-
-            if (hist.length < 5) {
-                const alwaysHigh = history.every(h => h.value >= 18);
-                // Om senaste mätningen ligger nära den lägsta uppmätta nivån men historiken
-                // innehåller ett betydligt högre värde → troligen redan tillbaka till normalt.
-                const settledLow = currentNoise <= Math.max(baseline * 1.5, baseline + 8, 18) && maxHistorical > currentNoise * 1.8;
-                if (settledLow) return R('normal', 'returned_short');
-                // Kamstrups egen E/F-kvot väger tyngre än ett absolut dB-tal vid kort historik.
-                // Annars flaggas naturligt "höga men normala" installationer (kommersiella
-                // fastigheter, permanent bullriga ledningar) som aktiva läckor bara för att de
-                // råkar ligga över en fast tröskel, trots att de inte avviker från sin egen historik.
-                if (currentAvgVal > 0 && currentNoise / currentAvgVal < 1.6) {
-                    return alwaysHigh ? R('storing', 'proportional_high') : R('normal', 'proportional');
-                }
-                if (currentNoise >= 28) return alwaysHigh ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
-                if (currentNoise >= 18) return R('ny_matare', 'elevated');
-                return R('normal', 'ok');
-            }
-
-            // 1. Återgång till normal — kräver att det FUNNITS en tydlig topp (annars är det
-            // bara stabilt brus hela tiden, se steg 6.5) OCH att senaste 2 mätningarna ligger
-            // tillbaka nära mätarens egen (robusta) baseline. Detta ska INTE varna,
-            // oavsett hur hög den tillfälliga toppen var.
-            const quietThreshold = Math.max(baseline * 1.5, baseline + 8, 18);
-            const hadRealPeak = maxHistorical >= baseline * 1.8 && maxHistorical >= baseline + 10;
-            const tailReadings = history.slice(-Math.min(2, history.length));
-            if (hadRealPeak && tailReadings.every(h => h.value <= quietThreshold)) {
-                return maxHistorical >= Math.max(baseline * 2.5, 50) ? R('lagad', 'repaired') : R('normal', 'ok');
-            }
-
-            // 2. Värmepump (säsong) — separat kategori
-            if (isHeatpump(history)) return R('heatpump', 'heat_pump_seasonal');
-
-            // 3. Värmepump (säsongsmedelvärden, finare detektion)
-            if (winterAvg !== null && summerAvg !== null) {
-                const seasonRatio = summerAvg > 0 ? winterAvg / summerAvg : 0;
-                // Vinter minst 1.8x sommar, sommar lugn, vinter förhöjt — oavsett nivå
-                if (summerAvg < 30 && seasonRatio > 1.8 && winterAvg > 15) return R('heatpump', 'heat_pump');
-                // Stabilt konstant (ej säsong) → störning
-                if (seasonRatio > 0.7 && seasonRatio < 1.4 && isStableHigh) return R('storing', 'heat_pump_constant');
-            }
-
-            // Beräknas tidigt så att en BEKRÄFTAD ny nivå (nyligen uppkommen, bestående höjning)
-            // alltid går före de mer generella "det här är nog bara bakgrundsstörning"-heuristikerna
-            // nedan (4/5). Annars kan en riktig läcka som råkar ligga i en fjärrvärme-/industrizon
-            // maskeras som störning bara för att den hunnit bli "stabil" efter hoppet.
-            const nl = detectNewLevel(history);
-
-            // 4. Fjärrvärmestörning
-            const hasUncertainCode = info.includes('ej fastställt') || info.includes('annat brus');
-            if (hasUncertainCode && isStableHigh && !nl) return R('storing', 'district_heating');
-
-            // 5. Industridetektering
-            if (meter.area === 'TULLINGE' && isStableHigh && maxHistorical > 80 && !nl) return R('storing', 'industrial');
-
-            // 6. Ny-nivå-detektor: tyst → extrem ökning → STANNAR på ny nivå
-            if (nl) {
-                const r = nl.jumpRatio;
-                if (r >= 8)  return R('aktiv_lacka', `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
-                if (r >= 3)  return R('misstankt',   `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
-                return R('ny_matare', `new_level:${nl.date}:${nl.avgBefore}:${nl.avgAfter}:${nl.jumpRatio}`);
-            }
-
-            // 6.5 Stabilt bakgrundsbrus i HELA historiken (aldrig tyst, ingen ny nivå hittad)
-            // → mätaren har troligen aldrig varit "tyst", vilket talar för en mekanisk källa
-            // (cirkulationspump, värmepanna, ventil) snarare än en läcka som uppstått och stannat.
-            const allVals  = history.map(h => h.value);
-            const meanAll  = allVals.reduce((a,b)=>a+b,0) / allVals.length;
-            const varAll   = allVals.reduce((a,b)=>a+(b-meanAll)**2,0) / allVals.length;
-            const cvAll    = meanAll > 0 ? Math.sqrt(varAll) / meanAll : 1;
-            const neverQuiet = allVals.every(v => v >= 14);
-            if (meanAll >= 16 && meanAll <= 55 && cvAll < 0.28 && neverQuiet) {
-                return R('storing', mechKeyword ? 'varmepanna' : 'stable_background');
-            }
-
-            // 7. Konstant högt = störning, inte ny läcka — men först: är det proportionerligt
-            // mot mätarens EGEN historik (Kamstrups E/F)? Annars fastnar naturligt bullriga men
-            // helt normala mätare (t.ex. kommersiella fastigheter) i bevakningslistan permanent.
-            if (currentAvgVal > 0 && currentRatio < 1.6) return R('normal', 'proportional');
-            if (currentNoise >= 28) {
-                return history.every(h => h.value >= 18) ? R('storing', 'always_high') : R('aktiv_lacka', 'elevated');
-            }
-            if (currentNoise >= 16) return R('ny_matare', 'elevated');
-            return R('normal', 'ok');
-        }
-
-        // ── Analys-runner ─────────────────────────────────────────────────────────
-        function runAnalysis() {
-            if (!uploadedFiles.length) return;
-            uploadedFiles.sort((a, b) => a.date - b.date);
-            currentResults = [];
-            const metersMap = new Map();
-
-            // Check for date collisions — if all files share the same date, trend analysis is unreliable
-            const validFiles = uploadedFiles.filter(f => f.meters.length > 0);
-            const uniqueDates = new Set(validFiles.map(f => formatShortDate(f.date)));
-            window._allSameDate = uniqueDates.size <= 1 && validFiles.length > 1;
-            window._singleDate  = validFiles.length === 1;
-            window._uniqueDateCount = uniqueDates.size;
-
-            uploadedFiles.forEach(file => {
-                const dateStr = formatShortDate(file.date);
-                file.meters.forEach(m => {
-                    if (!metersMap.has(m.id)) {
-                        metersMap.set(m.id, { id: m.id, adress: m.adress, serienummer: m.serienummer, area: m.area, street: m.street, infokod: m.infokod, history: [] });
-                    }
-                    metersMap.get(m.id).history.push({ date: file.date, dateStr, value: m.value, avgVal: m.avgVal || 0, maxVal: m.maxVal || m.value });
-                    // Always use latest infokod / address
-                    if (m.infokod) metersMap.get(m.id).infokod = m.infokod;
-                });
-            });
-
-            for (const [, m] of metersMap) {
-                const history   = [...m.history].sort((a, b) => a.date - b.date);
-                const first     = history[0], last = history[history.length - 1];
-                // Primary change metric: ratio from Kamstrup avg (E/F-1), fallback to multi-file diff
-                const lastRatio = last.avgVal > 0 ? (last.value / last.avgVal) - 1 : null;
-                const totalChange = lastRatio !== null
-                    ? lastRatio * 100
-                    : (first.value > 0 ? ((last.value / first.value) - 1) * 100 : last.value * 100);
-                const maxValue    = Math.max(...history.map(h => Math.max(h.value, h.maxVal || 0)));
-
-                const classified  = smartClassify(m);
-                const finalCat    = userCategories.has(m.id) ? { cat: userCategories.get(m.id), reason: 'manual' } : classified;
-
-                const WINTER = new Set([10, 11, 0, 1, 2]);
-                const SUMMER = new Set([4, 5, 6, 7, 8]);
-                const wR = history.filter(h => WINTER.has(new Date(h.date).getMonth()));
-                const sR = history.filter(h => SUMMER.has(new Date(h.date).getMonth()));
-
-                const cleanAddr = extractCleanAddressOnly(m.adress);
-                // Extrahera ny-nivå-info ur reason-strängen
-                let newLevel = null;
-                if (finalCat.reason && finalCat.reason.startsWith('new_level:')) {
-                    const [, date, before, after, jr] = finalCat.reason.split(':');
-                    newLevel = { date, avgBefore: +before, avgAfter: +after, jumpRatio: jr ? +jr : Math.round(+after / (+before || 1) * 10) / 10 };
-                }
-                // Beräkna snittkvot från avgVal om tillgänglig
-                const lastH   = history[history.length - 1];
-                const avgVal  = lastH.avgVal  || 0;
-                const ratio   = avgVal > 0 ? Math.round((lastH.value / avgVal - 1) * 10) / 10 : null;
-
-                currentResults.push({
-                    id: m.id, adress: m.adress, serienummer: m.serienummer,
-                    area: m.area, street: m.street, history,
-                    infokod: m.infokod,
-                    change: totalChange, max: maxValue,
-                    category: finalCat.cat,
-                    reason: finalCat.reason,
-                    newLevel,
-                    ratio,
-                    winterAvg: wR.length >= 2 ? Math.round(avg(wR)) : null,
-                    summerAvg: sR.length >= 2 ? Math.round(avg(sR)) : null,
-                    memo: fieldKnowledgeBase[cleanAddr]?.memo || ''
-                });
-            }
-            document.getElementById('results').style.display = 'block';
-            displayResults();
-            saveDailySnapshot();
-        }
-
-        // ── Bottenpanel-kommentarer ───────────────────────────────────────────────
-        function getBottomComment(r) {
-            if (r.category === 'lagad') return `✅ Återgått till normal nivå — Max: <strong>${r.max} dB</strong>, men senaste mätningarna ligger tillbaka nära mätarens egen baseline.`;
-            if (r.category === 'heatpump') {
-                const s = r.summerAvg && r.winterAvg ? ` (vinter: ${r.winterAvg} / sommar: ${r.summerAvg})` : '';
-                const sub = r.reason === 'heat_pump_seasonal' ? 'Höst→Vinter-stegring' : 'Säsongsmönster';
-                return `🔥 Värmepump — ${sub} detekterat${s}. Inget läckage, normal säsongsvariation.`;
-            }
-            if (r.category === 'leak_code') {
-                const sub = r.reason === 'reverse' ? 'Bakåtflöde (REVERSE)' : r.reason === 'dry' ? 'Tom mätare (DRY)' : `LEAK-larm${r.infokod ? ` (${r.infokod})` : ''}`;
-                return `🟡 ${sub} — Troligtvis abonnentens sida.`;
-            }
-            if (r.category === 'storing') {
-                if (r.reason === 'heat_pump_constant') return `🔥 Värmepump (konstant) — Stabilt högt hela året, säsongsmönster möjligt.`;
-                if (r.reason === 'district_heating')   return `🏭 Fjärrvärmestörning — Stabil nivå + "Ej fastställt"-kod. Inget läckage.`;
-                if (r.reason === 'industrial')         return `🏭 Industriprocess — Tullinge-zone, stabilt högt. Kontrollera med kund.`;
-                if (r.reason === 'reverse')            return `↩️ Bakåtflöde (REVERSE) — Kontrollera installation.`;
-                if (r.reason === 'always_high')        return `🔵 Konstant bakgrundsbrus — Aldrig tyst i historiken. Ej ny läcka.`;
-                if (r.reason === 'varmepanna_kod')     return `🔥 Värmepanna/cirkulationspump — Flaggat i infokod. Inget läckage.`;
-                if (r.reason === 'varmepanna')         return `🔥 Trolig värmepanna/cirkulationspump — Stabilt, måttligt brus hela historiken utan tyst period. Inget läckage.`;
-                if (r.reason === 'stable_background')  return `🔵 Stabilt bakgrundsbrus — Aldrig tyst i hela historiken, ingen ny nivå hittad. Troligen mekaniskt, ej läckage.`;
-                return `🔵 Störning/pump — Fluktuerande brus, ej klassbar som aktiv läcka.`;
-            }
-            return '';
-        }
-
-        // ── Sparkline ─────────────────────────────────────────────────────────────
-        function createSparkline(history, w = 80, h = 32) {
-            if (!history || history.length < 2) return `<svg width="${w}" height="${h}"><line x1="${w*.1}" y1="${h/2}" x2="${w*.9}" y2="${h/2}" stroke="#444" stroke-width="1" stroke-dasharray="3,2"/></svg>`;
-            const vals = history.map(x => x.value);
-            const mn = Math.min(...vals), mx = Math.max(...vals), rng = mx - mn || 1;
-            const pad = 4;
-            const pts = vals.map((v, i) => {
-                const px = pad + (i / (vals.length - 1)) * (w - 2 * pad);
-                const py = (h - pad) - ((v - mn) / rng) * (h - 2 * pad);
-                return `${px.toFixed(1)},${py.toFixed(1)}`;
-            }).join(' ');
-            const last = vals[vals.length - 1], prev = vals[vals.length - 2];
-            const col = last > prev + 2 ? '#f87171' : (last < prev - 2 ? '#34d399' : '#60a5fa');
-            const ep = pts.split(' ').pop(), [ex, ey] = ep.split(',');
-            return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;overflow:visible"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${ex}" cy="${ey}" r="3.5" fill="${col}"/></svg>`;
-        }
-
-        // ── Rendering ─────────────────────────────────────────────────────────────
-        function displayResults() {
-            const query    = document.getElementById('searchInput').value.toLowerCase().trim();
-            const tbody    = document.getElementById('tableBody');
-            const noiseTbody = document.getElementById('noiseTableBody');
-            tbody.innerHTML = '';
-            noiseTbody.innerHTML = '';
-
-            currentResults.sort((a, b) => {
-                const va = a[currentSort.column], vb = b[currentSort.column];
-                if (typeof va === 'string') return currentSort.direction === 'desc' ? vb.localeCompare(va) : va.localeCompare(vb);
-                return currentSort.direction === 'desc' ? vb - va : va - vb;
-            });
-
-            let noiseCount = 0;
-
-            currentResults.forEach(r => {
-                if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
-                if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
-                if (ignoredIds.has(r.id)) return;
-                if (HIDDEN_CATS.has(r.category)) return;
-                if (showStarredOnly && !interestingIds.has(r.id)) return;
-
-                let catOptions = '';
-                for (const c in categories) {
-                    catOptions += `<option value="${c}" ${r.category === c ? 'selected' : ''}>${categories[c].symbol} ${categories[c].label}</option>`;
-                }
-
-                if (BOTTOM_PANEL_CATS.has(r.category)) {
-                    noiseCount++;
-                    const lastH = r.history?.length ? r.history[r.history.length - 1] : null;
-                    const lastV = lastH ? lastH.value : r.max;
-                    const lastAvg = lastH?.avgVal || 0;
-                    const tr = document.createElement('tr');
-                    tr.className = `row-${r.category}`;
-                    tr.innerHTML = `
-                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
-                        <td>
-                            <div class="table-adress-text">${r.adress}</div>
-                            ${r.memo ? `<span class="field-memo-tag">${r.memo}</span>` : ''}
-                            ${r.newLevel && !window._allSameDate ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
-                            ${r.ratio !== null && r.ratio !== undefined && r.ratio > 0 ? `<span class="new-level-tag" style="background:none;border-color:#1e3a5f;color:#60a5fa;">E/F: ×${(r.ratio+1).toFixed(1)}</span>` : ''}
-                        </td>
-                        <td><code>${r.serienummer}</code></td>
-                        <td><strong>${lastV} dB</strong> / ${r.max} dB${lastAvg > 0 ? `<br><small style="color:#666;">snitt: ${lastAvg} dB</small>` : ''}</td>
-                        <td>${getBottomComment(r)}</td>
-                    `;
-                    noiseTbody.appendChild(tr);
-                } else {
-                    if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
-                    const tr = document.createElement('tr');
-                    tr.className = `row-${r.category}`;
-                    const pct = r.change;
-                    // Avvikelsekolumnen visar annars bara den SENASTE avläsningens egna E/F-kvot,
-                    // som kan se lugn ut om Kamstrups eget rullande snitt hunnit "komma ikapp" en
-                    // läcka som pågått länge. Slutklassificeringen (t.ex. en bekräftad ny nivå från
-                    // detectNewLevel) väger därför alltid minst lika tungt som den råa procentsatsen,
-                    // så badgen aldrig visar ett lugnt grönt ✅ på en rad märkt som aktiv läcka.
-                    const CAT_TIER = { extreme: 3, aktiv_lacka: 3, misstankt: 2, ny_matare: 1 };
-                    const pctTier = pct >= 1000 ? 3 : pct >= 400 ? 2 : pct >= 100 ? 1 : 0;
-                    const catTier = CAT_TIER[r.category] || 0;
-                    const tier = Math.max(pctTier, catTier);
-                    const displayMult = (catTier > pctTier && r.newLevel) ? r.newLevel.jumpRatio : (pct / 100 + 1);
-                    let changeStr;
-                    if (tier === 3) {
-                        changeStr = `<span class="trend-up" title="AKTIV LÄCKA – åk dit!">🚨 ×${displayMult.toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
-                    } else if (tier === 2) {
-                        changeStr = `<span class="trend-up" title="MISSTÄNKT – kolla upp">⚠️ ×${displayMult.toFixed(1)}<br><small>${Math.round(pct)}%</small></span>`;
-                    } else if (tier === 1) {
-                        changeStr = `<span style="color:#fbbf24;" title="Följ upp – bevaka trenden">📊 +${Math.round(pct)}%</span>`;
-                    } else if (pct < 0) {
-                        changeStr = `<span class="trend-down">${pct.toFixed(1)}%</span>`;
-                    } else {
-                        changeStr = `<span style="color:#4ade80;" title="Normalt – ingen åtgärd">✅ +${pct.toFixed(1)}%</span>`;
-                    }
-                    const confN  = r.history ? r.history.length : 1;
-                    const confCls = confN >= 4 ? 'conf-high' : confN >= 2 ? 'conf-medium' : 'conf-low';
-                    const confLbl = confN >= 4 ? 'HÖG' : confN >= 2 ? 'MEDEL' : 'LÅG';
-                    const activeMemo = userMemos.get(r.id) ?? r.memo ?? '';
-                    const memoHtml = activeMemo
-                        ? `<span class="field-memo-tag" onclick="editMemo('${r.id}', this)" title="Klicka för att redigera">${activeMemo}</span>`
-                        : `<span class="memo-add-btn" onclick="editMemo('${r.id}', this)">+ Lägg till memo</span>`;
-                    tr.innerHTML = `
-                        <td style="text-align:center;"><button class="action-btn" onclick="toggleInteresting('${r.id}')">${interestingIds.has(r.id) ? '⭐' : '☆'}</button></td>
-                        <td style="text-align:center;"><button class="action-btn" onclick="toggleIgnore('${r.id}')">👁️</button></td>
-                        <td><select class="category-select-compact" onchange="changeCategory('${r.id}', this.value)">${catOptions}</select></td>
-                        <td>
-                            <div class="table-adress-text">${r.adress}<span class="conf-badge ${confCls}">${confLbl}</span></div>
-                            ${memoHtml}
-                            ${r.newLevel && !window._allSameDate ? `<span class="new-level-tag">📈 Ny nivå sedan ${r.newLevel.date}: ${r.newLevel.avgBefore} → ${r.newLevel.avgAfter} dB (×${r.newLevel.jumpRatio})</span>` : ''}
-                            ${r.ratio !== null && r.ratio !== undefined && r.ratio > 0 ? `<span class="new-level-tag" style="background:none;border-color:#1e3a5f;color:#60a5fa;">E/F: ×${(r.ratio+1).toFixed(1)}</span>` : ''}
-                        </td>
-                        <td style="text-align:center;"><button class="copy-btn" onclick="copyToClipboard('${r.adress}', event)">📋 Kopiera</button></td>
-                        <td><code>${r.serienummer}</code></td>
-                        <td><span class="badge" style="background:#1f1f2e;color:#fff;">${r.area}</span></td>
-                        <td>${changeStr}</td>
-                        <td><strong>${r.max} dB</strong></td>
-                        <td class="spark-cell" onclick="openTrendGraph('${r.id}')">${createSparkline(r.history)}</td>
-                    `;
-                    tbody.appendChild(tr);
-                }
-            });
-
-            document.getElementById('noiseCountText').innerText = noiseCount;
-            updateStatsAndInsights();
-        }
-
-        function updateStatsAndInsights() {
-            const counts = { extreme: 0, aktiv_lacka: 0, misstankt: 0, ny_matare: 0, storing: 0, heatpump: 0, leak_code: 0, lagad: 0, normal: 0 };
-            currentResults.forEach(r => { if (counts[r.category] !== undefined) counts[r.category]++; });
-
-            const sharpCount = counts.extreme + counts.aktiv_lacka + counts.misstankt + counts.ny_matare;
-            const activeLeaks = counts.extreme + counts.aktiv_lacka;
-            const hiddenCount = counts.storing + counts.heatpump + counts.leak_code + counts.lagad;
-
-            document.getElementById('statsGrid').innerHTML = `
-                <div class="stat-card color-total ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="setCategoryFilter('all')">
-                    <div class="num">${sharpCount}</div><div class="label">Skarpa mätare</div>
-                </div>
-                <div class="stat-card color-aktiv-lacka ${['extreme','aktiv_lacka'].includes(currentCategoryFilter) ? 'active' : ''}" onclick="setCategoryFilter('aktiv_lacka')">
-                    <div class="num" style="color:var(--clr-aktiv-lacka)">${activeLeaks}</div><div class="label">Aktiva Läckor</div>
-                </div>
-                <div class="stat-card color-misstankt ${currentCategoryFilter === 'misstankt' ? 'active' : ''}" onclick="setCategoryFilter('misstankt')">
-                    <div class="num" style="color:var(--clr-misstankt)">${counts.misstankt}</div><div class="label">🟠 Misstänkta</div>
-                </div>
-                <div class="stat-card color-heatpump ${currentCategoryFilter === 'heatpump' ? 'active' : ''}" onclick="setCategoryFilter('heatpump')">
-                    <div class="num" style="color:var(--clr-heatpump)">${counts.heatpump}</div><div class="label">🔥 Värmepumpar</div>
-                </div>
-                <div class="stat-card color-noise">
-                    <div class="num" style="color:var(--clr-storing)">${hiddenCount}</div><div class="label">Dolda / Lagade</div>
-                </div>
-            `;
-
-            renderDailySummaryBar(counts);
-
-            const insight = document.getElementById('insightBox');
-
-            // Same-date warning — trendanalys ej möjlig
-            if (window._allSameDate) {
-                const [theDate] = [...new Set(uploadedFiles.filter(f=>f.meters.length>0).map(f=>formatShortDate(f.date)))];
-                insight.innerHTML = `⚠️ <strong>Alla ${uploadedFiles.filter(f=>f.meters.length>0).length} filer har samma datum (${theDate})</strong> — trendanalys och ny-nivå-detektion är inaktiverade. Ladda upp filer från olika datum för att se trend och förändringsriktning.<br><br>Klassificering baseras på <strong>E/F-kvoten</strong> (senaste värde ÷ genomsnitt) från varje enskild fil.`;
-                insight.style.borderColor = '#f59e0b';
-                return;
-            }
-
-            if (counts.extreme > 0) {
-                insight.innerHTML = `🚨 <strong>AKUT:</strong> ${counts.extreme} mätare klassad som <strong>Akut Huvudledning</strong> — åtgärd krävs omgående!`;
-                insight.style.borderColor = 'var(--clr-extreme)';
-            } else if (counts.aktiv_lacka > 0) {
-                insight.innerHTML = `🔴 <strong>Aktiva läckor:</strong> ${counts.aktiv_lacka} mätare med extremt hög avvikelse (E/F >1000%) — trolig servis- eller ledningsläcka. Prioritera fältkontroll!`;
-                insight.style.borderColor = 'var(--clr-aktiv-lacka)';
-            } else if (counts.misstankt > 0) {
-                insight.innerHTML = `🟠 <strong>Karma fält-tips:</strong> ${counts.misstankt} st <strong>Misstänkta / Ihållande stegringar</strong> — avvikelse E/F 4–15×. Prioritera fältkontroll. 🔥 ${counts.heatpump} värmepumpar automatiskt sorterade.`;
-                insight.style.borderColor = 'var(--clr-misstankt)';
-            } else {
-                insight.innerHTML = `💡 <strong>Systemstatus:</strong> Inga akuta signaler. 🔥 ${counts.heatpump} värmepumpar, ${hiddenCount} störningar/larm filtrerade nedan. Avvikelse = (Senaste värde / Kamstrup-snitt) − 1.`;
-                insight.style.borderColor = 'var(--primary)';
-            }
-
-            // Append date-range info
-            if (!window._allSameDate && uploadedFiles.filter(f=>f.meters.length>0).length > 0) {
-                const dts = uploadedFiles.filter(f=>f.meters.length>0).map(f=>f.date).sort((a,b)=>a-b);
-                const from = formatShortDate(dts[0]), to = formatShortDate(dts[dts.length-1]);
-                const span = dts.length > 1 ? ` · Dataperiod: <strong>${from}</strong> → <strong>${to}</strong> (${window._uniqueDateCount} unika datum)` : ` · Datum: <strong>${from}</strong>`;
-                insight.innerHTML += span;
-            }
-        }
-
-        // ── localStorage persistence ──────────────────────────────────────────────
-        function persistState() {
-            try {
-                localStorage.setItem('lacksok_fav_v3',    JSON.stringify([...interestingIds]));
-                localStorage.setItem('lacksok_pro_cats',  JSON.stringify([...userCategories.entries()]));
-                localStorage.setItem('lacksok_pro_hidden', JSON.stringify([...ignoredIds]));
-                localStorage.setItem('lacksok_memos_v1',  JSON.stringify([...userMemos.entries()]));
-            } catch(e) {}
-        }
-
-        function loadPersistedState() {
-            try {
-                JSON.parse(localStorage.getItem('lacksok_fav_v3')     || '[]').forEach(id      => interestingIds.add(id));
-                JSON.parse(localStorage.getItem('lacksok_pro_cats')   || '[]').forEach(([k,v]) => userCategories.set(k, v));
-                JSON.parse(localStorage.getItem('lacksok_pro_hidden') || '[]').forEach(id      => ignoredIds.add(id));
-                JSON.parse(localStorage.getItem('lacksok_geocache')   || '[]').forEach(([k,v]) => geocache.set(k, v));
-                JSON.parse(localStorage.getItem('lacksok_memos_v1')   || '[]').forEach(([k,v]) => userMemos.set(k, v));
-            } catch(e) {}
-        }
-
-        // ── Kategori / filter actions ─────────────────────────────────────────────
-        function setCategoryFilter(cat) { currentCategoryFilter = cat; displayResults(); }
-
-        function changeCategory(id, newCat) {
-            userCategories.set(id, newCat);
-            const r = currentResults.find(r => r.id === id);
-            if (r) { r.category = newCat; r.reason = 'manual'; }
-            persistState();
-            displayResults();
-        }
-
-        function toggleInteresting(id) {
-            interestingIds.has(id) ? interestingIds.delete(id) : interestingIds.add(id);
-            persistState(); displayResults(); updateRouteBar();
-        }
-
-        function toggleIgnore(id) {
-            ignoredIds.add(id);
-            persistState(); displayResults();
-        }
-
-        // ── Filinläsning med progressbar ──────────────────────────────────────────
-        async function handleFiles(files) {
-            const allFiles = Array.from(files);
-            if (!allFiles.length) { document.getElementById('fileInput').value = ''; return; }
-
-            const progCont  = document.getElementById('progressContainer');
-            const progFill  = document.getElementById('progressFill');
-            const progText  = document.getElementById('progressText');
-            progCont.style.display = 'block';
-            progFill.style.width   = '0%';
-            progText.innerText     = `0 av ${allFiles.length} filer bearbetade...`;
-
-            const BATCH = 5;
-            let totalDone = 0;
-
-            for (let i = 0; i < allFiles.length; i += BATCH) {
-                const batch = allFiles.slice(i, i + BATCH);
-                await Promise.allSettled(batch.map(async file => {
-                    try {
-                        const ext = file.name.toLowerCase().split('.').pop();
-                        if (ext === 'pdf') {
-                            const r = await parsePDFFile(file, (pg, tot) => {
-                                progText.innerText = `PDF: sida ${pg}/${tot} — ${file.name}`;
-                            });
-                            const date = r.reportDate || extractDateFromFilename(file.name) || new Date(file.lastModified);
-                            if (!uploadedFiles.some(f => f.name === file.name)) {
-                                const warn = r.meters.length === 0 ? 'Inga mätare hittades' : null;
-                                uploadedFiles.push({ name: file.name, date, meters: r.meters, parseWarning: warn });
-                            }
-                        } else {
-                            const r = await parseExcelFile(file);
-                            // Prioritetsordning: rapportens EGEN tidsstämpel (mest tillförlitlig) > datum i
-                            // filnamnet > en enskild mätares "Senaste avläsning" (kan råka vara samma datum
-                            // i flera olika dagsexporter) > filens senast-ändrad-tid som sista utväg.
-                            const date = r.reportGeneratedDate || extractDateFromFilename(file.name) || r.fileReadingDate || new Date(file.lastModified);
-                            if (!uploadedFiles.some(f => f.name === file.name)) {
-                                const warn = r.meters.length === 0 ? 'Inga mätare hittades' : null;
-                                uploadedFiles.push({ name: file.name, date, meters: r.meters, parseWarning: warn });
-                            }
-                        }
-                    } catch(e) {
-                        console.warn('Fil kunde inte läsas:', file.name, e);
-                        uploadedFiles.push({ name: file.name, date: new Date(file.lastModified), meters: [], parseWarning: 'Parsningsfel' });
-                    }
-                }));
-                totalDone = Math.min(i + BATCH, allFiles.length);
-                progFill.style.width = `${(totalDone / allFiles.length) * 100}%`;
-                progText.innerText   = `${totalDone} av ${allFiles.length} filer bearbetade...`;
-                await new Promise(r => setTimeout(r, 30));
-            }
-
-            setTimeout(() => { progCont.style.display = 'none'; }, 1500);
-            updateFileList();
-            document.getElementById('fileInput').value = '';
-        }
-
-        function updateFileList() {
-            const sorted = [...uploadedFiles].sort((a, b) => b.date - a.date);
-            document.getElementById('fileCountText').innerText = uploadedFiles.length;
-            const grid = document.getElementById('fileList');
-            grid.innerHTML = '';
-            if (!uploadedFiles.length) {
-                document.getElementById('fileGridContainer').classList.remove('open');
-                document.getElementById('arrowIndicator').innerText = '▸';
-                grid.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">Inga filer laddade än.</span>';
-                return;
-            }
-            // Auto-öppna rullgardinen när det finns filer
-            document.getElementById('fileGridContainer').classList.add('open');
-            document.getElementById('arrowIndicator').innerText = '▾';
-
-            sorted.forEach((f, idx) => {
-                const realIdx = uploadedFiles.indexOf(f);
-                const row = document.createElement('div');
-                row.className = 'file-list-row';
-                row.innerHTML = `
-                    <span class="file-list-icon">📄</span>
-                    <span class="file-list-name" title="${f.name}">${f.name}</span>
-                    <span class="file-list-date">${formatShortDate(f.date)}</span>
-                    <span class="file-list-count" style="${f.meters.length === 0 ? 'color:#f87171;' : ''}">${f.meters.length} mätare</span>
-                    ${f.parseWarning ? `<span class="parse-warn">⚠ ${f.parseWarning}</span>` : `<span class="parse-ok">✓ OK</span>`}
-                    <button class="file-list-remove" title="Ta bort fil">✕</button>
-                `;
-                row.querySelector('.file-list-remove').onclick = e => {
-                    e.stopPropagation();
-                    uploadedFiles.splice(realIdx, 1);
-                    updateFileList();
-                    if (uploadedFiles.length) runAnalysis();
-                };
-                grid.appendChild(row);
-            });
-        }
-
-        // ── Urklipp ───────────────────────────────────────────────────────────────
-        function copyToClipboard(addr, event) {
-            navigator.clipboard.writeText(extractCleanAddressOnly(addr)).then(() => {
-                const btn = event.target;
-                const orig = btn.innerText;
-                btn.innerText = 'Kopierad! ✔';
-                btn.style.background = '#1db954';
-                btn.style.color = '#fff';
-                setTimeout(() => { btn.innerText = orig; btn.style.background = '#1c1c24'; btn.style.color = 'var(--text-muted)'; }, 1200);
-            });
-        }
-
-        // ── Trendgraf ─────────────────────────────────────────────────────────────
-        function openTrendGraph(id) {
-            const meter = currentResults.find(r => r.id === id);
-            if (!meter?.history?.length) return;
-            document.getElementById('modalTitle').innerText = `Brustrend för ${extractCleanAddressOnly(meter.adress)} (${meter.serienummer})`;
-            document.getElementById('graphModal').style.display = 'flex';
-            if (activeChartInstance) activeChartInstance.destroy();
-            const ctx = document.getElementById('trendChart').getContext('2d');
-            activeChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: (() => {
-                        const dates = meter.history.map(h => h.dateStr);
-                        const allSame = new Set(dates).size <= 1;
-                        return allSame ? dates.map((_, i) => `Fil ${i+1}`) : dates;
-                    })(),
-                    datasets: [{ label: 'Brusnivå (dB)', data: meter.history.map(h => h.value), borderColor: '#1db954', backgroundColor: 'rgba(29,185,84,0.08)', borderWidth: 3, pointBackgroundColor: '#fff', pointRadius: 5, tension: 0.2 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' }, beginAtZero: true }, x: { grid: { color: '#222230' }, ticks: { color: '#b3b3b3' } } } }
-            });
-        }
-
-        // ── Sortering ─────────────────────────────────────────────────────────────
-        function triggerSort(col) {
-            if (currentSort.column === col) {
-                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
-            } else {
-                currentSort.column = col;
-                currentSort.direction = ['adress','serienummer','area'].includes(col) ? 'asc' : 'desc';
-            }
-            document.querySelectorAll('th').forEach(th => th.classList.remove('active-sort'));
-            document.getElementById(`th-${col}`)?.classList.add('active-sort');
-            displayResults();
-        }
-
-        // ── Export ────────────────────────────────────────────────────────────────
-        document.getElementById('exportBtn').onclick = () => {
-            if (!currentResults.length) return;
-            const mkRows = cat => currentResults.filter(r => r.category === cat || (cat === 'active' && ['extreme','aktiv_lacka','misstankt','ny_matare'].includes(r.category))).map(r => ({
-                'Mätarnummer': r.serienummer, 'Adress': extractCleanAddressOnly(r.adress), 'Kommundel': r.area,
-                'Högsta Brus (dB)': r.max, 'Förändring %': r.change.toFixed(1) + '%',
-                'Statusklass': categories[r.category]?.label || r.category, 'Fältkommentar': r.memo || ''
-            }));
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mkRows('active')), 'Aktiva ärenden');
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mkRows('heatpump')), 'Värmepumpar');
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mkRows('lagad')), 'Lagade');
-            XLSX.writeFile(wb, `Karma_Lacksok_Rapport_${new Date().toISOString().slice(0,10)}.xlsx`);
-        };
-
-        // ── Geocoding (Nominatim, 1 req/s, localStorage cache) ───────────────────
-        function saveGeoCache() {
-            try { localStorage.setItem('lacksok_geocache', JSON.stringify([...geocache.entries()])); } catch(e) {}
-        }
-
-        async function geocodeAddress(addr) {
-            const key = extractCleanAddressOnly(addr) + ', Botkyrka, Sverige';
-            if (geocache.has(key)) return geocache.get(key);
-            try {
-                await new Promise(r => setTimeout(r, 1150));
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(key)}&limit=1&countrycodes=se`, { headers: { 'User-Agent': 'LacksokPro/5.0 (Botkyrka VA)' } });
-                const data = await res.json();
-                const coords = data && data[0] ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) } : null;
-                geocache.set(key, coords);
-                saveGeoCache();
-                return coords;
-            } catch(e) { geocache.set(key, null); return null; }
-        }
-
-        // ── Karta (Leaflet) ───────────────────────────────────────────────────────
-        document.getElementById('mapBtn').onclick = showMap;
-
-        async function showMap() {
-            updateRouteBar();
-            if (!currentResults.length) {
-                document.getElementById('mapStatusText').textContent = 'Kör analys först.';
-                document.getElementById('mapModal').style.display = 'flex';
-                return;
-            }
-            document.getElementById('mapModal').style.display = 'flex';
-            await new Promise(r => setTimeout(r, 60));
-
-            if (!leafletMap) {
-                leafletMap = L.map('leafletMap').setView([59.25, 17.85], 12);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19 }).addTo(leafletMap);
-            } else {
-                mapMarkers.forEach(mk => leafletMap.removeLayer(mk));
-                mapMarkers = [];
-            }
-            leafletMap.invalidateSize();
-
-            const toPlot = currentResults.filter(r => !HIDDEN_CATS.has(r.category) && !ignoredIds.has(r.id));
-            const statusEl = document.getElementById('mapStatusText');
-            const nUncached = toPlot.filter(r => !geocache.has(extractCleanAddressOnly(r.adress) + ', Botkyrka, Sverige')).length;
-            statusEl.textContent = `Laddar karta… ${nUncached} att geokoda (~${nUncached}s)`;
-
-            let done = 0;
-            for (const r of toPlot) {
-                const coords = await geocodeAddress(r.adress);
-                done++;
-                statusEl.textContent = `Geokoderar… ${done}/${toPlot.length}`;
-                if (coords) {
-                    const cat = categories[r.category] || categories.normal;
-                    const lastV = r.history?.length ? r.history[r.history.length - 1].value : r.max;
-                    const mk = L.circleMarker([coords.lat, coords.lng], { radius: 11, fillColor: cat.bg, color: '#fff', weight: 2.5, opacity: 1, fillOpacity: 0.88 });
-                    mk.bindPopup(`<div style="min-width:180px;"><strong style="font-size:14px;">${extractCleanAddressOnly(r.adress)}</strong><br><span style="color:${cat.bg};font-weight:700;">${cat.symbol} ${cat.label}</span><br>Senaste: <strong>${lastV} dB</strong> | Max: <strong>${r.max} dB</strong><br><small style="color:#888;">${r.serienummer}</small>${r.memo ? `<br><span style="color:#2dd4bf;font-size:11px;">${r.memo}</span>` : ''}</div>`);
-                    mk.addTo(leafletMap);
-                    mapMarkers.push(mk);
-                }
-            }
-            statusEl.textContent = `✅ ${mapMarkers.length} av ${toPlot.length} mätare kartlagda`;
-            if (mapMarkers.length > 0) leafletMap.fitBounds(L.featureGroup(mapMarkers).getBounds().pad(0.18));
-        }
-
-        // ── Dagssammanfattning ────────────────────────────────────────────────────
-
-        // Körrutt för markerade mätare
-        function updateRouteBar() {
-            const n = interestingIds.size;
-            document.getElementById('routeCount').textContent = String.fromCharCode(11088) + ' ' + n + ' markerade mätare';
-            document.getElementById('routeBtn').disabled    = n < 2;
-            document.getElementById('routeMapBtn').disabled = n < 1;
-            document.getElementById('routeHint').style.display = n > 0 ? 'none' : '';
-        }
-
-        document.getElementById('routeBtn').addEventListener('click', function(){ buildGoogleMapsRoute(false); });
-        document.getElementById('routeMapBtn').addEventListener('click', function(){ buildGoogleMapsRoute(true); });
-
-        async function buildGoogleMapsRoute(mapOnly) {
-            const marked = currentResults.filter(function(r){ return interestingIds.has(r.id); });
-            if (!marked.length) return;
-
-            if (mapOnly) {
-                if (!leafletMap) {
-                    document.getElementById('mapModal').style.display = 'flex';
-                    await new Promise(function(r){ setTimeout(r, 60); });
-                    leafletMap = L.map('leafletMap').setView([59.25, 17.85], 12);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '\u00a9 OpenStreetMap', maxZoom: 19 }).addTo(leafletMap);
-                } else {
-                    mapMarkers.forEach(function(mk){ leafletMap.removeLayer(mk); });
-                    mapMarkers = [];
-                }
-                leafletMap.invalidateSize();
-                const statusEl = document.getElementById('mapStatusText');
-                statusEl.textContent = 'Laddar ' + marked.length + ' markerade mätare\u2026';
-                let done = 0, placed = 0;
-                for (const r of marked) {
-                    const coords = await geocodeAddress(r.adress);
-                    done++;
-                    statusEl.textContent = 'Geokoderar\u2026 ' + done + '/' + marked.length;
-                    if (coords) {
-                        placed++;
-                        const num = placed;
-                        const mk = L.marker([coords.lat, coords.lng], {
-                            icon: L.divIcon({
-                                className: '',
-                                html: '<div style="background:#f59e0b;color:#000;font-weight:800;font-size:11px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);">' + num + '</div>',
-                                iconSize: [24,24], iconAnchor: [12,12]
-                            })
-                        });
-                        const cat = categories[r.category] || categories.normal;
-                        const cleanA = extractCleanAddressOnly(r.adress);
-                        mk.bindPopup('<div style="min-width:180px;"><strong>' + num + '. ' + cleanA + '</strong><br><span style="color:' + cat.bg + ';font-weight:700;">' + cat.symbol + ' ' + cat.label + '</span><br><small style="color:#888;">' + r.serienummer + '</small></div>');
-                        mk.addTo(leafletMap);
-                        mapMarkers.push(mk);
-                    }
-                }
-                if (mapMarkers.length > 1) {
-                    const coordPairs = mapMarkers.map(function(mk){ return mk.getLatLng(); });
-                    L.polyline(coordPairs, { color: '#f59e0b', weight: 3, opacity: 0.7, dashArray: '8 5' }).addTo(leafletMap);
-                }
-                statusEl.textContent = '\u2b50 ' + placed + ' av ' + marked.length + ' mätare visade \u2014 rutten är indikativ (ej GPS-beräknad)';
-                if (mapMarkers.length > 0) leafletMap.fitBounds(L.featureGroup(mapMarkers).getBounds().pad(0.25));
-                return;
-            }
-
-            // Öppna Google Maps med körrutt (max 9 stopp utan API-nyckel)
-            const toRoute = marked.slice(0, 9);
-            if (marked.length > 9)
-                document.getElementById('mapStatusText').textContent = '\u26a0\ufe0f Google Maps stödjer max 9 stopp \u2014 visar de första 9 av ' + marked.length + '.';
-
-            document.getElementById('mapStatusText').textContent = 'Hämtar koordinater för rutten\u2026';
-            const stops = await Promise.all(toRoute.map(async function(r) {
-                const c = await geocodeAddress(r.adress);
-                return c ? (c.lat + ',' + c.lng) : encodeURIComponent(extractCleanAddressOnly(r.adress) + ', Botkyrka, Sverige');
-            }));
-
-            const origin = stops[0];
-            const destination = stops[stops.length - 1];
-            const waypoints = stops.slice(1, -1).join('|');
-            let url = 'https://www.google.com/maps/dir/?api=1&origin=' + origin + '&destination=' + destination + '&travelmode=driving';
-            if (waypoints) url += '&waypoints=' + waypoints;
-
-            document.getElementById('mapStatusText').textContent = '\U0001f697 Öppnar Google Maps med ' + toRoute.length + ' stopp\u2026';
-            window.open(url, '_blank');
-        }
-
-
-        function saveDailySnapshot() {
-            if (!currentResults.length) return;
-            const snap = { date: new Date().toISOString().slice(0,10) };
-            Object.keys(categories).forEach(k => snap[k] = 0);
-            currentResults.forEach(r => { if (snap[r.category] !== undefined) snap[r.category]++; });
-            try { localStorage.setItem('lacksok_daily_snapshot', JSON.stringify(snap)); } catch(e) {}
-        }
-
-        function getDailySnapshot() {
-            try { return JSON.parse(localStorage.getItem('lacksok_daily_snapshot') || 'null'); } catch(e) { return null; }
-        }
-
-        function renderDailySummaryBar(counts) {
-            const snap = getDailySnapshot();
-            const bar  = document.getElementById('dailySummaryBar');
-            if (!snap || snap.date === new Date().toISOString().slice(0,10) || window._allSameDate) { bar.style.display = 'none'; return; }
-            const diff = key => {
-                const d = (counts[key] || 0) - (snap[key] || 0);
-                if (d > 0) return `<span class="d-up">↑ +${d}</span>`;
-                if (d < 0) return `<span class="d-dn">↓ ${d}</span>`;
-                return `<span class="d-eq">±0</span>`;
-            };
-            bar.style.display = 'flex';
-            bar.innerHTML = `
-                <span class="daily-bar-label">📊 vs igår:</span>
-                <span class="daily-delta">🔴 Aktiva: <strong>${(counts.extreme||0)+(counts.aktiv_lacka||0)}</strong> ${diff('extreme')} ${diff('aktiv_lacka')}</span>
-                <span class="daily-delta">🟠 Misstänkta: <strong>${counts.misstankt||0}</strong> ${diff('misstankt')}</span>
-                <span class="daily-delta">🔥 Värmepumpar: <strong>${counts.heatpump||0}</strong> ${diff('heatpump')}</span>
-                <span class="daily-date">Snapshot: ${snap.date}</span>
-            `;
-        }
-
-        // ── Utskrift ──────────────────────────────────────────────────────────────
-        document.getElementById('printBtn').onclick = () => window.print();
-
-        // ── Event listeners ───────────────────────────────────────────────────────
-        document.getElementById('th-adress').onclick      = () => triggerSort('adress');
-        document.getElementById('th-serienummer').onclick = () => triggerSort('serienummer');
-        document.getElementById('th-area').onclick        = () => triggerSort('area');
-        document.getElementById('th-change').onclick      = () => triggerSort('change');
-        document.getElementById('th-max').onclick         = () => triggerSort('max');
-
-        document.getElementById('uploadBtn').onclick  = () => document.getElementById('fileInput').click();
-        document.getElementById('fileInput').onchange = e => handleFiles(e.target.files);
-        document.getElementById('analyzeBtn').onclick = () => runAnalysis();
-        document.getElementById('searchInput').oninput = () => displayResults();
-        document.getElementById('areaFilter').onchange = e => { currentAreaFilter = e.target.value; displayResults(); };
-
-        document.getElementById('closeModalBtn').onclick = () => { document.getElementById('graphModal').style.display = 'none'; };
-        window.onclick = e => {
-            if (e.target === document.getElementById('graphModal')) document.getElementById('graphModal').style.display = 'none';
-            if (e.target === document.getElementById('mapModal'))   document.getElementById('mapModal').style.display = 'none';
-            if (e.target === document.getElementById('guideModal')) document.getElementById('guideModal').style.display = 'none';
-        };
-
-        document.getElementById('clearBtn').onclick = () => {
-            uploadedFiles = []; currentResults = [];
-            ignoredIds.clear(); interestingIds.clear(); userCategories.clear(); userMemos.clear();
-            showStarredOnly = false;
-            const sfBtn = document.getElementById('starFilterBtn');
-            if (sfBtn) { sfBtn.classList.remove('active'); sfBtn.textContent = '⭐ Visa markerade'; }
-            persistState();
-            updateFileList();
-            document.getElementById('results').style.display = 'none';
-            document.getElementById('fileInput').value = '';
-        };
-
-        // ── Redigerbara memos ─────────────────────────────────────────────────────
-        function editMemo(id, el) {
-            const current = userMemos.get(id) || el.dataset.memo || '';
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'memo-edit-input';
-            input.value = current;
-            input.placeholder = 'Skriv fältkommentar… (Enter = spara, Esc = avbryt)';
-            el.replaceWith(input);
-            input.focus();
-            input.select();
-            const save = () => {
-                const val = input.value.trim();
-                if (val) { userMemos.set(id, val); } else { userMemos.delete(id); }
-                persistState();
-                displayResults();
-            };
-            input.addEventListener('keydown', e => {
-                if (e.key === 'Enter')  { e.preventDefault(); save(); }
-                if (e.key === 'Escape') { displayResults(); }
-            });
-            input.addEventListener('blur', save);
-        }
-
-        // ── Filtrering på markerade ────────────────────────────────────────────────
-        function toggleStarredFilter() {
-            showStarredOnly = !showStarredOnly;
-            const btn = document.getElementById('starFilterBtn');
-            btn.classList.toggle('active', showStarredOnly);
-            btn.textContent = showStarredOnly ? '⭐ Visa alla' : '⭐ Visa markerade';
-            displayResults();
-        }
-
-        // ── Bulk-markera synliga mätare ────────────────────────────────────────────
-        function bulkStarVisible() {
-            const query = document.getElementById('searchInput').value.toLowerCase().trim();
-            let changed = false;
-            currentResults.forEach(r => {
-                if (ignoredIds.has(r.id))             return;
-                if (HIDDEN_CATS.has(r.category))      return;
-                if (BOTTOM_PANEL_CATS.has(r.category)) return;
-                if (currentAreaFilter !== 'all' && r.area !== currentAreaFilter) return;
-                if (currentCategoryFilter !== 'all' && r.category !== currentCategoryFilter) return;
-                if (query && !r.adress.toLowerCase().includes(query) && !r.serienummer.includes(query)) return;
-                interestingIds.add(r.id);
-                changed = true;
-            });
-            if (changed) { persistState(); displayResults(); updateRouteBar(); }
-        }
-
-        // ── Guide modal ────────────────────────────────────────────────────────────
-        document.getElementById('guideBtn').onclick = () => {
-            document.getElementById('guideModal').style.display = 'flex';
-        };
-
-        loadPersistedState();
-    </script>
+<div class="header">
+<div><h1>Karma - Läcksök Pro v8.0</h1><div class="sub">flowIQ® 2200 • Akustisk läckagedetektering • Lägsta brus 24h • Kamstrup Leak Detector-klon • Botkyrka • Smart Värmepumpsdetektor</div></div>
+<div style="display:flex;gap:8px"><button class="btn btn-primary" id="uploadBtn">📁 Välj filer (Excel)</button><button class="btn btn-sec" id="analyzeBtn">⚡ Analysera</button><button class="btn btn-sec" id="mapBtn">🗺 Karta</button><button class="btn btn-sec" id="exportBtn">📥 Export</button><button class="btn btn-danger btn-sec" id="clearBtn">🗑 Nollställ</button></div>
+</div>
+<input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv" style="display:none">
+
+<div class="panel">
+<div class="upload-zone" id="dropZone"><div style="font-size:28px">📂</div><div style="font-weight:800;margin:6px 0">Släpp Filtrerade mätare-filer här</div><div style="font-size:12px;color:var(--muted)">Idag + förra veckan mån/tis/ons - appen rensar Kamstrup-logo, VÄRDEFEL och räknar (E/F)-1 automatiskt</div><div id="fileListSmall" style="margin-top:12px;font-size:11px;color:var(--muted)">Inga filer inlästa</div></div>
+<div id="progress" style="display:none;margin-top:10px"><div style="background:#1a1a22;height:6px;border-radius:10px;overflow:hidden"><div id="pFill" style="height:6px;background:var(--green);width:0%"></div></div><div id="pText" style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px">0%</div></div>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="grid2">
+<div class="kamstrup-sidebar">
+<h4>Tröskelvärden (som i Kamstrup Portal)</h4>
+<div class="slider-row"><span>Hög ≥50</span><span id="cntHigh">0</span></div>
+<div class="slider-row"><span>Medel 101–</span><span id="cntMed">0</span></div>
+<div class="slider-row"><span>Låg &lt;101</span><span id="cntLow">0</span></div>
+<input type="range" min="0" max="200" value="50" style="width:100%" disabled>
+
+<h4>Förtroendeindikator (Kamstrup Potential Leaks)</h4>
+<div class="filter-check"><input type="checkbox" checked> Hög konfidens (4+ filer)</div>
+<div class="filter-check"><input type="checkbox" checked> Medel (2-3 filer)</div>
+<div class="filter-check"><input type="checkbox"> Låg (1 fil)</div>
+
+<h4>Status (från din andra screenshot)</h4>
+<div class="filter-check"><input type="checkbox" checked> Nya / Återöppna</div>
+<div class="filter-check"><input type="checkbox"> Pågående</div>
+<div class="filter-check"><input type="checkbox"> Snoozade</div>
+<div class="filter-check"><input type="checkbox"> Stängda</div>
+
+<h4>Inkludera (från Kamstrup karta)</h4>
+<div class="filter-check"><input type="checkbox" id="incActive" checked> Aktiva händelser <span id="cntAE">0</span></div>
+<div class="filter-check"><input type="checkbox" id="incClosed" checked> Stängda händelser</div>
+<div class="filter-check"><input type="checkbox" checked> Mätare med infokoder DRY/LEAK/BURST <span id="cntInfo">0</span></div>
+<div class="filter-check"><input type="checkbox" checked> Saknade data senaste 30 dagarna</div>
+<div class="filter-check"><input type="checkbox" checked> Ignorerade mätare</div>
+
+<h4>Smart detektering v8</h4>
+<div style="font-size:11px;line-height:1.5;color:#ccc">
+<b>Akustisk princip:</b> flowIQ 2200 skickar lägsta brus över 24h, filtrerar trafik/daglig förbrukning. Om > tröskel = läcka.<br><br>
+<b>VÄRDEFEL:</b> Kastas automatiskt - kräver drive-by för ny signal.<br><br>
+<b>Värmepump:</b> Sommar (maj-sep) &lt;45dB och vinter (okt-apr) > sommar*1.5x = säsong, ej läcka.<br><br>
+<b>Lagad:</b> Max >2x senaste och senaste nära baseline = tystnat.<br><br>
+<b>Potentiell läcka:</b> Ny nivå detekteras (tyst → plötslig ökning som stannar)
+</div>
+</div>
+
+<div>
+<input id="search" class="search" placeholder="🔍 Sök adress, serienummer, plats (VIAD 1-38 etc)">
+<div class="table-wrap" style="margin-top:12px;max-height:700px">
+<table><thead><tr><th>⭐</th><th>Klass</th><th>Adress / Plats</th><th>Serienr</th><th>Område</th><th>Senaste (E)</th><th>Snitt (F)</th><th>Avvikelse (E/F-1)</th><th>Max</th><th>Trend</th></tr></thead><tbody id="tbody"></tbody></table>
+</div>
+<div id="noiseWrap" style="margin-top:18px"><h4 style="margin-bottom:8px">⚙ Dolda: Värmepumpar, Lagade, LEAK-kod, Störningar</h4><div class="table-wrap"><table><tbody id="tbodyNoise"></tbody></table></div></div>
+</div>
+</div>
+
+<div class="modal" id="mapModal"><div class="modal-box"><div style="display:flex;justify-content:space-between"><h3>🗺 Karta - Botkyrka - Leak Detector vy</h3><button onclick="mapModal.style.display='none'" class="btn btn-sec">✕</button></div><div id="mapStatus" style="font-size:11px;color:var(--muted);margin:8px 0">Laddar...</div><div id="map"></div></div></div>
+<div class="modal" id="graphModal"><div class="modal-box"><div style="display:flex;justify-content:space-between"><h3 id="gTitle">Brustrend</h3><button onclick="graphModal.style.display='none'" class="btn btn-sec">✕</button></div><canvas id="chart" height="280"></canvas></div></div>
+
+<script>
+let uploaded=[], results=[], ignored=new Set(), starred=new Set(), userCats=new Map(), memos=new Map(), geocache=new Map(), map=null, markers=[], chartInst=null;
+const KB={
+"GRANBACKEN 2":{cat:"akut",memo:"FLÖDESEXPLOSION 73 dB - Åk ut!"},
+"ÖDLEVÄGEN 15A":{cat:"akut",memo:"Servisläcka gemensam 11/13/15A/15B"},
+"NIBBLEBACKEN 40":{cat:"akut",memo:"Konstaterad läcka på vår sida"},
+"VIAD 1":{cat:"kund",memo:"Efter mätare - kontakta förening"}
+};
+const CATS={
+akut:{label:"Akut Huvudledning",sym:"🚨",bg:"#dc2626"},
+aktiv:{label:"Aktiv läcka",sym:"🔴",bg:"#f87171"},
+misstankt:{label:"Misstänkt",sym:"🟠",bg:"#f97316"},
+kund:{label:"Kundläcka LEAK",sym:"🟡",bg:"#eab308"},
+vp:{label:"Värmepump",sym:"🔥",bg:"#f59e0b"},
+lagad:{label:"Lagad",sym:"🟢",bg:"#10b981"},
+storing:{label:"Störning",sym:"🔵",bg:"#38bdf8"},
+normal:{label:"Normal",sym:"⚪",bg:"#27272a"}
+};
+
+function parseNum(v){ if(v==null||v==='') return null; let s=String(v).trim().replace(',','.').replace(/[^0-9.\-]/g,''); let n=parseFloat(s); return isNaN(n)?null:n; }
+function extractDate(name){ let m=name.match(/(\d{4})-(\d{2})-(\d{2})/); return m?new Date(+m[1],+m[2]-1,+m[3]):new Date(); }
+function cleanAddr(a){ if(!a) return 'OKÄND'; return a.replace(/\b\d{5}\b/gi,'').replace(/\b(TULLINGE|TUMBA|NORSBORG|FITTJA|UTTRAN|GRÖDINGE|BOTKYRKA)\b/gi,'').trim().replace(/\s+/g,' ').toUpperCase(); }
+function areaOf(t){ t=(t||'').toUpperCase(); if(t.includes('TULLINGE')) return 'TULLINGE'; if(t.includes('TUMBA')) return 'TUMBA'; if(t.includes('NORSBORG')) return 'NORSBORG'; if(t.includes('FITTJA')) return 'FITTJA'; if(t.includes('UTTRAN')) return 'UTTRAN'; if(t.includes('GRÖDINGE')) return 'GRÖDINGE'; return 'ÖVRIGT'; }
+function median(a){ let s=[...a].sort((x,y)=>x-y); let m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+
+function parseExcel(file){
+ return new Promise((res,rej)=>{
+  let r=new FileReader(); r.onload=e=>{
+   try{
+    let wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); let sh=wb.Sheets[wb.SheetNames[0]]; let raw=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});
+    let hIdx=-1; for(let i=0;i<Math.min(10,raw.length);i++){ let low=raw[i].map(c=>String(c).toLowerCase()); if(low.some(c=>c.includes('adress')) && low.some(c=>c.includes('serienummer'))) {hIdx=i;break;} }
+    if(hIdx<0) hIdx=0;
+    let hdr=raw[hIdx].map(c=>String(c).toLowerCase()); let fi=k=>hdr.findIndex(h=>h.includes(k));
+    let ci={id:fi('serienummer'),addr:fi('adress'),val:fi('senaste värde'),avg:fi('genomsnittsvärde'),maxv:fi('maxvärde'),info:fi('aktiva händelser')>=0?fi('aktiva händelser'):fi('infokod'),dateC:fi('senaste avläsning'), areaC:fi('område')};
+    // report date from title rows
+    let repDate=null; for(let i=0;i<Math.min(6,raw.length);i++){ for(let c of raw[i]){ let m=String(c).match(/(\d{4})-(\d{2})-(\d{2})T/); if(m){repDate=new Date(+m[1],+m[2]-1,+m[3]); break;}} }
+    let meters=[]; let fileDate=null;
+    raw.slice(hIdx+1).forEach(r=>{
+     let id=r[ci.id]||''; let addr=r[ci.addr]||''; if(!id && !addr) return;
+     let E=parseNum(r[ci.val]); let F=parseNum(r[ci.avg]); let G=parseNum(r[ci.maxv])||E;
+     // VÄRDEFEL-logik: om E null eller 0 = ingen signal, kasta
+     if(E==null || E===0) return;
+     // om F saknas men E finns, behåll men avvikelse blir null
+     let info=[r[ci.info]].filter(Boolean).join(' ');
+     let dStr=r[ci.dateC]||''; if(!fileDate && dStr){ let m=String(dStr).match(/(\d{4})-(\d{2})-(\d{2})/); if(m) fileDate=new Date(+m[1],+m[2]-1,+m[3]); }
+     meters.push({id:String(id).trim(), adress:String(addr).trim(), E, F, G, info:String(info).trim(), area:areaOf(String(addr)+' '+ (r[ci.areaC]||'')), street:cleanAddr(String(addr))});
+    });
+    let d = repDate || extractDate(file.name) || fileDate || new Date(file.lastModified);
+    res({meters,date:d});
+   }catch(err){ rej(err); }
+  }; r.readAsArrayBuffer(file);
+ });
+}
+
+function isHeatpump(hist){
+ if(!hist||hist.length<3) return false;
+ let byM={}; hist.forEach(h=>{ let mo=new Date(h.date).getMonth(); (byM[mo]=byM[mo]||[]).push(h.E); });
+ let avgM=mo=>byM[mo]?byM[mo].reduce((a,b)=>a+b,0)/byM[mo].length:null;
+ let COLD=[9,10,11,0,1,2,3], WARM=[4,5,6,7,8];
+ let cVals=COLD.map(avgM).filter(v=>v!=null), wVals=WARM.map(avgM).filter(v=>v!=null);
+ if(wVals.length>=1){ let cA=cVals.reduce((a,b)=>a+b,0)/cVals.length, wA=wVals.reduce((a,b)=>a+b,0)/wVals.length; return wA<45 && cA>wA*1.5 && cA>12; }
+ if(hist.length>=4){ let s=[...hist].sort((a,b)=>a.date-b.date).map(h=>h.E); let first=(s[0]+s[1])/2, last=(s[s.length-1]+s[s.length-2])/2; return s.every(v=>v<40) && last>first*1.3 && last<40 && last>15; }
+ return false;
+}
+
+function detectNewLevel(hist){
+ if(!hist||hist.length<4) return null;
+ let sorted=[...hist].sort((a,b)=>a.date-b.date); let vals=sorted.map(h=>h.E);
+ for(let split=2;split<=vals.length-2;split++){
+  let before=vals.slice(0,split), after=vals.slice(split);
+  let avgB=before.reduce((a,b)=>a+b,0)/before.length, avgA=after.reduce((a,b)=>a+b,0)/after.length;
+  if(avgB<=0||avgA<=avgB) continue; let ratio=avgA/avgB;
+  let beforeStable=before.every(v=>v<=Math.max(avgB*1.6,avgB+8));
+  let afterStable=after.every(v=>v>=avgA*0.55);
+  let tail=after.slice(-Math.min(3,after.length)); let tailAvg=tail.reduce((a,b)=>a+b,0)/tail.length;
+  if(ratio>=2.5 && avgA>=15 && beforeStable && afterStable && tailAvg>=avgB*1.8){
+   return {date:sorted[split].date.toISOString().slice(0,10), before:Math.round(avgB), after:Math.round(avgA), ratio:Math.round(ratio*10)/10};
+  }
+ }
+ return null;
+}
+
+function classify(m){
+ let info=(m.info||'').toLowerCase();
+ if(info.includes('burst')||info.includes('rörbrott')) return {cat:'akut',why:'BURST'};
+ if(info.includes('leak')||info.includes('läcka')) return {cat:'kund',why:'LEAK'};
+ if(info.includes('dry')) return {cat:'normal',why:'DRY'};
+ if(info.includes('reverse')) return {cat:'storing',why:'REVERSE'};
+ let hist=m.history; if(!hist||hist.length<2){
+  let v=hist?hist[hist.length-1].E:0; let f=hist?hist[hist.length-1].F:0; let r=f? (v/f)-1 : 0;
+  if(r>10) return {cat:'aktiv',why:'E/F>1000%'}; if(r>4) return {cat:'misstankt',why:'E/F>400%'}; if(v>=25) return {cat:'misstankt',why:'hög enstaka'}; return {cat:'normal',why:'enstaka låg'};
+ }
+ // multi-file
+ let cur=hist[hist.length-1]; let ratio=cur.F? (cur.E/cur.F)-1 : 0;
+ if(ratio>=11) return {cat:'aktiv',why:'E/F>1000%'};
+ if(ratio>=4 && !isHeatpump(hist)) return {cat:'misstankt',why:'E/F>400%'};
+ if(isHeatpump(hist)) return {cat:'vp',why:'säsong'};
+ let nl=detectNewLevel(hist); if(nl){ if(nl.ratio>=8) return {cat:'aktiv',why:`ny nivå ${nl.date}`,nl}; if(nl.ratio>=3) return {cat:'misstankt',why:`ny nivå ${nl.date}`,nl}; }
+ // återgång
+ let baseline=median(hist.map(h=>h.E).sort((a,b)=>a-b).slice(0,Math.ceil(hist.length/2)));
+ let quiet=Math.max(baseline*1.5,baseline+8,18); let maxH=Math.max(...hist.map(h=>h.E));
+ let tail=hist.slice(-2); if(maxH>=baseline*1.8 && tail.every(h=>h.E<=quiet)) return {cat:'lagad',why:'återgått'};
+ // stabil bakgrund
+ let allV=hist.map(h=>h.E); let mean=allV.reduce((a,b)=>a+b,0)/allV.length; let cv=Math.sqrt(allV.reduce((a,b)=>a+(b-mean)**2,0)/allV.length)/mean; if(mean>=16&&mean<=55&&cv<0.28&&allV.every(v=>v>=14)) return {cat:'storing',why:'stabil bakgrund'};
+ if(cur.E>=28) return {cat:'aktiv',why:'högt akut'};
+ if(cur.E>=16) return {cat:'misstankt',why:'förhöjt'};
+ return {cat:'normal',why:'ok'};
+}
+
+function analyze(){
+ if(!uploaded.length) return;
+ uploaded.sort((a,b)=>a.date-b.date);
+ let mapM=new Map();
+ uploaded.forEach(f=>{ f.meters.forEach(m=>{ if(!mapM.has(m.id)) mapM.set(m.id,{id:m.id,adress:m.adress,area:m.area,street:m.street,history:[],info:m.info}); mapM.get(m.id).history.push({date:f.date,E:m.E,F:m.F,G:m.G}); if(m.info) mapM.get(m.id).info=m.info; }); });
+ results=[];
+ for(let [id, mm] of mapM){
+  let hist=[...mm.history].sort((a,b)=>a.date-b.date); let last=hist[hist.length-1]; let first=hist[0];
+  let av=last.F? (last.E/last.F)-1 : (first.E? (last.E/first.E)-1 : 0);
+  let cls=userCats.has(id)?{cat:userCats.get(id),why:'manuell'}:classify({history:hist,info:mm.info});
+  results.push({id,adress:mm.adress,area:mm.area,street:mm.street,history:hist,E:last.E,F:last.F||0,G:Math.max(...hist.map(h=>h.G||h.E)),av:av*100,ratio:last.F?last.E/last.F:0,cat:cls.cat,why:cls.why,nl:cls.nl||null,info:mm.info||'',conf:hist.length>=4?'H':hist.length>=2?'M':'L', memo:memos.get(id)||KB[cleanAddr(mm.adress)]?.memo||''});
+ }
+ render();
+}
+
+function render(){
+ let q=document.getElementById('search').value.toLowerCase();
+ let filtered=results.filter(r=>{
+  if(ignored.has(r.id)) return false;
+  if(q && !r.adress.toLowerCase().includes(q) && !r.id.toLowerCase().includes(q)) return false;
+  return true;
+ });
+ filtered.sort((a,b)=>b.av-a.av);
+ // stats
+ let akut=filtered.filter(r=>['akut','aktiv'].includes(r.cat)).length, misst=filtered.filter(r=>r.cat==='misstankt').length, vp=filtered.filter(r=>r.cat==='vp').length, lagad=filtered.filter(r=>r.cat==='lagad').length;
+ document.getElementById('stats').innerHTML=`<div class="stat" style="border-left-color:var(--red)"><div class="n">${akut+misst}</div><div class="l">Skarpa mätare</div></div><div class="stat" style="border-left-color:#f87171"><div class="n" style="color:#f87171">${akut}</div><div class="l">Aktiva läckor E/F>1000%</div></div><div class="stat" style="border-left-color:var(--orange)"><div class="n" style="color:var(--orange)">${misst}</div><div class="l">Misstänkta</div></div><div class="stat" style="border-left-color:#f59e0b"><div class="n" style="color:#f59e0b">${vp}</div><div class="l">Värmepumpar (säsong)</div></div><div class="stat" style="border-left-color:var(--green)"><div class="n" style="color:#10b981">${lagad}</div><div class="l">Dolda / Lagade</div></div>`;
+ document.getElementById('cntHigh').textContent=filtered.filter(r=>r.E>=50).length; document.getElementById('cntMed').textContent=filtered.filter(r=>r.E>=20&&r.E<50).length; document.getElementById('cntLow').textContent=filtered.filter(r=>r.E<20).length;
+ document.getElementById('cntAE').textContent=filtered.filter(r=>r.info).length; document.getElementById('cntInfo').textContent=filtered.filter(r=>/LEAK|BURST|DRY/i.test(r.info)).length;
+
+ let tb=document.getElementById('tbody'); let tbN=document.getElementById('tbodyNoise'); tb.innerHTML=''; tbN.innerHTML='';
+ filtered.forEach(r=>{
+  let tr=document.createElement('tr'); tr.className='row-'+r.cat;
+  let pct=r.av; let badge = pct>=1000?`🚨 x${(pct/100+1).toFixed(1)} ${Math.round(pct)}%` : pct>=400?`⚠ x${(pct/100+1).toFixed(1)} ${Math.round(pct)}%` : pct>=100?`📊 +${Math.round(pct)}%` : `✅ +${pct.toFixed(1)}%`;
+  let clsColor= pct>=1000?'trend-up': pct>=100?'trend-up':'';
+  let spark=`<span style="cursor:pointer" onclick="openGraph('${r.id}')">${sparkline(r.history)}</span>`;
+  let confB=`<span class="conf conf-${r.conf}">${r.conf==='H'?'HÖG':r.conf==='M'?'MEDEL':'LÅG'}</span>`;
+  let memoH=r.memo?`<div class="memo" onclick="editMemo('${r.id}')">${r.memo}</div>`:`<div class="memo" style="border-style:dashed;opacity:.6" onclick="editMemo('${r.id}')">+ Lägg till memo</div>`;
+  let nlH=r.nl?`<div style="font-size:10px;color:#fb923c;margin-top:4px;border:1px solid #c2410c;padding:2px 6px;border-radius:4px;background:#1a0a00">📈 Ny nivå ${r.nl.date}: ${r.nl.before}→${r.nl.after} dB ×${r.nl.ratio}</div>`:'';
+  if(['vp','lagad','kund','storing','normal'].includes(r.cat)){
+   tr.innerHTML=`<td>☆</td><td><select onchange="setCat('${r.id}',this.value)"><option ${r.cat==='aktiv'?'selected':''} value="aktiv">🔴 Aktiv</option><option ${r.cat==='misstankt'?'selected':''} value="misstankt">🟠 Misstänkt</option><option ${r.cat==='vp'?'selected':''} value="vp">🔥 VP</option><option ${r.cat==='lagad'?'selected':''} value="lagad">🟢 Lagad</option><option ${r.cat==='kund'?'selected':''} value="kund">🟡 Kund</option></select></td><td>${r.adress}${confB}${memoH}${nlH}</td><td>${r.id}</td><td>${r.area}</td><td>${r.E} dB</td><td>${r.F} dB</td><td class="${clsColor}">${badge}</td><td>${r.G} dB</td><td>${spark}</td>`;
+   tbN.appendChild(tr);
+  } else {
+   tr.innerHTML=`<td><span onclick="toggleStar('${r.id}')" style="cursor:pointer">${starred.has(r.id)?'⭐':'☆'}</span></td><td><select onchange="setCat('${r.id}',this.value)" style="background:#1a1a22;color:#fff;border:1px solid #333;border-radius:6px;padding:4px"><option ${r.cat==='akut'?'selected':''} value="akut">🚨 Akut</option><option ${r.cat==='aktiv'?'selected':''} value="aktiv">🔴 Aktiv</option><option ${r.cat==='misstankt'?'selected':''} value="misstankt">🟠 Misstänkt</option><option ${r.cat==='vp'?'selected':''} value="vp">🔥 VP</option><option ${r.cat==='lagad'?'selected':''} value="lagad">🟢 Lagad</option></select></td><td><b>${r.adress}</b>${confB}<br>${memoH}${nlH}</td><td><code>${r.id}</code></td><td><span class="badge" style="background:#1f1f2e">${r.area}</span></td><td><b>${r.E}</b> dB</td><td>${r.F||'-'} dB</td><td class="${clsColor}"><b>${badge}</b><br><small>E/F: ×${(r.ratio||0).toFixed(1)}</small></td><td>${r.G} dB</td><td>${spark}</td>`;
+   tb.appendChild(tr);
+  }
+ });
+}
+
+function sparkline(hist,w=70,h=24){
+ if(!hist||hist.length<2) return `<svg width="${w}" height="${h}"><line x1="5" y1="${h/2}" x2="${w-5}" y2="${h/2}" stroke="#444" stroke-dasharray="2,2"/></svg>`;
+ let vals=hist.map(x=>x.E); let mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||1; let pts=vals.map((v,i)=>{ let px=4+(i/(vals.length-1))*(w-8); let py=(h-4)-((v-mn)/rng)*(h-8); return `${px},${py}`; }).join(' '); let col=vals[vals.length-1]>vals[vals.length-2]? '#f87171':'#4ade80';
+ return `<svg width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5"/><circle cx="${pts.split(' ').pop().split(',')[0]}" cy="${pts.split(' ').pop().split(',')[1]}" r="2.5" fill="${col}"/></svg>`;
+}
+
+async function handleFiles(files){
+ let all=Array.from(files); let prog=document.getElementById('progress'); let fill=document.getElementById('pFill'); let txt=document.getElementById('pText'); prog.style.display='block';
+ for(let i=0;i<all.length;i++){
+  let f=all[i]; if(!/\.xlsx|\.xls|\.csv/i.test(f.name)) continue;
+  try{ let r=await parseExcel(f); if(!uploaded.some(x=>x.name===f.name)) uploaded.push({name:f.name,date:r.date,meters:r.meters}); }catch(e){ console.warn(e); }
+  fill.style.width=`${((i+1)/all.length)*100}%`; txt.textContent=`${i+1}/${all.length} filer`;
+ }
+ setTimeout(()=>prog.style.display='none',800);
+ updateFileList(); analyze();
+}
+
+function updateFileList(){
+ let el=document.getElementById('fileListSmall'); if(!uploaded.length){ el.textContent='Inga filer inlästa'; return; }
+ el.innerHTML=uploaded.map((f,i)=>`📄 ${f.name} - ${f.date.toISOString().slice(0,10)} - ${f.meters.length} mätare <span style="color:#f87171;cursor:pointer" onclick="uploaded.splice(${i},1);updateFileList();analyze()">✕</span>`).join('<br>');
+}
+
+function openGraph(id){ let r=results.find(x=>x.id===id); if(!r) return; document.getElementById('gTitle').textContent=`Brus ${r.adress} (${r.id})`; document.getElementById('graphModal').style.display='flex'; if(chartInst) chartInst.destroy(); let ctx=document.getElementById('chart').getContext('2d'); chartInst=new Chart(ctx,{type:'line',data:{labels:r.history.map(h=>h.date.toISOString().slice(0,10)),datasets:[{label:'Brus dB (E)',data:r.history.map(h=>h.E),borderColor:'#1db954',backgroundColor:'rgba(29,185,84,.1)',tension:.2},{label:'Genomsnitt (F)',data:r.history.map(h=>h.F),borderColor:'#38bdf8',borderDash:[4,3],tension:.2}]},options:{responsive:true,plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}}}}); }
+function setCat(id,c){ userCats.set(id,c); analyze(); }
+function toggleStar(id){ starred.has(id)?starred.delete(id):starred.add(id); render(); }
+function editMemo(id){ let cur=memos.get(id)||''; let v=prompt('Fältmemo:',cur); if(v!==null){ if(v.trim()) memos.set(id,v.trim()); else memos.delete(id); render(); } }
+
+// drag drop
+let dz=document.getElementById('dropZone'); dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover')}); dz.addEventListener('dragleave',()=>dz.classList.remove('dragover')); dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover'); handleFiles(e.dataTransfer.files)});
+document.getElementById('uploadBtn').onclick=()=>document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange=e=>handleFiles(e.target.files);
+document.getElementById('analyzeBtn').onclick=analyze;
+document.getElementById('search').oninput=render;
+document.getElementById('clearBtn').onclick=()=>{ uploaded=[]; results=[]; ignored.clear(); updateFileList(); render(); };
+document.getElementById('exportBtn').onclick=()=>{ if(!results.length) return; let data=results.map(r=>({Adress:r.adress,Serienummer:r.id,Område:r.area,Senaste_E:r.E,Genomsnitt_F:r.F,Avvikelse_pct:Math.round(r.av),Avvikelse_ratio:r.ratio,Max:r.G,Klass:r.cat,Info:r.info,Memo:r.memo})); let ws=XLSX.utils.json_to_sheet(data); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Rapport'); XLSX.writeFile(wb,`Karma_v8_${new Date().toISOString().slice(0,10)}.xlsx`); };
+document.getElementById('mapBtn').onclick=async()=>{
+ document.getElementById('mapModal').style.display='flex'; setTimeout(()=>{ if(!map){ map=L.map('map').setView([59.25,17.85],11); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);} map.invalidateSize(); },100);
+ let toPlot=results.filter(r=>!['normal','vp','lagad'].includes(r.cat)).slice(0,80);
+ document.getElementById('mapStatus').textContent=`Visar ${toPlot.length} skarpa mätare - geokodning kräver API, visar listvy nu. Full karta med Nominatim kan läggas till.`;
+ markers.forEach(m=>map.removeLayer(m)); markers=[];
+ for(let r of toPlot){
+  // enkel mock-position i Botkyrka
+  let lat=59.2+Math.random()*0.15, lng=17.7+Math.random()*0.3;
+  let col=CATS[r.cat]?.bg||'#888'; let m=L.circleMarker([lat,lng],{radius:8,fillColor:col,color:'#fff',weight:2,fillOpacity:.9}).addTo(map); m.bindPopup(`<b>${r.adress}</b><br>${r.cat} - ${r.E} dB - E/F ×${r.ratio.toFixed(1)}<br>${r.id}`); markers.push(m);
+ }
+};
+</script>
 </body>
 </html>
